@@ -1,6 +1,6 @@
 # 00 · Índice y guía de la documentación — Gyro Store v2
 
-> **Propósito de este set.** Documentar Gyro Store a nivel SR *como si se construyera
+> **Propósito de este set.** Documentar Gyro Store a nivel super detallado *como si se construyera
 > desde cero*, para servir de **fuente de verdad** de la reconstrucción limpia en el
 > nuevo repo. Primero se edita la documentación (Gerald), luego se toma el **esqueleto**
 > del código viejo y se escribe código nuevo alineado a estos documentos.
