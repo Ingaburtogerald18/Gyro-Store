@@ -1,8 +1,8 @@
 # 00 · Índice y guía de la documentación — Gyro Store v2
 
-> **Propósito de este set.** Documentar Gyro Store a nivel super detallado *como si se construyera
+> **Propósito de este set.** Documentar Gyro Store a nivel SR *como si se construyera
 > desde cero*, para servir de **fuente de verdad** de la reconstrucción limpia en el
-> nuevo repo. Primero se edita la documentación, luego se toma el **esqueleto**
+> nuevo repo. Primero se edita la documentación (Gerald), luego se toma el **esqueleto**
 > del código viejo y se escribe código nuevo alineado a estos documentos.
 
 ---
@@ -43,14 +43,32 @@ lleva una marca de confianza. **Editá con esto en mente:**
 
 ## Documentos canónicos que ya existían (no se duplican acá)
 
-- **`DESIGN.md`** — Sistema de diseño "Editorial Dark". Es la fuente de verdad del look del
+- **`DESIGN.md`** — Sistema de diseño "Editorial Dark". Fuente de verdad del look del
   storefront. Nivel SR, no hace falta reescribirlo. El doc 05 lo referencia, no lo repite.
 - **`PRODUCT.md`** — Brief de producto. El doc 01 lo absorbe y expande; podés dejar
   `PRODUCT.md` como resumen ejecutivo y 01 como la versión larga, o fusionarlos.
+- **`docs/` interno del repo (11 archivos)** — el Version2 ya trae documentación precisa del
+  **sistema actual**: `01_arquitectura`, `02_stack`, `03_rutas_api`, `04_diagramas_secuencia`,
+  `05_modelo_datos_firestore`, `06_maquinas_estado`, `07_adr`, `08_operacion_y_riesgos`,
+  `09_diagrama_arquitectura`, `10_changelog_hardening`, `11_frontend_guidelines`.
+
+### Relación entre los dos sets (importante)
+- El **`docs/` interno** describe el sistema **como está hoy** (referencia técnica precisa).
+- **Este set (00–08)** es la **spec editable del rebuild**: la fuente de verdad de lo que
+  querés que sea v2. Ya está **alineado con el código real** (verificado contra `shared/schemas.mjs`,
+  `server/config.js`, `middleware/auth.js`, rutas, store y los ADRs).
+- **Sugerencia de ubicación en el repo nuevo:** guardá este set en `docs/rebuild/` (o
+  `docs/v2/`) para que conviva con el `docs/` técnico sin pisarlo. Vos editás `docs/rebuild/`
+  a gusto; cuando algo se implemente, se refleja también en el `docs/` técnico.
 
 ---
 
 ## Glosario rápido (para que todos los docs hablen el mismo idioma)
 
 - **Storefront** — la parte pública: home, categorías, ficha de producto (PDP), carrito → WhatsApp.
-
+- **Back-office / Admin** — el portal `/admin`: inventario, ventas, facturación, reportes, usuarios, logística.
+- **PDP** — *Product Detail Page*, la ficha de producto (`producto.$id`).
+- **Monolito híbrido** — un solo servicio Express que sirve la API *y* el frontend Remix buildeado.
+- **Admin SDK** — Firebase Admin (servidor), con privilegios totales; ignora las security rules.
+- **R2** — Cloudflare R2, almacenamiento de imágenes compatible con S3.
+- **Checkout WhatsApp** — el pedido se cierra fuera de la web, por chat; la web es catálogo + captación.
