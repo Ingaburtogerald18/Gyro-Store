@@ -1,0 +1,142 @@
+# 07 · Infraestructura y despliegue — Gyro Store
+
+> Entorno, variables, hosting, storage, build e imágenes. Casi todo `[CONFIRMADO]`
+> por `render.yaml`, `.env.example`, `firebase.json`, `.firebaserc` y los scripts.
+
+---
+
+## 1. Topología de despliegue [CONFIRMADO]
+
+Un único **Web Service en Render** (`render.yaml`):
+- `runtime: node`, `plan: starter`, `region: oregon`.
+- **Build:** `npm install && cd frontend && npm install && npm run build`.
+- **Start:** `node server/index.js` (Express sirve API + frontend buildeado).
+- **Health check:** `/api/health`.
+
+```
+render.yaml ──▶ Render Web Service "gyro-store"
+   build: instala root + frontend, buildea Remix
+   start: node server/index.js  (API /api/* + estáticos Remix)
+   health: GET /api/health
+```
+
+---
+
+## 2. Variables de entorno [CONFIRMADO — `.env.example` + `render.yaml`]
+
+> En Render, las marcadas `sync: false` se cargan manualmente (secretos). Nunca commitear `.env`.
+
+### Entorno y app
+| Var | Ejemplo | Nota |
+|---|---|---|
+| `NODE_ENV` | `production` | |
+| `PORT` | `3000` | |
+| `APP_URL` | `https://gyro-store.onrender.com` | usada en links de emails |
+
+### Firebase Admin (servidor)
+| Var | Nota |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | **Opción A (Render):** JSON del service account en una línea |
+| `SERVICE_ACCOUNT_PATH` | **Opción B (local):** ruta al `serviceAccountKey.json` |
+
+### Firebase Web Config (cliente / login)
+`FIREBASE_WEB_CONFIG` (JSON en una línea) **o** campos sueltos:
+`FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`,
+`FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`.
+
+### Roles de arranque
+| Var | Nota |
+|---|---|
+| `ADMIN_EMAILS` | whitelist; el **primero** es `global_admin` protegido |
+| `SELLER_EMAILS` | whitelist de vendedores de arranque |
+| `PROTECTED_ADMIN_EMAIL` | admin que no se puede degradar/borrar |
+| `INTERNAL_DOMAIN` | `gyrostore.com` → correos internos = staff |
+
+### Cloudflare R2 (imágenes)
+| Var | Nota |
+|---|---|
+| `R2_ACCOUNT_ID` | cuenta de Cloudflare |
+| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | token S3 |
+| `R2_BUCKET_NAME` | `gyro-store-images` |
+| `R2_PUBLIC_URL` | URL pública del bucket, **sin barra final** |
+| `R2_ENDPOINT` | opcional; si se omite, se arma con `R2_ACCOUNT_ID` |
+
+### Negocio
+| Var | Ejemplo |
+|---|---|
+| `WHATSAPP_NUMBER` | `50585944758` |
+| `CURRENCY` | `C$` |
+| `EXCHANGE_RATE` | `37` |
+
+### Email SMTP
+`EMAIL_CONFIG` (JSON) **o** campos sueltos: `EMAIL_HOST` (`smtp.gmail.com`), `EMAIL_PORT`
+(`465`), `EMAIL_SECURE` (`true`), `EMAIL_USER`, `EMAIL_PASS` (App Password), `EMAIL_FROM`.
+
+### CORS
+`CORS_ORIGIN` — dominio de producción permitido.
+
+---
+
+## 3. Firebase [CONFIRMADO]
+
+- Proyecto default: **`gyro-store`** (`.firebaserc`).
+- `firebase.json` apunta a `firestore.rules` (deny-all) e `firestore.indexes.json`
+  (sin índices compuestos).
+- **Checklist de setup** (README): habilitar Auth (Google/Microsoft/Email), crear Firestore,
+  generar service account, copiar config web. [CONFIRMADO]
+
+> **[MEJORA]** El README aún menciona "Storage" de Firebase con reglas de lectura pública;
+> pero las imágenes ya viven en **R2**. Aclarar en v2 que Firebase Storage **no se usa**
+> (evita confusión de setup).
+
+---
+
+## 4. Imágenes [CONFIRMADO + MEJORA]
+
+**Hoy:** existe `resize-images.ps1` que redimensiona a **1080×1080**, fondo blanco, mantiene
+aspect ratio, interpolación bicúbica, y exporta `Optimized_N.jpg`. Es un paso **manual** en
+Windows. [CONFIRMADO]
+
+**[MEJORA] v2:** mover esa optimización al servidor con **sharp** (ya es dependencia) en el
+endpoint de subida: recibir original → `sharp` (cuadrar 1080, contain con fondo, calidad,
+webp opcional) → subir a R2. Así el admin sube desde el navegador y el servidor optimiza; se
+elimina el script de PowerShell del flujo.
+
+---
+
+## 5. Scripts [CONFIRMADO — `package.json`]
+
+| Script | Qué hace |
+|---|---|
+| `npm run dev` | server + frontend en paralelo (concurrently) |
+| `npm run dev:server` | Express con `--watch` |
+| `npm run dev:frontend` | Vite/Remix dev (`localhost:5173`) |
+| `npm run build` | instala frontend y buildea Remix |
+| `npm start` | producción: `node server/index.js` |
+| `npm run seed:admin` | siembra el admin inicial |
+| `npm run seed:template` | siembra datos plantilla |
+
+Puertos dev: Frontend `5173`, API `3000` (`/api/health`). [CONFIRMADO]
+
+---
+
+## 6. Ignorados [CONFIRMADO — `.gitignore`, `.claudesignore`]
+
+- **`.gitignore`:** `node_modules`, builds, `.env*`, `serviceAccountKey.json`, `*.pem`, logs,
+  basura de sistema/IDE.
+- **`.claudesignore`:** además ignora `package-lock.json` (salvo problemas de instalación) y
+  `.git/` para no cargar ruido cuando una IA lee el repo.
+
+> **[MEJORA] Higiene de secretos:** confirmá que **`.env` real nunca** entró a git en ninguno
+> de los repos (ni en el viejo de `D:\Gyro-Store` ni en el nuevo). Si alguna key de Firebase/
+> R2/SMTP se subió alguna vez, **rotala** antes del lanzamiento de agosto.
+
+---
+
+## 7. Ambientes [PROPUESTO]
+
+Hoy hay un solo ambiente (producción en Render). **[MEJORA]** para v2 considerá:
+- **local** (`.env`, Firebase dev o el mismo proyecto con cuidado),
+- **producción** (Render).
+- Si el presupuesto lo permite, un proyecto Firebase separado para pruebas evita ensuciar la
+  data real de la tienda.
