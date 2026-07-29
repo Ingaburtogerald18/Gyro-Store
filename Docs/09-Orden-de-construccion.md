@@ -5,13 +5,20 @@
 > haciendo con IA pero **poniendo yo cada pieza en su lugar y entendiéndola** antes de pasar a la
 > siguiente. Nada de generar 40 archivos de una y perderme.
 
-## Cómo leo esta lista
+## Cómo usar esta lista con tu IA Local (Paso a Paso)
+Como tu IA local generará los archivos uno por uno, **NO le pidas que haga todo el hito de golpe**. Usa esta estrategia:
+1. Pásale el contexto del proyecto (usando el documento 12 o el resumen de arquitectura).
+2. Dile: *"Vamos a trabajar en el Hito 0. Genera únicamente el código para el archivo #1 (`.gitignore`)."*
+3. Una vez que te dé el archivo #1, cópialo en tu proyecto.
+4. Luego dile: *"Perfecto, ahora genera el archivo #2 (`.env.example`)."*
+5. Si un archivo depende de otro (mira la columna "Depende de"), asegúrate de que tu IA tenga en cuenta los archivos anteriores.
+
+## Reglas de la lista
 - El orden es **de dependencias**: primero lo que no depende de nada (config, tipos), después lo que
   se apoya en eso (middleware, servicios), y al final las rutas y la UI que usan todo.
-- Cada fila: **archivo · qué hace · de qué depende**. Si un archivo depende de otro que todavía no
-  existe, es señal de que lo estoy haciendo fuera de orden.
-- Los hitos son los mismos del doc 08. **No arranco un hito sin cerrar el anterior.**
-- Regla personal: **un archivo, lo entiendo, commit chico, siguiente.**
+- Cada fila: **archivo · qué hace · de qué depende**. 
+- Los hitos siguen al doc 08. **No arranco un hito sin cerrar el anterior.**
+- Regla personal: **un archivo, lo pruebo, lo entiendo, hago commit, y le pido el siguiente a la IA.**
 
 ---
 
@@ -113,8 +120,9 @@ WhatsApp; el staff puede loguearse. La tienda ya podría abrir.
 
 | # | Archivo | Qué hace | Depende de |
 |---|---|---|---|
+| 49.5 | `supabase/migrations/00XX_appconfig.sql` + `server/services/finance.ts` | tablas config del doc 11 (tiers F/U, 7 pozos, márgenes, comisión, mayoreo, salary, tasa) + cálculos de costeo/PVP | doc 11 |
 | 50 | `server/services/inventory.ts` | FIFO: `reserveForItems`, `takeFifo`, `consumeReservation` (TX SQL) | 12 |
-| 51 | `server/routes/inventory.ts` | `/api/inventory` (admin) | 50,22 |
+| 51 | `server/routes/inventory.ts` | `/api/inventory` (admin) — al recibir compra: costo real, F/U, pozos, coste final (doc 11 §1-2) | 50,49.5,22 |
 | 52 | `server/services/storage.ts` | Sharp→WebP, subir a R2 por hash, limpiar huérfanos | 11 |
 | 53 | `server/routes/templates.ts` | `/api/templates` (admin) | 22 |
 | 54 | `server/routes/catalog.ts` (admin) | CRUD de catálogo + subida de imágenes | 52,53 |
@@ -132,7 +140,7 @@ imágenes optimizadas.
 
 | # | Archivo | Qué hace | Depende de |
 |---|---|---|---|
-| 59 | `server/services/commission.ts` | escala progresiva (documentar tramos) | — |
+| 59 | `server/services/commission.ts` | cadena utilidad→salary→comisión→ganancia + escala + mayoreo; **snapshot al aprobar** (doc 11 §4-5) | 49.5 |
 | 60 | `server/services/sales.ts` + `routes/sales/*` | register/quotes/manage/payments/list/sellerPortal | 50,59 |
 | 61 | `server/services/invoice.ts` | POS, numeración por **sequence**, vincular 1:1 (TX) | 12 |
 | 62 | `server/routes/invoices.ts` | `/api/invoices` | 61 |
@@ -146,20 +154,19 @@ imágenes optimizadas.
 
 ---
 
-## HITO 4 — Reportes, gastos, logística, CRM, feedback, telemetría
+## HITO 4 — Reportes, gastos, logística, feedback, telemetría
 
 | # | Archivo | Qué hace | Depende de |
 |---|---|---|---|
 | 68 | `server/services/reports.ts` | KPIs con **SQL/vistas**, pérdidas, gastos con pozos, export | 12 |
 | 69 | `server/routes/reports.ts` | `/api/reports` | 68 |
-| 70 | `server/services/logistics.ts` + `routes/logistics.ts` | envíos, timeline (`logistics_events`), email M365 | 12,73 |
-| 71 | `server/routes/{feedback,discount-codes,search-events}.ts` | dominios de soporte | 22 |
-| 72 | `server/routes/users.ts` | gestión + soft-delete (`deleted_at`) + invitación email | 22,73 |
-| 73 | `server/services/email.ts` | Microsoft 365 (Graph o SMTP) | 11 |
-| 74 | `server/services/crm.ts` (ampliado) + `routes/{contacts,followups}.ts` | **según decisión de CRM (abierta)** | 12 |
-| 75 | Frontend `routes/admin.{reportes,logistica,usuarios,feedback,busquedas,codigos-descuento,crm}.tsx` | portales admin restantes | 64 |
+| 70 | `server/services/email.ts` | Microsoft 365 (Graph o SMTP) | 11 |
+| 71 | `server/services/logistics.ts` + `routes/logistics.ts` | envíos, timeline (`logistics_events`), email M365 | 12,70 |
+| 72 | `server/routes/{feedback,discount-codes,search-events}.ts` | dominios de soporte | 22 |
+| 73 | `server/routes/users.ts` | gestión + soft-delete (`deleted_at`) + invitación email | 22,70 |
+| 74 | Frontend `routes/admin.{reportes,logistica,usuarios,feedback,busquedas,codigos-descuento}.tsx` | portales admin restantes | 64 |
 
-**✅ Fin de Hito 4:** back-office completo. (El CRM queda en la forma que decida en su momento.)
+**✅ Fin de Hito 4:** back-office operativo completo (sin el CRM, que es el hito propio de abajo).
 
 ---
 
@@ -167,11 +174,46 @@ imágenes optimizadas.
 
 | # | Tarea | Nota |
 |---|---|---|
-| 76 | `scripts/seed.ts` parametrizable | reemplaza los seeds sueltos de v1 |
-| 77 | `server/cron/*` | purga papelera 30 días, limpieza de huérfanos R2 |
-| 78 | Auditoría a11y/perf móvil | contraste AA, `prefers-reduced-motion`, peso de página |
-| 79 | Endurecer COOP en helmet | si el login de Entra usa redirect (doc 03 §A.6) |
-| 80 | Checklist de secretos + `/api/health` verde en prod | Supabase de prod, keys rotadas |
+| 75 | `scripts/seed.ts` parametrizable | reemplaza los seeds sueltos de v1 |
+| 76 | `server/cron/*` | purga papelera 30 días, limpieza de huérfanos R2 |
+| 77 | Auditoría a11y/perf móvil | contraste AA, `prefers-reduced-motion`, peso de página |
+| 78 | Endurecer COOP en helmet | si el login de Entra usa redirect (doc 03 §A.6) |
+| 79 | Checklist de secretos + `/api/health` verde en prod | Supabase de prod, keys rotadas |
+
+**✅ Fin de Hito 5:** listo para lanzar (ver doc 08 §8). El CRM de abajo puede ir post-lanzamiento.
+
+---
+
+## HITO 6 — CRM y WhatsApp (doc 10) — puede ir post-lanzamiento
+
+> Por fases, para no depender de Meta al arrancar. **CRM-A entrega valor solo**, aunque cargue todo a mano.
+
+### Fase CRM-A — base de datos + panel (sin Meta)
+| # | Archivo | Qué hace | Depende de |
+|---|---|---|---|
+| 80 | `supabase/migrations/00XX_crm.sql` | tablas `follow_ups`, `whatsapp_conversations`, `whatsapp_messages` + enums + `contact_id`/`phone` en `orders`/`public_orders` | doc 10 §5 |
+| 81 | `server/services/crm.ts` (ampliado) | contactos, follow-ups, **ficha 360** (JOIN pedidos+ventas+chat) | 80 |
+| 82 | `server/routes/crm.ts` (parte admin) | `/api/crm/contacts/:id`, `/follow-ups`, `/conversations` | 81,22 |
+| 83 | Frontend `store/api/crmApi.ts` | slice del CRM | 39 |
+| 84 | `routes/admin.crm.tsx` — Ficha 360 + Agenda (kanban) | vistas base con shadcn/ui | 83 |
+
+### Fase CRM-B — WhatsApp Cloud API (necesita número dedicado + setup Meta)
+| # | Archivo | Qué hace | Depende de |
+|---|---|---|---|
+| 85 | `server/services/whatsapp.ts` | verificar firma, enviar mensaje/plantilla (Graph API), parsear webhook | 11 |
+| 86 | `server/routes/crm.ts` (webhook) | `GET/POST /api/crm/webhook` (verify token + firma de Meta) | 85 |
+| 87 | `routes/admin.crm.tsx` — Inbox | bandeja tipo WhatsApp Web para chats `needs_human`, responder | 84,85 |
+
+### Fase CRM-C — bot y automatización
+| # | Archivo | Qué hace | Depende de |
+|---|---|---|---|
+| 88 | `server/services/whatsapp.ts` (bot) | FAQ, ruteo por origen (ads/links), handover a humano | 86 |
+| 89 | `server/cron/followupsOutbound.ts` | cron diario: `follow_ups` de hoy → plantilla saliente | 81,85 |
+
+### Fase CRM-D (opcional, futuro)
+| # | Tarea | Nota |
+|---|---|---|
+| 90 | Meter **n8n** self-hosted | solo si los flujos se complican; consume los endpoints ya hechos |
 
 ---
 

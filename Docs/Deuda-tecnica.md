@@ -35,7 +35,7 @@ técnica** que arrastraba, porque muchas eran limitaciones de Firestore/Spark, n
 | R4 | **`created_at` real en productos** para "Lo Más Nuevo" | Baja |
 | R5 | **Marcas/logos reales** en `/public/brands` (hoy placeholder) | Baja |
 | R6 | **Sombras deprecadas** (`shadow-accent-*`) fuera del storefront | Baja |
-| R7 | **CRM** — forma final por definir (ver §4) | Media (quiero algo mejor) |
+| R7 | **CRM** — dirección ya definida (doc 10); falta afinar FAQ del bot, plantillas, pipeline y LTV | Media |
 
 ## 3. Deuda de "acumulación" que el rebuild limpia
 
@@ -62,12 +62,20 @@ técnica** que arrastraba, porque muchas eran limitaciones de Firestore/Spark, n
 - [x] **UI:** shadcn/ui sobre tokens de `DESIGN.md`.
 - [x] **Dónde vive el rol:** lectura de `profiles` por request (efecto inmediato).
 
+**Cerradas (cont.):**
+- [x] **CRM:** nativo + **WhatsApp Cloud API** (Meta), **sin n8n al inicio** (webhook directo a
+      Express), número dedicado, plan por fases. Detalle en doc 10.
+- [x] **Lógica financiera:** costeo, Costo F/U escalonado, **7 pozos** (25/7/5/8/40/5/10), PVP con
+      márgenes escalonados, cadena de comisión (salary 20% + escala) y mayoreo. Valores reales del
+      Excel, editables desde `app_config`, congelados al aprobar. Detalle en doc 11.
+- [x] **Config negocio:** las tablas financieras van **editables desde `app_config`** (doc 11 §9).
+
 **Abiertas (por cerrar):**
-- [ ] **CRM:** nativo con mejor pipeline vs integrar n8n/Notion vs automatización multi-touch.
-      *Quiero hacer algo interesante acá; lo trabajo aparte.*
-- [ ] **Comisiones:** documentar los **tramos reales** de la escala progresiva.
-- [ ] **Config negocio:** ¿en env o editable desde `app_config`? (hoy mezcla ambos).
-- [ ] **Costos fijos (pozos):** confirmar los **% reales** por grupo.
+- [ ] **CRM — detalle fino:** FAQ del bot, plantillas a aprobar en Meta, etapas del pipeline, fórmula
+      de LTV, y tarifa exacta de plantillas para Nicaragua (doc 10 §10).
+- [ ] **Comisiones — huecos del Excel (doc 11 §10):** tramo para utilidad neta **> 900 C$**, si hay
+      **comisión en mayoreo** y sobre qué base, y confirmar el bracket por **línea** con cantidad > 1.
+- [ ] **Inventario migrado:** ¿aplica el mismo Costo F/U + pozos o va con su costo puro? (doc 11 §7).
 - [ ] **Pasarela de pago:** confirmar que sigue **fuera** (checkout WhatsApp, ADR-004).
 
 ---
@@ -116,7 +124,8 @@ pagos por semana, `invoices` (POS 80mm, sequence para numerar, 1 ticket=1 uso), 
 
 ### Hito 4 — Reportes, gastos, logística, CRM
 `reports` (KPIs con SQL, `losses`, gastos con pozos, export), `logistics_shipments` (+ eventos,
-email M365), CRM (según decisión §4), `feedback`, telemetría. Cron de limpieza.
+email M365), **CRM base (doc 10, Fase CRM-A: tablas + Ficha 360 + agenda, sin Meta todavía)**,
+`feedback`, telemetría. Cron de limpieza. WhatsApp/bot (CRM-B/C) puede ir en paralelo o post-lanzamiento.
 
 ### Hito 5 — Polish y QA de lanzamiento
 Seeder parametrizable, auditoría a11y/perf móvil, checklist Render, verificación de secretos, endurecer

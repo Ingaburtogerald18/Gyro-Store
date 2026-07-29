@@ -48,6 +48,8 @@ Compras a China, flujo `china → pending → received`, KPIs, inventario actual
 - KPIs: unidades en tránsito, valor de inventario, productos bajo mínimo.
 - **Invariante:** el stock solo cambia por eventos (compra recibida ↑, venta aprobada ↓), nunca por
   edición manual libre (o si se permite, queda auditado). Reforzado por `CHECK` en la base. [v2]
+- **Costeo automático:** al registrar/recibir la compra, el sistema calcula costo real (USD y C$ con
+  tasa **congelada**), Costo F/U escalonado, los 7 pozos y el Coste final. Toda la fórmula: **doc 11**.
 
 ---
 
@@ -61,11 +63,13 @@ Admin:  aprueba en orden FIFO ──▶ [approved] + decremento de stock ATÓMIC
 Sistema: calcula comisión por ESCALA PROGRESIVA
 Admin:  liquidación SEMANAL ──▶ [paid]
 ```
-- **Comisión escala progresiva:** definir tramos (ej.: 0–X → a%, X–Y → b%…). *Documentar los tramos
-  reales cuando los defina.* [PROPUESTO valores]
+- **Toda la matemática (utilidad bruta → salary 20% → utilidad neta → comisión → ganancia tienda),
+  la escala de comisión y el mayoreo están en el doc 11**, con los valores reales del Excel. Se
+  **congela al aprobar** (snapshot en `order_items`).
 - **Aprobación FIFO:** se aprueban en orden de llegada; el primero en la cola gana el stock. Ligado a
   la transacción SQL (`SELECT ... FOR UPDATE` sobre los lotes por `purchase_date`).
 - **Pago semanal:** corte semanal de comisiones aprobadas (por `week_of`, semana ISO).
+- **Cotizador con mayoreo:** descuentos por volumen (3+ 10%, 6+ 15%, 12+ 20%) — doc 11 §5.
 
 ---
 
@@ -86,6 +90,9 @@ KPIs, gráficos Recharts, pérdidas, exportación Excel/PDF.
 - Exportación **Excel/PDF**.
 - **[v2] Agregados con SQL:** los KPIs salen de queries/vistas de Postgres, no de recorrer
   colecciones en memoria. Decido si algún reporte pesado va a **materialized view** para performance.
+- **Reporte financiero (doc 11 §8):** por vendedor (ventas, unidades, vendido, coste, comisión,
+  ganancia tienda), **Salary acumulado** (fondo empresa) y **los 7 pozos recogidos**. Todo desde SQL
+  sobre los snapshots de `order_items`, sin planillas.
 
 ---
 
@@ -114,14 +121,20 @@ Modo edición del catálogo (drag & drop, CRUD de productos, imágenes, promo), 
 
 ---
 
-## Dominio transversal · CRM / Seguimientos [DECISIÓN ABIERTA — v2]
-- Existe `contacts` + `contact_activities` para captar y dar seguimiento a leads de Instagram/
-  Facebook/WhatsApp, y una tabla `followups` heredada de v1.
-- **Quiero hacer algo más interesante con el CRM en v2** (no solo portar lo viejo). La forma final
-  —nativo con mejor pipeline, o integrado con n8n/Notion, o alguna automatización de multi-touch— la
-  **decido aparte**. Hasta entonces, este dominio queda como placeholder: la data existe, la
-  experiencia está por definir.
-- Pipeline tentativo por `stage` (nuevo → contactado → interesado → cerrado). [PROPUESTO]
+## Dominio transversal · CRM y automatización WhatsApp [DECIDIDO — detalle en doc 10]
+- CRM **nativo** con **Ficha 360** (todos los pedidos y ventas de un cliente en una pantalla),
+  **agenda de seguimientos** (kanban/lista de "a quién contactar hoy") y **bandeja de WhatsApp**.
+- Integra la **WhatsApp Cloud API oficial de Meta**; el webhook pega **directo a Express** (sin n8n
+  al inicio, por costo). Un **bot** responde dudas frecuentes y leads de ads/links, y hace **handover
+  a humano** cuando no entiende. Cron diario dispara avisos salientes (ej. "llegó tu stock") con
+  plantillas de Meta.
+- **Tablas:** unifico en `contacts` (+ `contact_activities`), agrego `follow_ups`,
+  `whatsapp_conversations`, `whatsapp_messages`; jubilo la vieja `followups`. Enlace `contact_id`/
+  `phone` en `orders`/`public_orders` para la Ficha 360.
+- **Costo:** ~$0/mes al inicio (mensajes entrantes gratis dentro de 24h; solo pago plantillas
+  salientes puntuales). **Ojo:** la Cloud API necesita un **número dedicado** (ver doc 10 §7).
+- Pipeline por `stage` (nuevo → contactado → interesado → cerrado). [PROPUESTO — afinar]
+- **Plan por fases:** primero base de datos + panel (sin Meta), después WhatsApp, después el bot.
 
 ---
 

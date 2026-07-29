@@ -49,7 +49,7 @@ Estas son las decisiones de arranque. El resto del set las respeta y las detalla
 | **Email transaccional** | **Microsoft 365** desde `@gyrostorenic.com`. | Misma identidad que el login, mejor entregabilidad y branding. |
 | **Ambientes** | **Dos proyectos Supabase**: dev y prod. | Pruebo migraciones sin ensuciar la data real de la tienda. |
 | **UI** | **shadcn/ui** sobre mis tokens de `DESIGN.md`. | Componentes sin estilo impuesto: preservan el look Editorial Dark, accesibles, estándar con Tailwind v4. |
-| **CRM / seguimientos** | **Pendiente** (nativo vs n8n/Notion). | Lo decido más adelante; lo dejo marcado como decisión abierta. |
+| **CRM / seguimientos** | CRM nativo + **WhatsApp Cloud API** (Meta), **sin n8n al inicio** (webhook directo a Express). | Lo más barato para arrancar (~$0/mes); detalle y plan por fases en el doc 10. |
 
 ## Convención de marcadores
 
@@ -77,6 +77,8 @@ lleva una marca de confianza. La mantengo porque me sirve para saber en qué con
 | 07 | **Infraestructura y despliegue** | Entorno, variables, Render, Supabase, R2, build, imágenes. |
 | 08 | **Deuda técnica y plan de reconstrucción** | Hallazgos del review, decisiones cerradas, orden de trabajo, estrategia de repo. |
 | 09 | **Orden de construcción** | Qué archivos de código creo primero y en qué orden, uno por uno, para armar el repo. |
+| 10 | **CRM y automatización WhatsApp** | Ficha 360, agenda de seguimientos, bandeja e integración con WhatsApp Cloud API (Meta). Decisiones de costo y plan por fases. |
+| 11 | **Lógica financiera y operativa** | Toda la matemática del negocio: costeo, Costo F/U y pozos, PVP, comisiones, mayoreo y reportería. Sale de mi Excel real. |
 
 ## Documentos canónicos que ya existían (no los duplico acá)
 

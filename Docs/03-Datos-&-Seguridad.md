@@ -95,15 +95,16 @@ código legible; el resto → 500 genérico (no filtra detalles). 404 de API →
 | Config | `app_config` | app_config |
 | Pérdidas / auditoría | `losses`, `audit_logs` | losses, audit_logs |
 | Logística | `logistics_shipments`, `logistics_events` | logistics_shipments (timeline → tabla hija) |
-| CRM | `contacts`, `contact_activities`, `followups` | contacts + activities, followups |
+| CRM | `contacts`, `contact_activities`, `follow_ups`, `whatsapp_conversations`, `whatsapp_messages` | contacts + activities (unifico; jubilo `followups`) + tablas nuevas de WhatsApp |
 | Telemetría | `analytics_events` | analytics_events |
 | Feedback | `feedback` | feedback |
 | Descuentos | `discount_codes` | discount_codes |
 
 > **`counters` desaparece:** la numeración correlativa (tickets, lotes, etc.) la hago con
 > **`sequences` de Postgres**, que son atómicas por diseño. [v2]
-> **CRM:** `followups` sigue listado por compatibilidad, pero su destino (unificar en `contacts` o
-> llevarlo a algo más interesante) es **decisión abierta** — lo trabajo aparte.
+> **CRM:** ya está decidido (doc 10). Unifico en `contacts` + `contact_activities`, agrego
+> `follow_ups` y las tablas de WhatsApp, y **jubilo la vieja `followups`** de v1. El CRM integra la
+> **WhatsApp Cloud API** de Meta con el webhook directo a Express (sin n8n al inicio).
 
 ### B.1 Tipos `enum` que definо (integridad desde la base) [v2]
 ```sql
@@ -115,6 +116,10 @@ payment_method    : 'efectivo' | 'transferencia' | 'tarjeta'
 loss_category     : 'robo' | 'dano' | 'devolucion' | 'regalias'
 feedback_type     : 'bug' | 'idea' | 'product'
 app_role          : 'global_admin' | 'admin' | 'seller' | 'cashier' | 'logistics_admin' | 'logistics_customer'
+contact_origin    : 'fb_ads' | 'organic' | 'whatsapp_link' | 'referral' | 'other'   -- CRM (doc 10)
+follow_up_status  : 'pending' | 'completed' | 'cancelled'                            -- CRM (doc 10)
+conversation_status : 'bot' | 'needs_human' | 'closed'                               -- CRM (doc 10)
+message_direction : 'inbound' | 'outbound'                                           -- CRM (doc 10)
 ```
 
 ### B.2 Catálogo público
@@ -148,7 +153,9 @@ variantes. Se leen junto al catálogo (join o segundo query).
 | `status` | `purchase_status` (`china`\|`pending`\|`received`); solo `received` es vendible |
 | `purchase_date` 🔑 | orden **FIFO** + filtro por período |
 | `quantity`, `quantity_sold`, `quantity_reserved` | `CHECK (quantity_sold + quantity_reserved <= quantity)` 🧮 `available = quantity - sold - reserved` |
-| `price_unit`, `shipping_unit` (USD) | costo real × tipo de cambio |
+| `costo_china_usd`, `impuesto_unit_usd`, `envio_unit_usd` | entradas de costo por unidad (USD) — ver doc 11 §1 |
+| `exchange_rate` | **congelada al recibir el lote** (el costo histórico no se mueve) [v2] |
+| 🧮 `costo_real_usd`, 🧮 `costo_real_cs` | costo real derivado (base de todos los cálculos, doc 11) |
 
 **`products`** — stock por SKU (vista de bodega). `sku`/`code` 🔑 (`unique`), `stock` 🧮 descontado
 atómicamente. En Postgres el detalle de catálogo resuelve stock con un `JOIN` normal (adiós al
@@ -170,7 +177,9 @@ no un array suelto; la integridad la garantiza la base.
 | `seller_uid` FK → `profiles`, `seller_email`, `week_of` 🔑 | pagos agrupados por **semana ISO** |
 
 **`order_items`** — líneas de la venta (**tabla hija**, antes array embebido)
-`order_id` FK, `sku`, `price`, `cost` (solo admin), `commission`, `quantity`. [v2]
+`order_id` FK, `sku`, `precio_unit`, `quantity`, y el **snapshot financiero congelado al
+aprobar** (solo admin): `coste_final_snap`, `utilidad_bruta`, `salary`, `utilidad_neta`, `comision`,
+`ganancia_tienda`, `pozos` (jsonb con los 7 montos). Toda la matemática está en el doc 11. [v2]
 
 **`order_reservations`** — enlaza venta ↔ stock reservado (**tabla hija**, antes array embebido)
 `order_id` FK, `purchase_id` FK, `code`, `quantity`, `unit_final_usd`. [v2]
@@ -193,18 +202,21 @@ vinculación a una venta corre en **transacción** → **1 ticket = 1 uso**. `me
 | `audit_logs` | ediciones/eliminaciones de ventas (motivo, autor, montos antes/después) |
 | `losses` | `loss_category` (`robo`\|`dano`\|`devolucion`\|`regalias`) — consumen costo FIFO |
 | `installments` / `payments` / `commission_adjustments` | cuotas, pagos, ajustes de saldo |
-| `contacts` (+ `contact_activities`) / `followups` | CRM ligero (forma final = decisión abierta) |
+| `contacts` (+ `contact_activities`), `follow_ups`, `whatsapp_conversations`, `whatsapp_messages` | CRM + WhatsApp — detalle completo en doc 10. `contacts.phone` 🔑 = ID de WhatsApp |
 | `logistics_shipments` (+ `logistics_events`) | logística China→Nicaragua (timeline + emails) |
 | `analytics_events` | telemetría (búsquedas, populares) — consultable con SQL directo |
 | `feedback` | `feedback_type` (`bug`\|`idea`\|`product`) |
 | `discount_codes` | códigos de descuento |
 
-### B.6 Gastos operativos y "pozos" presupuestados [se mantiene la lógica de v1]
-Grupos: `publicidad`, `servicios`, `utiles`, `garantias` (**budgeted:true**) + `varios`
-(**budgeted:false**). Los budgeted tienen "pozo" = reserva mensual de costos fijos (publicidad 10%,
-servicios 5%, utiles 5%, garantias 5% — **confirmar los % reales**). Mientras el gasto no supere su
-pozo **no baja la ganancia** (ya estaba reservado); solo el excedente la reduce. `varios` no tiene
-pozo: todo baja la ganancia directo. En Postgres esto lo puedo calcular con una vista.
+### B.6 Costeo, pozos y precios → **doc 11 (fuente de verdad)**
+Toda la matemática financiera (costeo de compra, Costo F/U escalonado, los **7 pozos**, PVP con
+márgenes escalonados, comisiones y mayoreo) está en el **doc 11**, con las cifras reales de mi Excel.
+Resumen para el modelo de datos:
+- **7 pozos** (suman 100% del Costo F/U): Publicidad 25%, Mantenimiento 7%, Útiles 5%, Garantías 8%,
+  **Préstamos 40%**, Suscripciones 5%, Servicios 10%. [v2 — reemplaza los placeholders 10/5/5/5 de v1]
+- **Costo F/U** se asigna por tramos del `costo_real_cs`; el **Coste final** = `costo_real_cs + costo_f_u`.
+- Todas las tablas (tiers, %, márgenes, comisión, mayoreo) son **editables desde `app_config`**.
+- Los valores calculados de cada venta se **congelan** en `order_items` al aprobar (snapshot).
 
 ---
 
@@ -228,4 +240,6 @@ En v1 **toda** la integridad la garantizaba el servidor (Firestore no tiene cons
   en vez de cachear), límites de Spark (ya no existen), lecturas `in` por lotes de ≤10 (ya no existen).
 - **Queda pendiente:** definir bien índices y `EXPLAIN` de los listados grandes (inventario, ventas)
   cuando el volumen crezca; decidir si algunos reportes van a **materialized view**.
-- **CRM:** `followups` vs `contacts` — decisión abierta, la trabajo aparte.
+- **CRM:** resuelto en el doc 10 (unifico en `contacts`, agrego `follow_ups` + tablas de WhatsApp).
+  Para la Ficha 360 agrego `contact_id` (FK nullable) + `phone` a `orders` y `public_orders`, así
+  puedo hacer `JOIN` y ver todo el historial de compras de un cliente.

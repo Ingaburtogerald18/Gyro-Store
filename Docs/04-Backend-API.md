@@ -51,14 +51,15 @@ resuelve el rol (whitelist env → tabla `profiles`). [v2]
 | `/api/users` | usuarios | admin; soft-delete con `deleted_at` [v2] |
 | `/api/logistics` | Gyro Logistics | timeline + emails (M365) |
 | `/api/installments` | cuotas | `installmentSchema` |
-| `/api/followups` | seguimientos CRM | destino = decisión abierta |
-| `/api/contacts` | CRM contactos + activities | |
+| `/api/crm` | CRM + WhatsApp | contactos, ficha 360, follow-ups, conversaciones, **webhook de Meta** — detalle en doc 10 |
 | `/api/feedback` | feedback de usuarios | `bug`\|`idea`\|`product` |
 | `/api/discount-codes` | códigos de descuento | |
 | `/api/search-events` | telemetría | `telemetryLimiter` solo en POST |
 
-> **CRM:** coexisten `followups` y `contacts` por herencia de v1. **No lo resuelvo todavía**: quiero
-> hacer algo más interesante con el CRM y lo defino aparte. Por ahora ambos quedan documentados.
+> **CRM:** ya está resuelto (doc 10). Unifico todo bajo `/api/crm` (jubilo `/api/followups` de v1) e
+> integro la **WhatsApp Cloud API** de Meta. El webhook `POST /api/crm/webhook` es **público pero
+> verificado por firma** de Meta (`X-Hub-Signature-256`); el resto pasa por `requireRole`. Sin n8n al
+> inicio: el webhook pega directo a Express. Endpoints y flujo del bot en el doc 10.
 
 ---
 
@@ -86,7 +87,7 @@ El cierre/cobro es manual; luego el admin registra la venta real (que sí descue
 
 ## 7. Servicios internos [se mantiene, con 2 cambios]
 `auth · balance · catalog · combos · commission · config · crm · email · installments · inventory ·
-invoice · logistics · orders · reports · sales · storage · telemetry`.
+invoice · logistics · orders · reports · sales · storage · telemetry · whatsapp` [v2].
 
 - **`storage` (R2):** sin cambios. `@aws-sdk/client-s3`; optimiza con **Sharp** a **WebP**, nombra por
   **hash de contenido** (subidas idempotentes), limpia huérfanos al borrar.
@@ -96,6 +97,10 @@ invoice · logistics · orders · reports · sales · storage · telemetry`.
 - **`inventory`:** FIFO — `reserveForItems`, `consumeReservation`, `reserveForMigratedItems`,
   `takeFifo`, ahora sobre **transacciones SQL** con `SELECT ... FOR UPDATE`. [v2]
 - **`reports`:** agregados con **SQL / vistas** en vez de recorrer colecciones en memoria. [v2]
+- **`whatsapp` (Meta Cloud API):** [v2] verifica la firma del webhook, parsea entrantes, envía
+  mensajes/plantillas por la Graph API. Es donde vive el bot; diseñado para que n8n pueda entrar
+  después sin reescribir (doc 10).
+- **`crm`:** contactos, follow-ups, ficha 360 (contacto + pedidos + ventas + chat con `JOIN`). [v2]
 
 ## 8. Utilidades [se mantiene]
 `asyncHandler · logger` (JSON estructurado en prod) `· pagination` (cursor) `· sanitize · upload`
