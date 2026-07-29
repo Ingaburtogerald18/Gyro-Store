@@ -7,7 +7,11 @@ La UI de Gyro Store v2 se divide en **dos grandes mundos**: El Storefront (Públ
 ---
 
 ## MUNDO 1: Storefront (Público y Modo Edición)
-*Esta es la cara de tu e-commerce. Igual que gyrostorenic.com hoy en día, **sí se mostrarán los precios reales, promociones y descuentos** para incentivar la compra.*
+*Esta es la cara de tu e-commerce. Los precios reales y las promociones puntuales (`is_promo`) sí se
+muestran. **[v2 · doc 14] Corrección:** los descuentos automáticos por volumen (mayoreo) **ya NO** se
+muestran ni se aplican a un comprador anónimo — eso quedó reservado al cotizador del vendedor o a un
+cliente mayorista ya aprobado. En su lugar, el storefront público usa una **estrategia de escasez**:
+mensajes tipo "registrate para obtener códigos" que empujan hacia la cuenta opcional (doc 14 §6).*
 
 1. **Home / Landing Page:** Banners, carrusel de destacados y categorías.
 2. **Modo Edición en Vivo (Estilo SharePoint/SPO):** ¡Gran idea! Si inicias sesión como `admin` y navegas por la tienda pública, verás la página igual que los clientes, pero con **botones superpuestos de "Editar" o cursores para arrastrar**. Podrás reordenar productos (`sort_order`), ocultarlos o cambiar textos directamente haciendo clic en ellos sin tener que ir al panel trasero.
@@ -17,6 +21,11 @@ La UI de Gyro Store v2 se divide en **dos grandes mundos**: El Storefront (Públ
 5. **Carrito y Checkout (WhatsApp):** El usuario ve su resumen. Al dar clic en "Comprar", el sistema guarda la pre-orden en `public_orders` y abre WhatsApp con un mensaje pre-armado y el total calculado.
 6. **Formulario de Contacto / Soporte:** Para levantar tickets o dejar feedback.
 7. **`/login`:** La única ruta privada aquí. Un botón de "Iniciar sesión con Microsoft" oculto a simple vista, exclusivo para que el staff de Gyro Store entre al sistema.
+8. **`/mi-cuenta` (opcional) [v2 · doc 14]:** Un botón discreto de "Iniciar sesión" (distinto al de staff, con OTP por teléfono) visible para cualquier comprador — nunca obligatorio para navegar ni comprar. Adentro:
+   - **Resumen:** progreso de lealtad ("2 de 3 para tu descuento").
+   - **Mis pedidos:** lista con el estado simplificado de cara al cliente (`recibido → en preparación → salió/listo para retiro → entregado`).
+   - **Mis códigos:** vigentes, usados, vencidos.
+   - **`[PROPUESTO]` Wishlist:** si se aprueba el extra del doc 14 §14.
 
 ---
 
@@ -28,7 +37,7 @@ La UI de Gyro Store v2 se divide en **dos grandes mundos**: El Storefront (Públ
 
 *   **Dashboard Personal:** Gráfico de sus ventas de la semana vs su meta, y cuánta comisión lleva acumulada.
 *   **CRM - Agenda y Clientes:** Vista de Kanban (columnas) para ver qué clientes debe contactar hoy (Follow-ups).
-*   **CRM - Inbox (Bot):** Una vista tipo WhatsApp Web donde caen los chats que el bot no pudo resolver y requieren que el vendedor hable directamente.
+*   **CRM - Inbox (Bot):** Una vista tipo WhatsApp Web donde caen los chats. **[v2 · Opción A, doc 10 §2, §7]** con el número de la tienda migrado a la Cloud API, el vendedor ya no tiene ese WhatsApp en su celular — **responde todos los chats desde acá**, no solo los que el bot no pudo resolver.
 *   **Módulo Ventas (Restringido):** 
     *   **Cotizador:** Buscan productos y los agregan a una venta. *OJO:* Aquí **solo ven el precio final (PVP)** y el sistema les aplica el mayoreo automáticamente. No ven la columna "Costo China" ni "Costo Real".
     *   **Mis Ventas:** Lista de sus ventas en estado "Pendiente de Aprobar" o "Aprobadas".
@@ -68,3 +77,5 @@ La UI de Gyro Store v2 se divide en **dos grandes mundos**: El Storefront (Públ
     *   **Aprobaciones:** Ven las ventas de los vendedores. Desglose completo (Precio - Costo real - Costo Fijo = Utilidad Bruta). Al "Aprobar", se congela la matemática.
     *   **Pago de Comisiones:** Agrupa comisiones por vendedor para marcar sus pagos semanales.
 *   **💬 Módulo CRM (Full):** Acceso total a todas las conversaciones de WhatsApp y analíticas de seguimiento.
+*   **👤 Panel de Clientes / Intención `[v2 · doc 14 §9]`:** Lista de contactos ordenada por "a quién llamar hoy" (no por fecha de registro). Muestra qué buscó, última visita, frecuencia, y señales de intención (buscó 3+ veces sin comprar, varias visitas en la semana). Alimenta la agenda de seguimientos.
+*   **🎟️ Gestión de Campañas y Códigos `[v2 · doc 14 §10]`:** Crear/editar códigos de campaña por canal (tope, vencimiento), y la pantalla para registrar la validación manual de screenshot antes de entregar un código por WhatsApp.

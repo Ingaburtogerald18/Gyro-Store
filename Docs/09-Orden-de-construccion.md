@@ -217,6 +217,33 @@ imágenes optimizadas.
 
 ---
 
+## HITO 7 — Cuentas de Comprador y Lealtad (doc 14) [transversal, no bloquea el lanzamiento]
+
+> Capa opcional sobre el storefront ya construido. Depende de que `contacts` y `discount_codes` ya
+> existan (Hito 4/6), y de `orders`/`public_orders` (Hito 1/3). Puede ir post-lanzamiento o en
+> paralelo si hay ancho de banda (doc 08 §7).
+
+| # | Archivo | Qué hace | Depende de |
+|---|---|---|---|
+| 91 | `supabase/migrations/00XX_accounts.sql` | `contacts.auth_user_id` (FK nullable `unique` → `auth.users`) + campos UTM en `contacts`/`analytics_events` + extensión de `discount_codes` (`campaign`, `contact_id`, `single_use`, `expires_at`, `redeemed_at`, `channel`) + campo de aprobación de mayorista + estado de pedido de cara al cliente en `orders`/`public_orders` | `contacts` (80), `discount_codes` (9), `orders`/`public_orders` (8) |
+| 92 | `shared/schemas.ts` (ampliado) | schemas Zod de OTP/registro, "mis pedidos", "mis códigos" | 13 |
+| 93 | `server/middleware/requireCustomer.ts` | verifica JWT de comprador, resuelve a **contacto** (nunca `AppRole`) | 91, 12 |
+| 94 | `server/services/account.ts` | OTP (solicitar/verificar), perfil, "mis pedidos" (atribución por teléfono) | 91, 92, 12 |
+| 95 | `server/routes/account.ts` | `/api/account` (otp, verify, me, orders, codes) | 94, 93 |
+| 96 | `server/services/loyalty.ts` | contador de compras entregadas, generación de código cada 3, ciclo de vida (uso/vencimiento) | 91, 92, 12 |
+| 97 | `server/routes/discount-codes.ts` (ampliado) | validar/canjear código de lealtad y de campaña | 96, 92 |
+| 98 | `server/services/crm.ts` (ampliado) | panel de intención (orden por "a quién llamar hoy"), señales de intención sobre `analytics_events` | 91, 80 |
+| 99 | `server/routes/crm.ts` (ampliado) | endpoints del panel de clientes/intención + gestión de códigos de campaña | 98, 97 |
+| 100 | Frontend `store/api/{accountApi,loyaltyApi}.ts` | slices RTK del dominio | 39 |
+| 101 | Frontend `routes/mi-cuenta.*.tsx` | login OTP, resumen, mis pedidos, mis códigos, `[PROPUESTO]` wishlist | 100 |
+| 102 | Frontend `routes/admin.crm.clientes.tsx` + `admin.crm.campanas.tsx` | panel de intención + gestión de campañas | 100 |
+
+**✅ Fin de Hito 7:** un comprador puede crear cuenta con OTP, ver sus pedidos y su progreso de
+lealtad; el staff ve el panel de intención y gestiona códigos de campaña. No bloquea "listo para
+lanzar" (doc 08 §8).
+
+---
+
 ## Reglas transversales mientras construyo (para no romper el orden)
 1. **La tabla antes que la ruta.** Ninguna ruta usa una tabla que no esté en una migración aplicada.
 2. **El servicio antes que la ruta.** La ruta es fina; la lógica vive en `services/`.

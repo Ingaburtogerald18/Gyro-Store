@@ -19,7 +19,23 @@ Revisando el diseño actual (`02-Arquitectura`, `03-Datos`, `04-Backend`), el si
 *   **Ataque Potencial 4: Mensajes falsos inyectados en el Webhook de Meta (CRM).**
     *   *ESTADO: CUBIERTO ✅.* Como Facebook nos envía mensajes a una URL pública, programaremos un middleware en Express que tome una clave secreta (App Secret de Meta) y verifique matemáticamente (`SHA-256 HMAC`) la firma de cada mensaje. Si la firma no es de Facebook, el servidor lo bloquea inmediatamente.
 
-**Veredicto de Seguridad:** Arquitectura 100% protegida y blindada para entorno empresarial. No tenemos ningún hueco.
+**[v2] Cuentas de comprador (doc 14) — nueva superficie de ataque.** Esto **templa** el veredicto de
+abajo: agregar login de comprador no es gratis en seguridad, y hay que decirlo con honestidad, no
+solo celebrar lo que ya está cubierto.
+
+*   **Ataque Potencial 5: OTP-bombing / abuso del endpoint de login.**
+    *   *ESTADO: MITIGADO, no "imposible".* Alguien puede pedir OTPs en loop contra un teléfono ajeno (molestia/costo) o contra el mío (factura de SMS/WhatsApp). *Mitigación:* rate-limit **agresivo**, más estricto que el `apiLimiter` general, por teléfono e IP en `POST /api/account/otp` (doc 03 §A.8).
+*   **Ataque Potencial 6: Enumeración de cuentas.**
+    *   *ESTADO: MITIGADO.* Si el endpoint de login respondiera distinto según si el teléfono tiene cuenta o no, cualquiera podría mapear mi base de clientes probando números. *Mitigación:* respuestas **genéricas siempre** ("si el número existe, te enviamos un código"), nunca confirmar existencia.
+*   **Ataque Potencial 7: Escalada de privilegios comprador → staff.**
+    *   *ESTADO: CUBIERTO ✅ por diseño.* `requireCustomer` resuelve el JWT del comprador a un **contacto**, nunca a un `AppRole`. No existe ningún endpoint que acepte ambos tipos de JWT indistintamente — son dos middlewares separados desde el diseño, no una validación adicional sobre el mismo camino (doc 03 §A.8).
+*   **Ataque Potencial 8: Fuga de PII (datos personales) del comprador.**
+    *   *ESTADO: MITIGADO, requiere disciplina continua.* Ahora hay más dato personal atado a una identidad autenticada (antes eran leads sueltos). *Mitigación:* **mínimo dato necesario** — teléfono obligatorio, correo opcional, nada que no tenga un uso claro documentado en el doc 14. Soy el custodio de ese dato, no un activo a explotar.
+
+**Veredicto de Seguridad (actualizado):** el núcleo (catálogo, ventas, costos, webhook de Meta) sigue
+**100% protegido**. Las cuentas de comprador agregan superficie **nueva y real**, mitigada por diseño
+(rate-limit, respuestas genéricas, separación estricta de middlewares) — no la escondo detrás de un
+"blindaje total"; la trato como lo que es: un riesgo nuevo, gestionado.
 
 ---
 
@@ -44,6 +60,14 @@ Para unificar la lógica, aquí definimos los endpoints críticos, sus acciones 
     *   `POST /api/sales`: (Vendedor). Registra venta y reserva stock. *Lógica:* Bloquea la fila en DB (`SELECT FOR UPDATE`). 
     *   `POST /api/sales/:id/approve`: (Admin). Confirma venta. *Acción Crítica:* Congela los cálculos financieros (toma el precio, descuenta el Coste Final, calcula Utilidad Bruta, descuenta el 20% de Salary, y calcula la Comisión en base a la Utilidad Neta). Guarda estos datos fijos en `order_items`.
     *   **Regla Mayoreo Integrada:** Si `cantidad >= 2` (del mismo producto), el servidor aplica 2.5% off. `>= 3` (5%), `>= 6` (10%), `>= 12` (15%). El sistema retorna un flag `warning: "Cotización sugerida"` si es `>=12` para que el frontend muestre la alerta.
+
+### D. Módulo de Cuentas de Comprador (`/api/account`) [v2 · doc 14]
+*   **Responsabilidad:** Auth de comprador (OTP por teléfono) y auto-servicio (mis pedidos, mis códigos de lealtad). Audiencia **separada** de los módulos A-C, que son de staff.
+*   **Endpoints:**
+    *   `POST /api/account/otp`: Público, rate-limit agresivo. Solicita el código OTP. Respuesta **genérica** siempre (no confirma si el teléfono tiene cuenta).
+    *   `POST /api/account/verify`: Público. Valida el OTP, entrega sesión de comprador.
+    *   `GET /api/account/me` · `/orders` · `/codes`: `requireCustomer`. Nunca `requireRole` — son middlewares que no se cruzan.
+*   **Restricción dura:** ningún endpoint de este módulo resuelve `AppRole`; ningún endpoint de los módulos A-C acepta un JWT de comprador.
 
 ---
 

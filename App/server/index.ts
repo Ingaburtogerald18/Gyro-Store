@@ -8,6 +8,9 @@ import { asyncHandler } from './utils/asyncHandler';
 import { requireAnyRole } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import configRouter from './routes/config';
+import catalogRouter from './routes/catalog';
+import combosRouter from './routes/combos';
+import ordersRouter from './routes/orders';
 import { apiLimiter } from './middleware/rateLimiter';
 import { sanitizeBody } from './utils/sanitize';
 import { logger } from './utils/logger';
@@ -50,6 +53,9 @@ app.get(
 );
 
 app.use('/api/config', configRouter);
+app.use('/api/catalog', catalogRouter);
+app.use('/api/combos', combosRouter);
+app.use('/api/orders', ordersRouter);
 
 // ── Cierre de la cadena ──
 app.use('/api', notFoundHandler);

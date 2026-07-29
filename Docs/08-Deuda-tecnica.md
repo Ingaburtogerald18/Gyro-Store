@@ -76,6 +76,20 @@ técnica** que arrastraba, porque muchas eran limitaciones de Firestore/Spark, n
 - [x] **Inventario migrado:** Queda ignorado/fuera del alcance por el momento.
 - [x] **Pasarela de pago:** Confirmado que sigue **fuera** (checkout WhatsApp, ADR-004).
 
+**Cuentas de comprador y lealtad — DECIDIDO, entra en v2 (doc 14):** hasta acá vivía implícitamente
+"fuera" (doc 01 §4.2 lo tenía como excluido); pasa a **dentro de alcance**, como capa opcional:
+- [x] **WhatsApp Opción A:** el número de la tienda migra a la Cloud API de Meta; los vendedores
+      responden desde el inbox del panel (reemplaza la idea de "número nuevo dedicado" del doc 10 §7).
+- [x] **Definición de "compra" para lealtad:** solo cuenta cuando el pedido fue **entregado**.
+- [x] **Auth del comprador:** OTP por teléfono + correo opcional, **teléfono siempre obligatorio**.
+      Audiencia separada del staff (`requireCustomer`, nunca `AppRole`).
+- [x] **"Unresponsive"** es un estado del CRM (etapa/tag), no un borrado. Borrado real = soft-delete,
+      solo si el cliente lo pide.
+- [x] **Códigos de campaña** por canal, públicos, con tope y vencimiento; validación de "seguidor" es
+      manual (screenshot → staff valida → código por WhatsApp).
+- [x] **Pagos online (BAC):** sigue fuera de alcance; el diseño deja la puerta abierta (la orden es el
+      objeto central, un pago sería un evento pegado a ella).
+
 ---
 
 ## 5. Principios de la reconstrucción (no negociables)
@@ -128,6 +142,12 @@ email M365), **CRM base (doc 10, Fase CRM-A: tablas + Ficha 360 + agenda, sin Me
 ### Hito 5 — Polish y QA de lanzamiento
 Seeder parametrizable, auditoría a11y/perf móvil, checklist Render, verificación de secretos, endurecer
 COOP si el login de Entra usa redirect.
+
+### Hito 6 — Cuentas de Comprador y Lealtad [doc 14, transversal — no bloquea el lanzamiento]
+Auth de comprador (OTP, `requireCustomer`, `contacts.auth_user_id`), tarjeta de sellos, extensión de
+`discount_codes` (campaña + lealtad), estados de pedido de cara al cliente, panel de intención admin,
+front de "mi cuenta". Encaja **post-lanzamiento** o en paralelo si hay ancho de banda — el desglose
+archivo-por-archivo está en el doc 09. Explícitamente **no** es requisito de "listo para lanzar" (§8).
 
 ---
 

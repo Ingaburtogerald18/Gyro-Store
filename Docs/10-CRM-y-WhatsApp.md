@@ -32,7 +32,7 @@ Todo esto está pensado para arrancar en **~$0/mes** de infraestructura extra:
 | **Motor del bot** | Lógica en TypeScript, en `server/services/whatsapp.ts`, aislada. | Respeta "todo pasa por el servidor" y me deja **meter n8n después sin reescribir** (n8n llamaría a estos mismos endpoints). |
 | **WhatsApp Cloud API (Meta)** | Sí, la API oficial. | La API es gratis; solo se pagan ciertos mensajes salientes (ver §3). |
 | **Plantillas de Meta** | Acepto el modelo. | A mi escala el costo arranca casi en $0 (§3). |
-| **Número de teléfono** | **Número nuevo dedicado** para la API; mantengo mi WhatsApp actual para trato humano. | Ver §7 — es el punto más importante. |
+| **Número de teléfono** | **Opción A: el número de la tienda MIGRA a la Cloud API.** Deja de usarse en la app normal de WhatsApp/WhatsApp Business; el "teléfono" pasa a ser el **inbox del panel** — los vendedores responden desde ahí, no desde su celular. **[v2 — reemplaza la decisión anterior de "número nuevo dedicado + mantener el actual" de §7.]** | Ver §7 — es el punto más importante. |
 
 **Si algún día meto n8n** (cuando los flujos se compliquen): self-hosted en **Oracle Cloud Free
 Tier** ($0) o Hetzner (~€4/mes), nunca n8n Cloud.
@@ -106,6 +106,13 @@ Unifico el CRM en `contacts` (jubilo la vieja tabla `followups` de v1) y agrego 
 
 Todo esto entra en una **migración SQL nueva** (`supabase/migrations/00XX_crm.sql`).
 
+> **Comprador registrado = contacto con auth [v2 · doc 14]:** cuando agrego cuentas de comprador,
+> `contacts` se extiende con `auth_user_id` (FK nullable `unique` → `auth.users`) — un contacto puede
+> seguir siendo un lead suelto (sin cuenta) o convertirse en una cuenta autenticada. Es el **mismo**
+> registro de `contacts` en los dos casos; no hay una tabla paralela de "clientes con cuenta". Detalle
+> completo del dominio, incluida la atribución de canal + campos UTM y los códigos de campaña por
+> canal (validados por screenshot manual): **doc 14**.
+
 ---
 
 ## 6. Endpoints de Express (ver también doc 04)
@@ -132,14 +139,23 @@ Grupo `/api/crm`:
 
 ---
 
-## 7. ⚠️ El número de teléfono (decisión operativa clave)
+## 7. ⚠️ El número de teléfono (decisión operativa clave) — Opción A [v2]
 
-La Cloud API exige un **número dedicado**, y una vez migrado **ya no se puede usar en la app normal de
-WhatsApp / WhatsApp Business**.
+La Cloud API exige un número dado de alta en la plataforma de Meta, y una vez migrado **ya no se
+puede usar en la app normal de WhatsApp / WhatsApp Business** con ese mismo número.
 
-**Decisión:** consigo un **número nuevo** (SIM barata o número virtual) para la API y el bot, y **dejo
-mi WhatsApp actual como está** para el trato humano directo. Cuando el CRM esté maduro decido si
-unifico. Esto lo tengo que resolver **antes** de conectar nada de Meta.
+**Decisión (reemplaza la anterior):** **Opción A** — **migro mi número actual de la tienda** a la
+Cloud API, en vez de sacar un número nuevo aparte. Esto significa:
+- Ese número **deja de estar disponible en la app normal de WhatsApp**: ya no lo abro desde mi
+  celular para escribir a mano.
+- El **"teléfono" pasa a ser el inbox del panel** (`/admin/crm`, §6): los vendedores responden desde
+  ahí, con la Graph API haciendo el envío/recepción real.
+- **Por qué migrar y no sacar número nuevo:** mantiene un solo número de cara al cliente (menos
+  confusión, un solo lugar donde escribir), y evita que el trato humano quede fragmentado en dos
+  números distintos mientras el CRM madura.
+- **Costo de la decisión:** ya no hay "salida de emergencia" por el WhatsApp normal — si el panel/la
+  Cloud API tiene un problema, no hay un segundo canal humano de respaldo en ese mismo número. Esto lo
+  tengo que resolver **antes** de conectar nada de Meta.
 
 ---
 
@@ -165,11 +181,14 @@ Migración de tablas CRM, **Ficha 360**, **Agenda de seguimientos** (kanban/list
 `contacts`. **Da valor desde el día 1 aunque cargue todo a mano.** No depende de aprobaciones de Meta.
 
 ### Fase CRM-B — WhatsApp Cloud API (después)
-Número dedicado, setup de Meta Business + verificación, webhook `/api/crm/webhook`, **Inbox** en el
-panel para responder chats `needs_human`, enviar/recibir mensajes.
+**Migración del número actual** a la Cloud API (Opción A, §7), setup de Meta Business + verificación,
+webhook `/api/crm/webhook`, **Inbox** en el panel para responder **todos** los chats (ya no solo
+`needs_human` — el número dejó de estar disponible en la app normal), enviar/recibir mensajes.
 
 ### Fase CRM-C — Bot y automatización
 FAQ automáticas, ruteo por origen (ads/links), handover a humano, cron de salientes con plantillas.
+**[PROPUESTO]** broadcasts segmentados (mensajes a grupos de contactos, con opt-in explícito y
+plantillas aprobadas por Meta) — extra del doc 14 §14, a decidir.
 
 ### Fase CRM-D (opcional, a futuro) — n8n
 Solo si los flujos se vuelven complejos. Self-hosted barato; consume los endpoints que ya existen.

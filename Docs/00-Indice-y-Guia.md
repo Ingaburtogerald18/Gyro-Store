@@ -49,7 +49,8 @@ Estas son las decisiones de arranque. El resto del set las respeta y las detalla
 | **Email transaccional** | **Microsoft 365** desde `@gyrostorenic.com`. | Misma identidad que el login, mejor entregabilidad y branding. |
 | **Ambientes** | **Dos proyectos Supabase**: dev y prod. | Pruebo migraciones sin ensuciar la data real de la tienda. |
 | **UI** | **shadcn/ui** sobre mis tokens de `DESIGN.md`. | Componentes sin estilo impuesto: preservan el look Editorial Dark, accesibles, estándar con Tailwind v4. |
-| **CRM / seguimientos** | CRM nativo + **WhatsApp Cloud API** (Meta), **sin n8n al inicio** (webhook directo a Express). | Lo más barato para arrancar (~$0/mes); detalle y plan por fases en el doc 10. |
+| **CRM / seguimientos** | CRM nativo + **WhatsApp Cloud API** (Meta), **sin n8n al inicio** (webhook directo a Express). **Opción A:** el número de la tienda migra a la Cloud API; los vendedores responden desde el inbox del panel, no desde la app normal de WhatsApp. | Lo más barato para arrancar (~$0/mes); detalle y plan por fases en el doc 10. |
+| **Cuentas de comprador** | Opcionales. Capa de lealtad y auto-servicio, nunca un requisito para comprar (doc 14). | Sube retención y mide canales sin tocar la fricción cero del checkout por WhatsApp. |
 
 ## Convención de marcadores
 
@@ -79,6 +80,7 @@ lleva una marca de confianza. La mantengo porque me sirve para saber en qué con
 | 09 | **Orden de construcción** | Qué archivos de código creo primero y en qué orden, uno por uno, para armar el repo. |
 | 10 | **CRM y automatización WhatsApp** | Ficha 360, agenda de seguimientos, bandeja e integración con WhatsApp Cloud API (Meta). Decisiones de costo y plan por fases. |
 | 11 | **Lógica financiera y operativa** | Toda la matemática del negocio: costeo, Costo F/U y pozos, PVP, comisiones, mayoreo y reportería. Sale de mi Excel real. |
+| 14 | **Cuentas de comprador y lealtad** | Dominio transversal opcional: auth de comprador (OTP), tarjeta de sellos, cliente mayorista, panel de intención, atribución de canal. |
 
 ## Documentos canónicos que ya existían (no los duplico acá)
 

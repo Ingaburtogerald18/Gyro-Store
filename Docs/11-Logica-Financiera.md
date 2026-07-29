@@ -140,6 +140,13 @@ Cuando el vendedor registra una venta, por cada línea el sistema calcula:
 
 ## 5. Venta al por mayor (mayoreo) — reglas finales (reemplazan al Excel "Mayor")
 
+> **[v2 · doc 14] El storefront público YA NO auto-aplica ni anuncia este descuento** a compradores
+> anónimos. Este mayoreo sigue existiendo **tal cual** abajo, pero como herramienta del **cotizador
+> del vendedor** (staff, doc 12 §2C) o para un cliente mayorista ya aprobado por admin (doc 14 §7) —
+> nunca visible/automático para quien navega el catálogo sin cuenta. La estrategia pública ahora es de
+> **escasez**: mensajes tipo "registrate para obtener códigos" en vez de mostrar el descuento. Detalle
+> de por qué (los tres tipos de incentivo) en §5.2 más abajo.
+
 El cotizador aplica un descuento automático por volumen **sobre el precio cargado del producto**
 (precio base/tentativo, no el sugerido matemático). El descuento baja el precio y, con eso, baja la
 utilidad y la comisión por la **misma cadena de §4** (no hay una fórmula aparte):
@@ -161,6 +168,28 @@ utilidad y la comisión por la **misma cadena de §4** (no hay una fórmula apar
 > el *Costo real*, sacrificando los pozos). Con la cadena normal, en productos de margen fino y
 > descuento máximo (15%) el precio podría acercarse al Coste final → validar que la utilidad no quede
 > negativa (piso = no vender bajo Coste final).
+
+### 5.1 Los tres tipos de incentivo (no son lo mismo) [v2 · doc 14 §6]
+
+| Tipo | Qué es | ¿Dónde vive la regla? |
+|---|---|---|
+| **(a) Volumen / mayoreo** | La tabla de arriba (§5) | Cotizador del vendedor / cliente mayorista aprobado — **no** es un código, es una regla de precio |
+| **(b) Lealtad** | Código único por cada 3 compras **entregadas**, atado a una cuenta | `discount_codes` (`kind='loyalty'`), doc 14 §5 |
+| **(c) Promoción / campaña** | Código público por canal, con tope y vencimiento | `discount_codes` (`kind='campaign'`), doc 14 §10 |
+
+### 5.2 Economía del código de lealtad [v2 · doc 14 §5]
+Igual que el mayoreo, el código de lealtad **entra a la misma cadena de §4** contra el Coste final —
+no hay una fórmula aparte para él. La regla dura: **el valor del código nunca puede dejar la venta con
+utilidad negativa.** Tiene que caber dentro de los tiers de margen del §3, igual que el piso que ya
+aplico al mayoreo (arriba). Al definir el valor/porcentaje del código de lealtad (vive en `app_config`,
+§9), se valida contra esta misma regla antes de activarlo.
+
+### 5.3 Códigos de campaña — no tocan la cadena de comisión igual
+Un código de campaña (`TIKTOK10`, `IG10`...) es de **captación**, no de venta recurrente: se valida en
+servidor igual que cualquier código (existe, no venció, no superó el tope de usos), y el descuento que
+aplique entra a la misma cadena del §4 (baja precio → baja utilidad → baja comisión), igual que el
+mayoreo. La diferencia con lealtad/mayoreo es de **negocio** (a quién se le da y por qué — doc 14 §10),
+no de matemática.
 
 ---
 

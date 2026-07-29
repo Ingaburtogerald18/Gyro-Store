@@ -77,6 +77,25 @@ render.yaml ──▶ Render Web Service "gyro-store"
 | `CURRENCY` | `C$` |
 | `EXCHANGE_RATE` | `37` |
 
+### WhatsApp Cloud API (Meta) [v2 — doc 10]
+> **Opción A (doc 10 §2, §7):** `WHATSAPP_NUMBER` de arriba **migra** a la Cloud API — deja de
+> usarse en la app normal de WhatsApp. Estas variables son las de esa integración:
+
+| Var | Nota |
+|---|---|
+| `WHATSAPP_TOKEN` | 🔒 token de acceso a la Graph API |
+| `WHATSAPP_PHONE_NUMBER_ID` | ID del número dedicado en la Cloud API |
+| `WHATSAPP_VERIFY_TOKEN` | verificación del webhook (`GET /api/crm/webhook`) |
+| `WHATSAPP_APP_SECRET` | 🔒 para validar la firma `X-Hub-Signature-256` de cada mensaje entrante |
+
+### Auth de comprador (OTP) [v2 — doc 14]
+- **[PROPUESTO]** cuál canal de envío del OTP uso primero: **Supabase phone auth** (SMS vía su
+  proveedor configurado) y/o un **gateway propio** (SMS o plantilla de WhatsApp por la misma Cloud API
+  de arriba). Las variables exactas dependen de cuál elija — lo cierro al implementar este dominio
+  (doc 09, Hito de Cuentas y Lealtad).
+- Ninguna de estas keys se expone al frontend; el flujo de solicitar/verificar OTP pasa por el backend
+  (`requireCustomer`, doc 03 §A.8), igual que el resto del sistema.
+
 ### Email — Microsoft 365 [v2 — reemplaza a Gmail SMTP]
 Dos caminos posibles (decido al implementar):
 - **Graph API** (recomendado): `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`,

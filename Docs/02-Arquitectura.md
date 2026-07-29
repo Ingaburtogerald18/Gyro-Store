@@ -49,6 +49,20 @@ autorización viven en el servidor.** Es exactamente el modelo de v1, traducido 
 > policies`; `ID token de Firebase` → `JWT de Supabase`; `Firestore` → `Postgres`. Si venís de la
 > v1, con este mapa entendés casi todo.
 
+### 1.1 Dos audiencias de auth, una sola regla de seguridad [v2 · doc 14]
+Con el dominio de cuentas de comprador (doc 14) hay ahora **dos audiencias** que se autentican, y
+conviene dejarlo claro acá porque es arquitectura, no solo dato:
+
+- **Staff** — Microsoft Entra ID, resuelve a `AppRole` (`requireRole`, doc 03 §A.4). Sin cambios.
+- **Comprador** — OTP por teléfono vía Supabase Auth, resuelve a un **contacto**
+  (`requireCustomer`, doc 14 §4), nunca a un `AppRole`.
+
+La regla que no cambia para ninguna de las dos: **el navegador nunca lee ni escribe la base
+directo**, tenga o no un JWT válido. El comprador logueado consulta "mis pedidos"/"mis códigos" igual
+que el staff consulta el admin — por Express, con `service_role`, contra tablas en **RLS deny-all**.
+Lo único que cambia entre audiencias es a qué middleware llega el request y a qué identidad se
+resuelve el JWT; el patrón de fondo (servidor manda) es el mismo para las dos.
+
 ---
 
 ## 2. Stack técnico [v2]
@@ -225,9 +239,16 @@ recién ahí la aplico en prod. Esto no existía en Firestore (schemaless).
 | 008 | Reglas deny-all versionadas | **MANTENER → RLS deny-all** + migraciones SQL en git |
 | 009 | Limpieza de imágenes huérfanas en R2 al borrar | MANTENER |
 | 010 | Zod + `fileFilter` en subidas | **MANTENER** |
+| 011 | *(nuevo v2)* Cuentas de comprador: audiencia separada, backend-mediated | **NUEVO.** OTP por teléfono vía Supabase Auth, resuelve a contacto (`requireCustomer`), nunca a `AppRole`. El navegador del comprador tampoco toca la base — mismo patrón deny-all + `service_role` que el resto del sistema. Opcional, capa de lealtad, nunca requisito para comprar. Detalle: doc 14. [v2] |
 
 **Decisiones nuevas de v2 (ADRs a escribir):** backend TypeScript+ESM; auth con Microsoft Entra vía
-Supabase; email por Microsoft 365; dos proyectos Supabase (dev/prod); migraciones SQL versionadas.
+Supabase; email por Microsoft 365; dos proyectos Supabase (dev/prod); migraciones SQL versionadas;
+cuentas de comprador (ADR-011, doc 14).
+
+> **Nota — Opción A de WhatsApp (doc 10 §2, §7):** el número de la tienda migra a la Cloud API de
+> Meta. Esto cambia cómo operan los vendedores: ya no responden desde la app normal de WhatsApp en su
+> teléfono, sino desde el **inbox del panel admin** (`/admin/crm`). Es un cambio operativo, no de
+> arquitectura de datos — el patrón "todo por el servidor" no cambia.
 
 ### Detalles de arquitectura que no quiero perder en el rebuild
 - **Caché de catálogo en memoria** (`catalogCache`): en v1 era **obligatorio** por los límites de

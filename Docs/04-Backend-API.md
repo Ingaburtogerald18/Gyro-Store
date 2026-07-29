@@ -30,6 +30,11 @@ resuelve el rol (whitelist env → tabla `profiles`). [v2]
 `requireAdmin` · `requireSeller` (admin+seller) · `requireCashier` (admin+cashier) ·
 `requireLogisticsAdmin` · `requireLogisticsAny` · `requireAnyRole`. `global_admin` pasa siempre.
 
+**`requireCustomer` [v2 · doc 14]** — middleware **paralelo**, no un atajo más de los de arriba.
+Verifica el JWT de comprador (OTP, Supabase Auth) y lo resuelve a un **contacto** (vía
+`contacts.auth_user_id`), nunca a un `AppRole`. Protege el grupo `/api/account` (§4). Un JWT de
+comprador no pasa `requireRole` ni viceversa — son dos mundos que no se cruzan (doc 03 §A.8).
+
 ---
 
 ## 4. Los 19 grupos de rutas [se mantiene de v1]
@@ -53,8 +58,22 @@ resuelve el rol (whitelist env → tabla `profiles`). [v2]
 | `/api/installments` | cuotas | `installmentSchema` |
 | `/api/crm` | CRM + WhatsApp | contactos, ficha 360, follow-ups, conversaciones, **webhook de Meta** — detalle en doc 10 |
 | `/api/feedback` | feedback de usuarios | `bug`\|`idea`\|`product` |
-| `/api/discount-codes` | códigos de descuento | |
+| `/api/discount-codes` | códigos de descuento | validar/canjear + campañas por canal — ampliado en v2, ver abajo |
 | `/api/search-events` | telemetría | `telemetryLimiter` solo en POST |
+| `/api/account` | cuentas de comprador | **[v2 · doc 14]** OTP/registro, `requireCustomer` para el resto — ver abajo |
+
+> **`/api/account` (nuevo, doc 14):** audiencia de **comprador**, no de staff.
+> - `POST /api/account/otp` · público, rate-limit agresivo · solicita el código OTP por teléfono.
+> - `POST /api/account/verify` · público · valida el OTP, devuelve sesión/JWT de comprador.
+> - `GET /api/account/me` · `requireCustomer` · datos de la cuenta + progreso de lealtad.
+> - `GET /api/account/orders` · `requireCustomer` · "mis pedidos" (atribuidos por teléfono, doc 14 §3).
+> - `GET /api/account/codes` · `requireCustomer` · "mis códigos" (lealtad, doc 14 §5).
+> - `GET /api/account/wishlist` **[PROPUESTO]** · `requireCustomer` · si se aprueba el extra del doc 14 §14.
+>
+> **`/api/discount-codes` ampliado (doc 14 §6, §10):** valida/canjea códigos de los tres tipos
+> (lealtad atada a cuenta, campaña pública por canal, y el mayoreo que sigue siendo del cotizador, no
+> un código). El endpoint de validación es el mismo que ya usa el cotizador del vendedor; solo se le
+> suma la lógica de `single_use`/`expires_at`/`redeemed_at`/`channel` (doc 03 §B.9).
 
 > **CRM:** ya está resuelto (doc 10). Unifico todo bajo `/api/crm` (jubilo `/api/followups` de v1) e
 > integro la **WhatsApp Cloud API** de Meta. El webhook `POST /api/crm/webhook` es **público pero

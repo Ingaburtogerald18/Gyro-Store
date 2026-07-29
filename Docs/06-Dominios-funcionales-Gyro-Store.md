@@ -132,13 +132,35 @@ Modo edición del catálogo (drag & drop, CRUD de productos, imágenes, promo), 
   `whatsapp_conversations`, `whatsapp_messages`; jubilo la vieja `followups`. Enlace `contact_id`/
   `phone` en `orders`/`public_orders` para la Ficha 360.
 - **Costo:** ~$0/mes al inicio (mensajes entrantes gratis dentro de 24h; solo pago plantillas
-  salientes puntuales). **Ojo:** la Cloud API necesita un **número dedicado** (ver doc 10 §7).
-- Pipeline por `stage` (nuevo → contactado → interesado → cerrado). [PROPUESTO — afinar]
+  salientes puntuales). **Opción A (doc 10 §2, §7):** el número de la tienda **migra** a la Cloud API
+  — deja de usarse en la app normal de WhatsApp; los vendedores responden desde el **inbox del panel**.
+- Pipeline por `stage` (nuevo → contactado → interesado → cerrado → **unresponsive**, doc 14 §11).
+  [PROPUESTO — afinar]
 - **Plan por fases:** primero base de datos + panel (sin Meta), después WhatsApp, después el bot.
 
 ---
 
+## Dominio transversal · Cuentas de comprador y Lealtad [DECIDIDO — detalle en doc 14]
+- Capa **opcional** de auto-servicio y retención sobre el mismo storefront público: nunca un requisito
+  para comprar (regla de oro del doc 14 §1). El catálogo sigue 100% público, el cierre sigue por
+  WhatsApp/contra-entrega.
+- **Auth separada del staff:** OTP por teléfono (`requireCustomer`, resuelve a `contacts`, nunca a
+  `AppRole`). El teléfono es la columna vertebral: une WhatsApp, pedido y cuenta.
+- **Tarjeta de sellos:** cada 3 compras **entregadas** → código de lealtad único, atado a la cuenta,
+  un solo uso, con vencimiento.
+- **Cliente mayorista:** precio especial aprobado por admin (nunca auto-declarado), visible en la
+  cuenta.
+- **Panel de intención (admin):** contactos ordenados por "a quién llamar hoy", no por fecha.
+- Este dominio es **transversal** (toca storefront, CRM y datos a la vez), igual que el CRM de arriba
+  — no es una de las 8 fases originales ni bloquea el lanzamiento (doc 08 §8).
+
+---
+
 ## Matriz dominio × rol (quién hace qué) [PROPUESTO — ajustar]
+
+> El **comprador** (con o sin cuenta) no entra en esta matriz — no tiene `AppRole`, no es staff. Su
+> acceso es aparte (`requireCustomer`, doc 14 §4) y se limita a lo suyo (mi cuenta, mis pedidos, mis
+> códigos), nunca a un dominio administrativo de la tabla de abajo.
 
 | Dominio | global_admin | admin | seller | cashier | logistics_admin | logistics_customer |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
@@ -176,7 +198,15 @@ Grupos budgeted (`publicidad`, `servicios`, `utiles`, `garantias`) con reserva m
 fijos; el gasto no baja la ganancia hasta superar su pozo. `varios` no tiene pozo. Ver doc 03 §B.6.
 
 ### Códigos de descuento (`/api/discount-codes`, `discount_codes`)
-Códigos aplicables (validación y cálculo en servidor).
+Códigos aplicables (validación y cálculo en servidor). **Ampliado en v2 (doc 14 §6, §10):** ahora
+cubre dos tipos con trabajos distintos, sobre la misma tabla (`kind` los distingue):
+- **Lealtad** — generado automático cada 3 compras entregadas, atado a una cuenta (`contact_id`), un
+  solo uso, con vencimiento.
+- **Campaña** — un código por canal (`TIKTOK10`, `IG10`...) para medir atribución, público, con tope
+  y vencimiento. La validación de "seguidor" es **manual**: el cliente manda screenshot, el staff lo
+  valida a mano y entrega el código por WhatsApp.
+El **mayoreo** (descuento por volumen del cotizador, doc 11 §5) sigue siendo una regla de precio, no
+un código de esta tabla.
 
 ### Auditoría (`audit_logs`)
 Registra ediciones/eliminaciones de ventas: motivo, autor, montos antes/después. Obligatorio para

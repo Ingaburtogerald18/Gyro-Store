@@ -22,9 +22,21 @@ usuarios y logística. [CONFIRMADO]
 - Llega mayormente desde **redes sociales y WhatsApp**. Navega de noche, en el teléfono, con una mano. [CONFIRMADO]
 - **Quiere:** escanear el catálogo rápido, comparar variantes y precio, y cerrar por WhatsApp.
 - **No quiere:** registrarse, llenar formularios, esperar. Fricción cero hasta el chat.
-- **Importante para v2:** el comprador **nunca se loguea**. El login es solo para mi staff. [v2]
+- **Importante para v2:** el comprador **nunca necesita loguearse** para comprar — el catálogo sigue
+  100% público y el cierre sigue por WhatsApp. Pero ahora el login es **opcional**: un comprador
+  frecuente o mayorista puede crear una cuenta para ganar lealtad y auto-servicio. Ver doc 14. [v2]
 
-### 2.2 Admin / vendedor (back-office)
+### 2.2 Comprador registrado / cliente frecuente / mayorista — opcional [v2]
+- El mismo comprador de 2.1, que decidió crear una cuenta (OTP por teléfono, doc 14 §4) porque le
+  conviene: ve su progreso de lealtad, sus pedidos, sus códigos, y si es mayorista, su precio aprobado.
+- **No es un usuario distinto ni un segundo storefront** — es el mismo catálogo público, con una capa
+  extra de auto-servicio para el que se registró. Nunca ve nada que el comprador anónimo no pueda ver
+  del catálogo; ve *más* de lo suyo (pedidos, códigos), no menos del catálogo.
+- **Quiere:** que le recuerden lo que compró, saber cuándo llega su próximo descuento, no tener que
+  preguntar por WhatsApp "¿en qué va mi pedido?".
+- Detalle completo del dominio: **doc 14**.
+
+### 2.3 Admin / vendedor (back-office)
 - Gestiona catálogo, inventario, ventas, facturación, logística y usuarios desde `/admin`. [CONFIRMADO]
 - Entra con su cuenta **`@gyrostorenic.com` de Microsoft** (mi tenant). Perfiles internos con
   distintos permisos (ver doc 03 · roles). [v2]
@@ -47,6 +59,10 @@ el cierre es por WhatsApp, la web es **catálogo + captación**, no un carrito d
 "catálogo → WhatsApp", productos más vistos, búsquedas sin resultado, abandono en PDP. Con Postgres
 esto lo saco directo con SQL sobre `analytics_events`, sin cachear nada raro. [v2]
 
+**[MEJORA] KPIs del dominio de cuentas y lealtad** (doc 14): tasa de registro (visitas → cuentas
+creadas), tasa de recompra (compradores registrados que vuelven a comprar), atribución por canal
+(qué canal — `contact_origin` + UTM — trae compradores reales, no solo clics). [v2]
+
 ---
 
 ## 4. Alcance
@@ -58,12 +74,16 @@ esto lo saco directo con SQL sobre `analytics_events`, sin cachear nada raro. [v
 - **Auth del staff con Microsoft Entra ID.** [v2] (antes era multi-proveedor Google/Email/Microsoft)
 - **Mini-CRM de seguimientos** para captar leads de redes. La forma exacta del CRM está **abierta**
   (quiero hacer algo más interesante que lo de v1); lo defino aparte. [v2 · decisión abierta]
+- **Cuentas de comprador opcionales + lealtad** — capa de auto-servicio y retención (tarjeta de
+  sellos, cliente mayorista, panel de intención). Nunca un requisito para comprar. Detalle completo:
+  **doc 14**. [v2]
 
 ### 4.2 Fuera de alcance (v2, explícito)
 - **Pasarela de pago embebida.** El pago sigue por WhatsApp. (BAC Credomatic/PowerTranz y Compra
-  Click quedan como exploración futura, *no* en este rebuild salvo que lo decida.) [PROPUESTO]
+  Click quedan como exploración futura, *no* en este rebuild salvo que lo decida. El diseño del doc 14
+  deja la puerta abierta — la orden es el objeto central, un pago sería solo un evento pegado a ella —
+  pero no se implementa acá.) [PROPUESTO]
 - App móvil nativa. La web responsiva cubre el caso móvil.
-- Cuentas de comprador / historial de compras del cliente final.
 
 ---
 

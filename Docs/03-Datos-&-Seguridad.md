@@ -26,7 +26,9 @@ ahora en Postgres. El schema y las políticas se versionan como **migraciones SQ
 5. **Sync de perfil:** al autenticar por primera vez, creo/actualizo la fila en `profiles`
    (nombre, foto, email) para verlo en Gestión de Usuarios.
 
-> **Compradores:** no se autentican. El storefront es 100% público. Entra existe solo para el staff.
+> **Compradores:** el storefront sigue siendo 100% público — nunca necesitan loguearse para comprar.
+> **Entra ID existe solo para el staff**, sin excepción. Un comprador **puede opcionalmente** crear
+> una cuenta, pero por un camino de auth totalmente distinto (OTP por teléfono, no Entra) — ver A.8.
 
 ### A.3 Roles [se mantiene el set de v1]
 `global_admin · admin · seller · cashier · logistics_admin · logistics_customer`.
@@ -68,6 +70,24 @@ Un handler final: `ZodError`→400 con `issues`; `MulterError`→400; errores co
 respetan su código; **errores de Postgres** (violación de FK, `unique`, `CHECK`) se mapean a un
 código legible; el resto → 500 genérico (no filtra detalles). 404 de API → `{ error }`. [v2]
 
+### A.8 Auth de comprador (OTP) — audiencia separada del staff [v2 · doc 14]
+El dominio de **cuentas de comprador** (doc 14) agrega una segunda audiencia de auth, con su propio
+middleware, **paralelo** a todo lo de A.2–A.4 (que sigue siendo exclusivamente para staff):
+
+1. **Login:** OTP por teléfono (SMS y/o WhatsApp) vía Supabase Auth. Correo es opcional; teléfono
+   **siempre obligatorio** — es la llave del OTP y el nexo con WhatsApp (doc 14 §3–4).
+2. **`requireCustomer`** — middleware nuevo, estructuralmente igual a `requireRole` pero resuelve a un
+   **contacto** (`contacts`, vía `contacts.auth_user_id`), **nunca** a un `AppRole`. No hay overlap:
+   un JWT de comprador no es válido en ninguna ruta protegida por `requireRole`, y viceversa. Mezclar
+   ambos sería una escalada de privilegios.
+3. **Mismo patrón deny-all:** el comprador logueado tampoco lee Postgres directo. Sus lecturas ("mis
+   pedidos", "mis códigos") pasan por Express con `service_role`, igual que el staff y que el
+   storefront público. **No se abren políticas RLS de cara al cliente** — el filtro "mostrale solo lo
+   suyo" vive en el `WHERE` del backend, no en RLS.
+4. **Rate-limit propio y agresivo** en el endpoint de solicitud de OTP (más estricto que `apiLimiter`,
+   ver A.6) — mitiga OTP-bombing. Respuestas **genéricas** en login (nunca confirmar si un teléfono
+   tiene cuenta o no) — mitiga enumeración de cuentas. Detalle de riesgos: doc 14 §12.
+
 ---
 
 ## PARTE B — Modelo de datos relacional (Postgres)
@@ -98,7 +118,8 @@ código legible; el resto → 500 genérico (no filtra detalles). 404 de API →
 | CRM | `contacts`, `contact_activities`, `follow_ups`, `whatsapp_conversations`, `whatsapp_messages` | contacts + activities (unifico; jubilo `followups`) + tablas nuevas de WhatsApp |
 | Telemetría | `analytics_events` | analytics_events |
 | Feedback | `feedback` | feedback |
-| Descuentos | `discount_codes` | discount_codes |
+| Descuentos | `discount_codes` (extendida: campaña + lealtad) | discount_codes |
+| Cuentas y lealtad | `contacts` (extendida: `auth_user_id`, UTM), `discount_codes` (extendida) | — (nuevo v2, doc 14) |
 
 > **`counters` desaparece:** la numeración correlativa (tickets, lotes, etc.) la hago con
 > **`sequences` de Postgres**, que son atómicas por diseño. [v2]
@@ -243,3 +264,34 @@ En v1 **toda** la integridad la garantizaba el servidor (Firestore no tiene cons
 - **CRM:** resuelto en el doc 10 (unifico en `contacts`, agrego `follow_ups` + tablas de WhatsApp).
   Para la Ficha 360 agrego `contact_id` (FK nullable) + `phone` a `orders` y `public_orders`, así
   puedo hacer `JOIN` y ver todo el historial de compras de un cliente.
+
+## B.9 Cuentas de comprador y lealtad → **doc 14 (fuente de verdad)** [v2]
+El flujo y las decisiones de producto están en el doc 14; acá el resumen para el modelo de datos.
+
+- **`contacts` se extiende:** `auth_user_id` uuid, **FK nullable `unique`** → `auth.users` (liga el
+  contacto a una cuenta de comprador; nullable porque la mayoría de contactos no tienen cuenta —
+  siguen siendo leads sueltos como hoy). Se suman campos **UTM** (fuente/medio/campaña) para
+  atribución fina, más allá del `contact_origin` genérico que ya existe (doc 14 §10). El
+  reconocimiento de **cliente mayorista** es un campo aprobado por admin, no auto-declarado (doc 14
+  §7) — nombre exacto de columna a fijar al implementar.
+- **`discount_codes` se extiende:** `campaign` (texto, para campañas por canal), `contact_id` FK
+  nullable → `contacts` (los códigos de **lealtad** quedan atados a una cuenta; los de **campaña**
+  quedan `null` porque son públicos), `single_use` boolean, `expires_at` timestamptz, `redeemed_at`
+  timestamptz, `channel`. El `kind` (columna ya existente) distingue el tipo (ej. `'loyalty'` \|
+  `'campaign'`). Mismo storage para los tres tipos de incentivo del doc 14 §6 salvo el (a) mayoreo, que
+  no es un código — es una regla de precio (doc 11 §5).
+- **Contador de lealtad** (compras entregadas → código cada 3, doc 14 §5): **[PROPUESTO]** si se
+  deriva contando órdenes entregadas desde el último código generado (sin tabla nueva) o si necesita
+  una tabla de eventos propia. El diseño asume que alcanza con derivarlo de `orders`/`order_items` +
+  el estado "entregado"; lo cierro al implementar.
+- **Estado de pedido de cara al cliente** (doc 14 §8, `recibido → en preparación → salió/listo para
+  retiro → entregado`): **[PROPUESTO]** si es una columna nueva en `orders`/`public_orders` o una
+  traducción/mapeo desde `order_status` + `logistics_events` que ya existen. Conceptualmente es una
+  vista de solo lectura, no una segunda fuente de verdad.
+- **`analytics_events`** se extiende con los mismos campos UTM, para cruzar visita → campaña → cuenta.
+- **[PROPUESTO] tablas futuras** (doc 14 §14, no se crean todavía): `wishlist`, `referrals`, `reviews`
+  — dependen de que apruebe esos extras.
+
+**Seguridad — sin excepciones al patrón:** el comprador logueado lee "mis pedidos"/"mis códigos" por
+Express con `service_role`, igual que cualquier otra audiencia. **No se abren políticas RLS de cara al
+cliente**; el deny-all de A.1 se mantiene sin excepción también para esta tabla y las que se agreguen.
