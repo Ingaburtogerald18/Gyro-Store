@@ -1,122 +1,137 @@
 # 08 · Deuda técnica y plan de reconstrucción — Gyro Store v2
 
-> **CORREGIDO tras leer el código real.** La versión anterior (basada solo en archivos de
-> config) sobreestimó la deuda: **casi todos los "gaps" que había marcado ya están resueltos
-> y documentados en ADRs.** Este documento ahora refleja la realidad.
+> El review del sistema viejo dejó claro algo importante: **el núcleo de v1 estaba bien** (deny-all,
+> Admin SDK, FIFO transaccional, Zod compartido, handler central). El rebuild **no es para arreglar
+> arquitectura rota**, es para **pulir, unificar y migrar a Supabase**. Y con esa migración,
+> **varias deudas se resuelven solas**. Este documento refleja eso.
 
 ---
 
-## 1. Estado real de los "gaps" que había marcado
+## 1. Deudas de v1 y qué pasa con ellas en v2
 
-| # | Ítem | Estado REAL | Evidencia |
+| # | Ítem (v1) | Estado en v2 | Por qué |
 |---|---|---|---|
-| D1 | Reglas Firestore | ✅ **Resuelto** | deny-all versionado (ADR-008) |
-| D2 | Custom claims | ⚠️ **Abierto por decisión** | ADR-006: roles por request para efecto inmediato |
-| D3 | Race conditions de stock | ✅ **Resuelto** | reservar→consumir en `runTransaction`, FIFO atómico (ADR-007) |
-| D4 | Validación de input | ✅ **Resuelto** | Zod compartido + `fileFilter` (ADR-010) |
-| D5 | Manejo de errores | ✅ **Resuelto** | handler central (ZodError/Multer/status/500) |
-| D9 | Fuga de costos en DTO | ✅ **Resuelto** | `publicItems` filtra costo/comisión a no-admin |
+| D1 | Reglas de acceso a la base | ✅ **Resuelto** | RLS deny-all versionada en migraciones SQL |
+| D2 | Custom claims / dónde vive el rol | ✅ **Decidido** | Lectura de `profiles` por request (barata en SQL), efecto inmediato. Opción de JWT hook a futuro (doc 03 §A.5) |
+| D3 | Race conditions de stock | ✅ **Resuelto y mejorado** | Transacción SQL + `SELECT FOR UPDATE`; más simple que `runTransaction` |
+| D4 | Edición de venta no era una sola transacción | ✅ **Resuelto** | En Postgres el liberar→re-reservar entra en **una** transacción |
+| D5 | Validación de input | ✅ **Se mantiene** | Zod compartido `shared/schemas.ts` + `fileFilter` |
+| D6 | Manejo de errores | ✅ **Se mantiene + mejora** | Handler central + mapeo de errores de Postgres |
+| D7 | Fuga de costos en DTO | ✅ **Se mantiene + más fácil** | `publicItems` / `SELECT` sin columnas de costo |
+| D8 | Límites de Spark / cachear todo | ✅ **Desaparece** | Postgres no tiene ese límite; el caché pasa a opcional |
+| D9 | Agregados de reportes en memoria | ✅ **Resuelto** | SQL / vistas / materialized views |
+| D10 | Lecturas `in` por lotes de ≤10 (Firestore) | ✅ **Desaparece** | En SQL es un `JOIN` normal |
 
-**Conclusión:** el sistema actual es **de nivel SR** en su núcleo. El rebuild NO es para
-arreglar arquitectura rota — es para **pulir, unificar y quitar acumulación**, con la
-documentación como fuente de verdad.
+**Conclusión:** la migración a Supabase no solo cambia de proveedor — **borra la mitad de la deuda
+técnica** que arrastraba, porque muchas eran limitaciones de Firestore/Spark, no del diseño.
 
-## 2. Deuda REAL que queda (de los ADRs y docs internos del repo)
+## 2. Deuda REAL que queda en v2
 
-| # | Ítem | Origen | Prioridad |
-|---|---|---|---|
-| R1 | **Custom claims** (elimina lectura de `users` por request) | ADR-006 | Baja (decisión) |
-| R2 | **Paginación por cursor** en listados que aún hacen `.get()` completo (inventory, sales) | doc 05 | Media (al crecer) |
-| R3 | **Caché backend** extender a `templates`/`app_config` (hoy solo catálogo) | doc 05 | Baja |
-| R4 | **Edición de venta no es una sola transacción** (liberar→reservar); ventana pequeña, mitigada por log | ADR-007 | Baja (1 admin) |
-| R5 | **Borrado R2 no transaccional** con Firestore (huérfano posible, queda en log) | ADR-009 | Baja |
-| R6 | **Límites de Spark** — el modelo depende de cachear y vigilar `.get()` completos | ADR-002 | Media (vigilar) |
-| R7 | **`createdAt` real en productos** para "Lo Más Nuevo" | DESIGN.md §10 | Baja |
-| R8 | **Marcas/logos reales** en `/public/brands` (hoy placeholder) | DESIGN.md §10 | Baja |
-| R9 | **Sombras deprecadas** (`shadow-accent-*`) fuera del storefront | DESIGN.md §10 | Baja |
+| # | Ítem | Prioridad |
+|---|---|---|
+| R1 | **Índices y `EXPLAIN`** de listados grandes (inventory, sales) al crecer el volumen | Media (al crecer) |
+| R2 | Decidir qué reportes pesados van a **materialized view** | Baja (medir primero) |
+| R3 | **Borrado R2 no transaccional** con la base (huérfano posible, queda en log + cron de limpieza) | Baja |
+| R4 | **`created_at` real en productos** para "Lo Más Nuevo" | Baja |
+| R5 | **Marcas/logos reales** en `/public/brands` (hoy placeholder) | Baja |
+| R6 | **Sombras deprecadas** (`shadow-accent-*`) fuera del storefront | Baja |
+| R7 | **CRM** — forma final por definir (ver §4) | Media (quiero algo mejor) |
 
-## 3. Deuda de "acumulación" (lo que motivó el rebuild) [PROPUESTO]
+## 3. Deuda de "acumulación" que el rebuild limpia
 
-Lo que hace que el proyecto se sienta pesado y candidato a reconstruir limpio:
-- **`followups` + `contacts` coexisten** (hubo migración a medias). → Unificar en `contacts`.
-- **Muchos seeds sueltos** (`seedTemplate*` por producto) — 8+ scripts. → Un seeder parametrizable.
-- **Backend JS/CommonJS vs Frontend TS.** → Decidir unificar en TS.
-- **`.obsidian/` y `.claude/`** viven en el repo — ruido. → Al nuevo repo solo lo esencial.
-- **Config web de Firebase hardcodeada como fallback** en `config.js` (la web API key no es
-  secreta, pero conviene que venga solo de env en v2). [CONFIRMADO — verificar]
+- **`followups` + `contacts` coexistían** (migración a medias en v1). → En v2 lo resuelvo dentro de la
+  decisión de CRM (§4), no arrastro las dos formas sin criterio.
+- **Muchos seeds sueltos** (`seedTemplate*` por producto). → Un seeder parametrizable + `seed.sql`.
+- **Backend JS/CommonJS vs Frontend TS.** → ✅ **Resuelto:** todo TypeScript + ESM en v2.
+- **`.obsidian/` y `.claude/` en el repo** — ruido. → Al repo nuevo solo lo esencial.
+- **Config web de Firebase hardcodeada** como fallback. → Desaparece con Firebase; la config de
+  Supabase viene solo de env.
 
 ---
 
-## 4. Decisiones abiertas a cerrar antes de codear (actualizadas)
+## 4. Decisiones — estado actualizado
 
-Marcá tu elección:
+**Cerradas para v2:**
+- [x] **Base de datos:** Supabase (Postgres). Data vieja se descarta (eran pruebas).
+- [x] **Seguridad:** servidor manda (`service_role` + RLS deny-all).
+- [x] **Auth:** solo Microsoft Entra `@gyrostorenic.com`.
+- [x] **Backend:** TypeScript + ESM (unificado con el front).
+- [x] **Imágenes:** Cloudflare R2 (se mantiene).
+- [x] **Email:** Microsoft 365.
+- [x] **Ambientes:** dos proyectos Supabase (dev / prod).
+- [x] **UI:** shadcn/ui sobre tokens de `DESIGN.md`.
+- [x] **Dónde vive el rol:** lectura de `profiles` por request (efecto inmediato).
 
-- [ ] **Backend:** ¿seguir JS/CommonJS o migrar a **TypeScript + ESM**? *(Rec.: TS unificado —
-      ya compartís schemas Zod; sería una sola cultura de tipos.)*
-- [ ] **Custom claims (R1):** ¿migrar o mantener roles por request? *(Rec.: mantener; ADR-006 es sólido.)*
-- [ ] **Plan Firebase:** ¿seguir en **Spark** (obliga a cachear) o pasar a **Blaze**? *(Afecta R2/R3/R6.)*
-- [ ] **CRM:** unificar `followups`→`contacts`. ¿Nativo o integrar n8n/Notion?
+**Abiertas (por cerrar):**
+- [ ] **CRM:** nativo con mejor pipeline vs integrar n8n/Notion vs automatización multi-touch.
+      *Quiero hacer algo interesante acá; lo trabajo aparte.*
 - [ ] **Comisiones:** documentar los **tramos reales** de la escala progresiva.
 - [ ] **Config negocio:** ¿en env o editable desde `app_config`? (hoy mezcla ambos).
+- [ ] **Costos fijos (pozos):** confirmar los **% reales** por grupo.
 - [ ] **Pasarela de pago:** confirmar que sigue **fuera** (checkout WhatsApp, ADR-004).
-- [ ] **Ambiente de pruebas:** ¿proyecto Firebase separado?
 
 ---
 
 ## 5. Principios de la reconstrucción (no negociables)
 1. **La documentación manda.** Se codea contra estos docs; divergencia → se actualiza el doc en el mismo commit.
-2. **Conservar lo que ya está bien** (es la mayoría): deny-all, Admin SDK, FIFO transaccional,
-   Zod compartido, handler central, R2+Sharp+hash, caché de catálogo, máquinas de estado.
-3. **Quitar acumulación**, no reescribir arquitectura probada.
-4. **Commits pequeños, un dominio a la vez.**
+2. **Conservar lo que ya está bien** (es la mayoría): deny-all, todo por el servidor, FIFO
+   transaccional, Zod compartido, handler central, R2+Sharp+hash, máquinas de estado.
+3. **Aprovechar Postgres:** transacciones, FKs, `CHECK`, `enum`, sequences, SQL para reportes.
+4. **Quitar acumulación**, no reescribir arquitectura probada.
+5. **Commits pequeños, un dominio a la vez, un archivo a la vez** (ver doc 09).
 
 ## 6. Estrategia de repo y migración
-1. **Repo nuevo, historia limpia** (`git init` fresco). No arrastrar `.git` viejo, ni `.obsidian/`.
-2. **Traer y depurar:** `firestore.rules`, `render.yaml`, `.env.example`, `DESIGN.md`,
-   `PRODUCT.md`, la carpeta `docs/` interna, `shared/schemas.mjs`, `server/` (revisado),
-   `frontend/app/` (revisado). El código viejo es **referencia y esqueleto**, se reescribe lo justo.
-3. **Higiene de secretos:** confirmar que `.env` real nunca entró a git; rotar keys de
-   Firebase Admin / R2 / SMTP si hubo cualquier duda antes de agosto. (La web config de
-   Firebase no es secreta, pero movela a env.)
+1. **Repo nuevo, historia limpia** (`git init` fresco). No arrastrar `.git` viejo ni `.obsidian/`.
+2. **Traer y depurar de v1:** `render.yaml`, `.env.example` (con las vars nuevas), `DESIGN.md`,
+   `PRODUCT.md`, `shared/schemas` (a `.ts`), `server/` (portado a TS + Supabase), `frontend/app/`
+   (con shadcn/ui). El código viejo es **referencia y esqueleto**; se reescribe lo justo.
+3. **Nuevo en v2:** carpeta `supabase/` con migraciones SQL, `server/supabase.ts`, config de Entra.
+4. **Higiene de secretos:** `.env` real nunca al git; `service_role`, `AZURE_CLIENT_SECRET` y keys de
+   R2 son críticas.
 
 ---
 
-## 7. Roadmap del rebuild (hacia lanzamiento en agosto)
+## 7. Roadmap del rebuild
 
-Como el núcleo ya funciona, el rebuild es más **portar + pulir** que **construir**:
+Como el núcleo ya funciona y la migración simplifica varias cosas, esto es más **portar + migrar +
+pulir** que **construir**. El detalle archivo-por-archivo está en el **doc 09**.
 
 ### Hito 0 — Fundación limpia
-Repo + `docs/` + `.env.example` + `render.yaml` + `firestore.rules`. Portar `server/config.js`,
-`firebase.js`, middleware (`auth`, `rateLimiter`), utils, `shared/schemas.mjs`. Verde `/api/health`.
+Repo + `docs/` + `.env.example` + `render.yaml`. **Proyecto Supabase (dev) + migración inicial (schema
+base + RLS deny-all).** Portar `config`, `supabase.ts`, middleware (`auth` con Entra, `rateLimiter`),
+utils, `shared/schemas.ts`. Verde `/api/health`.
 
 ### Hito 1 — Storefront (lo crítico para abrir)
-Catálogo (con caché), templates, combos, PDP, checkout WhatsApp (`public_orders` con recálculo),
-contacto → `contacts`. Diseño Editorial Dark (DESIGN.md), tema claro/oscuro. Cerrar R7/R8/R9.
+Catálogo, templates, combos, PDP, checkout WhatsApp (`public_orders` con recálculo), contacto →
+`contacts`. Diseño Editorial Dark con shadcn/ui, tema claro/oscuro. Cerrar R4/R5/R6.
 
 ### Hito 2 — Inventario y catálogo admin
-`purchases` (FIFO), `products`, `migrated_inventory`, modo edición del catálogo (dnd-kit, CRUD,
-imágenes vía Sharp+R2, promo). Máquina de estados del lote.
+`purchases` (FIFO con TX SQL), `products`, `migrated_inventory`, modo edición del catálogo (dnd-kit,
+CRUD, imágenes vía Sharp+R2, promo). Máquina de estados del lote (`enum`).
 
 ### Hito 3 — Ventas y facturación
-`orders` (reservar→consumir), comisiones (escala progresiva — documentá tramos), pagos por
-semana, `invoices` (POS 80mm, 1 ticket=1 uso), `installments`, `audit_logs`.
+`orders` (+ `order_items`, `order_reservations`), comisiones (escala progresiva — documentar tramos),
+pagos por semana, `invoices` (POS 80mm, sequence para numerar, 1 ticket=1 uso), `installments`,
+`audit_logs`.
 
 ### Hito 4 — Reportes, gastos, logística, CRM
-`reports` (KPIs, `losses`, gastos con pozos, export), `logistics_shipments` (timeline+email),
-`contacts`/`followups` unificado, `feedback`, telemetría. Cron de limpieza.
+`reports` (KPIs con SQL, `losses`, gastos con pozos, export), `logistics_shipments` (+ eventos,
+email M365), CRM (según decisión §4), `feedback`, telemetría. Cron de limpieza.
 
 ### Hito 5 — Polish y QA de lanzamiento
-Unificar TS (si decidís), un seeder parametrizable, auditoría a11y/perf móvil, checklist Render,
-rotación de secretos.
+Seeder parametrizable, auditoría a11y/perf móvil, checklist Render, verificación de secretos, endurecer
+COOP si el login de Entra usa redirect.
 
 ---
 
-## 8. Definición de "listo para lanzar" (agosto)
+## 8. Definición de "listo para lanzar"
 - [ ] Storefront completo, rápido en móvil, catálogo real con fotos WebP optimizadas.
 - [ ] Checkout WhatsApp con recálculo de total en servidor.
-- [ ] Núcleo seguro portado intacto (deny-all, FIFO transaccional, Zod, handler central).
+- [ ] Núcleo seguro portado (RLS deny-all, `service_role`, FIFO transaccional SQL, Zod, handler central).
+- [ ] Login del staff con Entra funcionando end-to-end.
 - [ ] Admin con **catálogo editable + inventario + ventas** para operar el día a día.
-- [ ] Sin fuga de costos (verificado `publicItems`).
-- [ ] Secretos fuera de git y rotados; `/api/health` verde en Render.
+- [ ] Sin fuga de costos (verificado en los `SELECT`/DTOs).
+- [ ] Secretos fuera de git; `/api/health` verde en Render (prod) con el Supabase de prod.
 
-Reportes finos, logística y cuotas pueden iterarse post-lanzamiento sin bloquear la apertura.
+Reportes finos, logística, cuotas y el CRM "interesante" pueden iterarse post-lanzamiento sin bloquear
+la apertura.

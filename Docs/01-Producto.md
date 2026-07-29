@@ -1,32 +1,33 @@
 # 01 · Producto — Gyro Store
 
-> Fuente base: `PRODUCT.md` [CONFIRMADO] + expansión SR. Este documento define **qué** se
-> construye y **para quién**, antes de cualquier decisión técnica.
+> Base: mi `PRODUCT.md` `[CONFIRMADO]` + lo que fui aprendiendo operando la tienda. Acá defino
+> **qué** construyo y **para quién**, antes de cualquier decisión técnica. El stack (Supabase,
+> Entra, etc.) no cambia nada de este documento: el producto es el mismo, mejor construido.
 
 ---
 
 ## 1. En una frase
 
-Gyro Store es un **storefront + back-office** de una tienda real de accesorios tecnológicos
-en Managua, Nicaragua. El catálogo público capta y convence; el **checkout final ocurre por
-WhatsApp**. El back-office (`/admin`) opera el negocio completo: inventario, ventas,
-facturación, reportes, usuarios y logística. [CONFIRMADO]
+Gyro Store es el **storefront + back-office** de mi tienda de accesorios tecnológicos en Managua,
+Nicaragua. El catálogo público capta y convence; el **cierre final ocurre por WhatsApp**. El
+back-office (`/admin`) opera el negocio completo: inventario, ventas, facturación, reportes,
+usuarios y logística. [CONFIRMADO]
 
 ---
 
 ## 2. Usuarios
 
 ### 2.1 Comprador (storefront) — mayoría móvil
-- Busca audio y accesorios tech: audífonos KZ in-ear, adaptadores Bluetooth, accesorios
-  PC/gaming. [CONFIRMADO]
-- Llega mayormente desde **redes sociales y WhatsApp**. Navega de noche, en el teléfono,
-  con una mano. [CONFIRMADO]
+- Busca audio y accesorios tech: audífonos KZ in-ear, adaptadores Bluetooth, accesorios PC/gaming. [CONFIRMADO]
+- Llega mayormente desde **redes sociales y WhatsApp**. Navega de noche, en el teléfono, con una mano. [CONFIRMADO]
 - **Quiere:** escanear el catálogo rápido, comparar variantes y precio, y cerrar por WhatsApp.
 - **No quiere:** registrarse, llenar formularios, esperar. Fricción cero hasta el chat.
+- **Importante para v2:** el comprador **nunca se loguea**. El login es solo para mi staff. [v2]
 
 ### 2.2 Admin / vendedor (back-office)
 - Gestiona catálogo, inventario, ventas, facturación, logística y usuarios desde `/admin`. [CONFIRMADO]
-- Perfiles internos con distintos permisos (ver doc 03 · roles).
+- Entra con su cuenta **`@gyrostorenic.com` de Microsoft** (mi tenant). Perfiles internos con
+  distintos permisos (ver doc 03 · roles). [v2]
 - **Quiere:** control operativo real (costos, utilidades, comisiones, KPIs) sin depender de
   planillas sueltas.
 
@@ -34,16 +35,17 @@ facturación, reportes, usuarios y logística. [CONFIRMADO]
 
 ## 3. Propósito y definición de éxito
 
-El storefront debe **verse premium y de confianza** para justificar precios y convertir.
-Como el cierre es por WhatsApp, la web es **catálogo + captación**, no un carrito de pago. [CONFIRMADO]
+El storefront tiene que **verse premium y de confianza** para justificar precios y convertir. Como
+el cierre es por WhatsApp, la web es **catálogo + captación**, no un carrito de pago. [CONFIRMADO]
 
 **Éxito medible:**
 - Catálogo navegable y creíble que **genere pedidos de WhatsApp**. [CONFIRMADO]
-- El back-office reemplaza planillas: inventario, ventas y reportes viven en el sistema.
-- Tiempo de carga y usabilidad móvil de primer nivel (mayoría de tráfico móvil).
+- El back-office reemplaza las planillas: inventario, ventas y reportes viven en el sistema.
+- Tiempo de carga y usabilidad móvil de primer nivel (la mayoría del tráfico es móvil).
 
-**[MEJORA] KPIs de producto a instrumentar en v2** (hoy sin medir): tasa de clic
-"catálogo → WhatsApp", productos más vistos, búsquedas sin resultado, abandono en PDP.
+**[MEJORA] KPIs de producto que quiero instrumentar en v2** (hoy no los mido): tasa de clic
+"catálogo → WhatsApp", productos más vistos, búsquedas sin resultado, abandono en PDP. Con Postgres
+esto lo saco directo con SQL sobre `analytics_events`, sin cachear nada raro. [v2]
 
 ---
 
@@ -53,12 +55,13 @@ Como el cierre es por WhatsApp, la web es **catálogo + captación**, no un carr
 - **Storefront:** home, categorías, PDP, combos, carrito local → mensaje de WhatsApp. [CONFIRMADO]
 - **Back-office (8 dominios):** catálogo/edición, inventario, ventas, facturación, reportes,
   usuarios, logística, polish. [CONFIRMADO] (detalle en doc 06)
-- **Auth** multi-proveedor (Google/Email/Microsoft) para el personal. [CONFIRMADO]
-- **Mini-CRM de seguimientos** (`contacts/activities`) para captar leads de redes. [CONFIRMADO]
+- **Auth del staff con Microsoft Entra ID.** [v2] (antes era multi-proveedor Google/Email/Microsoft)
+- **Mini-CRM de seguimientos** para captar leads de redes. La forma exacta del CRM está **abierta**
+  (quiero hacer algo más interesante que lo de v1); lo defino aparte. [v2 · decisión abierta]
 
 ### 4.2 Fuera de alcance (v2, explícito)
-- **Pasarela de pago embebida.** El pago sigue por WhatsApp. (BAC Credomatic/PowerTranz y
-  Compra Click quedan como exploración futura, *no* en este rebuild salvo que lo decidas.) [PROPUESTO]
+- **Pasarela de pago embebida.** El pago sigue por WhatsApp. (BAC Credomatic/PowerTranz y Compra
+  Click quedan como exploración futura, *no* en este rebuild salvo que lo decida.) [PROPUESTO]
 - App móvil nativa. La web responsiva cubre el caso móvil.
 - Cuentas de comprador / historial de compras del cliente final.
 
@@ -68,21 +71,24 @@ Como el cierre es por WhatsApp, la web es **catálogo + captación**, no un carr
 
 Premium, tech, nítido, confiable. Voz directa en español nicaragüense, sin relleno. [CONFIRMADO]
 
-**Referencias de producto:** Apple Store (calma, aire, foco en producto), Nike/StockX
-(jerarquía fuerte, precio protagonista, densidad controlada), Sonos/Nothing (oscuro
-editorial, monocromo con un acento). [CONFIRMADO]
+**Referencias de producto:** Apple Store (calma, aire, foco en producto), Nike/StockX (jerarquía
+fuerte, precio protagonista, densidad controlada), Sonos/Nothing (oscuro editorial, monocromo con
+un acento). [CONFIRMADO]
 
-**Anti-referencias:** plantilla de e-commerce genérica — pills con gradiente arcoíris,
-gradient-text decorativo, sombras difusas, botones con degradado como acción principal,
-hit-areas chicas, filtros escondidos. Ni look SaaS-cream ni neón permanente. [CONFIRMADO]
+**Anti-referencias:** plantilla de e-commerce genérica — pills con gradiente arcoíris, gradient-text
+decorativo, sombras difusas, botones con degradado como acción principal, hit-areas chicas, filtros
+escondidos. Ni look SaaS-cream ni neón permanente. [CONFIRMADO]
 
-**Identidad visual:** mascota Gyro (personaje amigable, pelo en punta, lentes de sol);
-acento único **esmeralda** `#10b981`; modo oscuro por defecto con variante clara "Daylight".
-Detalle completo en `DESIGN.md`. [CONFIRMADO]
+**Identidad visual:** mascota Gyro (personaje amigable, pelo en punta, lentes de sol); acento único
+**esmeralda** `#10b981`; modo oscuro por defecto con variante clara "Daylight". Detalle completo en
+`DESIGN.md`. [CONFIRMADO]
+
+> **Nota de v2:** implemento este diseño con **shadcn/ui**, pero pintando cada componente con mis
+> tokens. La librería me da la accesibilidad y el comportamiento; el look sigue siendo 100% mío. [v2]
 
 ---
 
-## 6. Principios de producto (heredados, mantener en v2)
+## 6. Principios de producto (los mantengo en v2)
 
 1. **El producto manda** — la foto y el precio son el héroe; el chrome (nav, filtros) se calla.
 2. **Un solo acento con propósito** — esmeralda solo para acción/selección/estado.
@@ -99,5 +105,5 @@ Detalle completo en `DESIGN.md`. [CONFIRMADO]
 - **Móvil primero y datos caros** → peso de página bajo, imágenes optimizadas (ver doc 07).
 - **Pago cultural por WhatsApp** → la conversión real es el mensaje, no un "add to cart" de pago.
 - **Moneda C$ y tipo de cambio** parametrizables (`CURRENCY`, `EXCHANGE_RATE`). [CONFIRMADO]
-- **Operación pequeña / un operador** → el back-office debe ser usable por una persona sin
+- **Operación pequeña / un operador** → el back-office lo tiene que poder usar una persona sin
   fricción; nada de flujos empresariales pesados.
