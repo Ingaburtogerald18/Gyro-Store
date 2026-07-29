@@ -7,6 +7,8 @@ import { config } from './config';
 import { asyncHandler } from './utils/asyncHandler';
 import { requireAnyRole } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import configRouter from './routes/config';
+import { apiLimiter } from './middleware/rateLimiter';
 
 const app: Express = express();
 
@@ -22,6 +24,8 @@ app.use(
 );
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/api', apiLimiter);
 
 // ── Rutas ──
 
@@ -39,6 +43,8 @@ app.get(
     res.json({ user: req.user });
   }),
 );
+
+app.use('/api/config', configRouter);
 
 // ── Cierre de la cadena ──
 app.use('/api', notFoundHandler);
