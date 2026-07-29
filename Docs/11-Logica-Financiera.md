@@ -126,7 +126,7 @@ Cuando el vendedor registra una venta, por cada línea el sistema calcula:
 | ≤ 500 | 35% |
 | ≤ 600 | 31% |
 | ≤ 900 | 27% |
-| **> 900** | **⚠️ PENDIENTE — no definido en el Excel (hay que decidirlo)** |
+| **> 900** | **27%** (el último tramo se extiende como catch-all — decisión §10.3) |
 
 - **Tramo único:** se busca el rango y ese % se aplica a **toda** la utilidad neta (no marginal). [decisión]
 - **Por línea:** la utilidad neta de la línea es `(precio − coste) × cantidad`; con ese total se busca
@@ -138,21 +138,29 @@ Cuando el vendedor registra una venta, por cada línea el sistema calcula:
 
 ---
 
-## 5. Venta al por mayor (mayoreo)
+## 5. Venta al por mayor (mayoreo) — reglas finales (reemplazan al Excel "Mayor")
 
-El cotizador aplica descuento automático por volumen **sobre el precio de venta**, y la ganancia se
-calcula **respetando solo el Costo real** (en mayoreo se sacrifican los pozos para mover volumen):
+El cotizador aplica un descuento automático por volumen **sobre el precio cargado del producto**
+(precio base/tentativo, no el sugerido matemático). El descuento baja el precio y, con eso, baja la
+utilidad y la comisión por la **misma cadena de §4** (no hay una fórmula aparte):
 
-| Cantidad | Descuento | Precio mayoreo | Ganancia unit (mayoreo) |
-|---|---|---|---|
-| 3 – 5 | 10% | `Precio × 0.90` | `Precio×0.90 − Costo real (C$)` |
-| 6 – 11 | 15% | `Precio × 0.85` | `Precio×0.85 − Costo real (C$)` |
-| 12+ | 20% | `Precio × 0.80` | `Precio×0.80 − Costo real (C$)` |
+| Cantidad (misma línea) | Descuento | Precio mayoreo |
+|---|---|---|
+| ≥ 2 | 2.5% | `Precio × 0.975` |
+| ≥ 3 | 5% | `Precio × 0.95` |
+| ≥ 6 | 10% | `Precio × 0.90` |
+| ≥ 12 | 15% | `Precio × 0.85` + alerta |
 
-> Ojo: la ganancia de mayoreo usa **Costo real (C$)**, NO el Coste final (no descuenta los pozos).
-> El descuento aplica sobre el **precio de venta del producto** (el que tengo cargado).
+- Se aplica el **tramo más alto** que cumpla la cantidad.
+- A partir de **≥ 12** el servidor devuelve `warning: "Cotización sugerida"` y el frontend muestra
+  *"Mejor haz una cotización para obtener mejores descuentos"* (para descuentos mayores con autorización).
+- **Base de la ganancia:** el precio con descuento entra a la cadena normal de §4 contra el **Coste
+  final** (utilidad bruta → −20% salary → utilidad neta → comisión). [decisión §10.3]
 
-**Pendiente:** definir si el vendedor gana comisión en ventas de mayoreo, y sobre qué base (ver §10).
+> ⚠️ **A verificar al codear:** esto **cambia** respecto al Excel viejo (la hoja "Mayor" restaba solo
+> el *Costo real*, sacrificando los pozos). Con la cadena normal, en productos de margen fino y
+> descuento máximo (15%) el precio podría acercarse al Coste final → validar que la utilidad no quede
+> negativa (piso = no vender bajo Coste final).
 
 ---
 
@@ -175,11 +183,11 @@ Ganancia tienda:               = C$87.28
 
 ---
 
-## 7. Inventario migrado (Excel viejo)
+## 7. Inventario migrado (Excel viejo) — FUERA DE ALCANCE por ahora
 
-`migrated_inventory` ya trae su **costo real dado** (no corre el FIFO de compras). Le aplico igual el
-Costo F/U (por su Costo real en C$), el Coste final, el PVP y la comisión, **salvo que decida lo
-contrario**. [confirmar en §10]
+`migrated_inventory` **queda fuera del alcance de v2 por el momento** (decisión §10.5). No se le
+aplican Costo F/U ni pozos: si algún día se vende, va con su **costo puro heredado** del Excel. No lo
+implemento hasta que lo decida explícitamente.
 
 ---
 
@@ -205,7 +213,7 @@ Todo esto lo edito desde el admin, sin tocar código:
 4. **Escala de márgenes del PVP** (los 6 tramos de Coste final → %).
 5. **% de Salary** (hoy 20%).
 6. **Escala de comisión** (los tramos de Utilidad neta → %).
-7. **Descuentos de mayoreo** (los 3 tramos de cantidad → %).
+7. **Descuentos de mayoreo** (los 4 tramos de cantidad → %: ≥2, ≥3, ≥6, ≥12).
 
 > Regla del servidor: al guardar los % de pozos, validar que sumen 100%. Al calcular una venta,
 > **guardar qué versión de la config se usó** (o directamente los valores resultantes) para el snapshot.

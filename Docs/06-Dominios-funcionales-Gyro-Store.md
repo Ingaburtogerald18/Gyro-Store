@@ -64,12 +64,12 @@ Sistema: calcula comisión por ESCALA PROGRESIVA
 Admin:  liquidación SEMANAL ──▶ [paid]
 ```
 - **Toda la matemática (utilidad bruta → salary 20% → utilidad neta → comisión → ganancia tienda),
-  la escala de comisión y el mayoreo están en el doc 11**, con los valores reales del Excel. Se
-  **congela al aprobar** (snapshot en `order_items`).
+  la escala de comisión y el mayoreo están en el doc 11** (costeo/comisión = valores del Excel;
+  mayoreo = reglas finales revisadas). Se **congela al aprobar** (snapshot en `order_items`).
 - **Aprobación FIFO:** se aprueban en orden de llegada; el primero en la cola gana el stock. Ligado a
   la transacción SQL (`SELECT ... FOR UPDATE` sobre los lotes por `purchase_date`).
 - **Pago semanal:** corte semanal de comisiones aprobadas (por `week_of`, semana ISO).
-- **Cotizador con mayoreo:** descuentos por volumen (3+ 10%, 6+ 15%, 12+ 20%) — doc 11 §5.
+- **Cotizador con mayoreo:** descuentos por volumen (≥2 2.5%, ≥3 5%, ≥6 10%, ≥12 15% + alerta) — doc 11 §5.
 
 ---
 
