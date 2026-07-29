@@ -1,0 +1,22 @@
+# ── Dependencias ──
+node_modules/
+
+# ── Variables de entorno (NUNCA commitear secretos: SERVICE_ROLE_KEY, etc.) ──
+.env
+.env.*
+!.env.example
+
+# ── Build / compilado ──
+dist/
+build/
+*.tsbuildinfo
+
+# ── Logs ──
+logs/
+*.log
+npm-debug.log*
+
+# ── Sistema / temporales ──
+.DS_Store
+*.swp
+*~

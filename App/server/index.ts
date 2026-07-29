@@ -9,6 +9,8 @@ import { requireAnyRole } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import configRouter from './routes/config';
 import { apiLimiter } from './middleware/rateLimiter';
+import { sanitizeBody } from './utils/sanitize';
+import { logger } from './utils/logger';
 
 const app: Express = express();
 
@@ -23,7 +25,10 @@ app.use(
   }),
 );
 app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Defensa en profundidad: recorta strings del body antes de que lo vean las rutas.
+app.use(sanitizeBody);
 
 app.use('/api', apiLimiter);
 
@@ -51,5 +56,5 @@ app.use('/api', notFoundHandler);
 app.use(errorHandler);
 
 app.listen(config.port, () => {
-  console.log(`✅ Gyro Store API en http://localhost:${config.port} (${config.env})`);
+  logger.info(`Gyro Store API arriba en puerto ${config.port}`, { env: config.env });
 });

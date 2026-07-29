@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: gyro-store
+    runtime: node
+    rootDir: App
+    plan: free
+    region: oregon
+    # tsx/typescript son devDependencies pero el runtime los necesita (se ejecuta
+    # TS directo con tsx, sin build). Por eso --include=dev.
+    buildCommand: npm install --include=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
+      - { key: SUPABASE_ANON_KEY, sync: false }
+      - { key: AZURE_TENANT_ID, sync: false }
+      - { key: INTERNAL_DOMAIN, sync: false }
+      - { key: ADMIN_EMAILS, sync: false }
+      - { key: SELLER_EMAILS, sync: false }
+      - { key: PROTECTED_ADMIN_EMAIL, sync: false }
+      - { key: WHATSAPP_NUMBER, sync: false }
+      - { key: CURRENCY, sync: false }
+      - { key: EXCHANGE_RATE, sync: false }
