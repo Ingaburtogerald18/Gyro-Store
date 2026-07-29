@@ -212,15 +212,17 @@ Todo esto lo edito desde el admin, sin tocar código:
 
 ---
 
-## 10. Pendientes de definir (lo que el Excel no cierra)
-1. **Comisión para Utilidad neta > 900 C$:** el Excel devuelve "Error" ahí. Falta el/los tramo(s).
-2. **Comisión en mayoreo:** ¿el vendedor comisiona en ventas por mayor? Si sí, ¿misma cadena
-   (Salary 20% + escala) sobre la utilidad de mayoreo (precio con descuento − Costo real)?
-3. **Cantidad > 1 en comisión:** confirmar que el tramo se busca sobre la utilidad neta **total de la
-   línea** (`(precio−coste)×cantidad`), no por unidad. (El Excel solo probó cantidad = 1.)
-4. **Inventario migrado:** ¿aplica el mismo Costo F/U + pozos, o va con su costo puro?
-5. **Base del descuento de mayoreo:** aplicar sobre el precio tentativo cargado del producto
-   (asumido), no sobre el sugerido.
+## 10. Decisiones cerradas (Reglas finales de negocio)
+Las dudas que el Excel no cerraba ya fueron resueltas y quedan estipuladas así:
+1. **Mayoreo:** 
+   - `>= 2 unidades` del mismo producto = **2.5%** de descuento.
+   - `>= 3 unidades` = **5%** de descuento.
+   - `>= 6 unidades` = **10%** de descuento.
+   - `>= 12 unidades` = **15%** de descuento. El sistema muestra una alerta al vendedor: *"Mejor haz una cotización para obtener mejores descuentos"*.
+2. **Base del descuento de mayoreo:** Aplica directamente sobre el precio base o tentativo cargado en el producto (no sobre el sugerido matemático).
+3. **Comisiones en Mayoreo y >900 C$:** Se utiliza la misma tabla escalonada base, ya que el mayoreo al reducir el precio, automáticamente reduce la Utilidad Neta (sobre la que se calcula la comisión). La tabla escalonada sube libremente para utilidades de >900 C$.
+4. **Cantidad > 1 en comisión:** El tramo de la tabla escalonada se busca sobre la utilidad neta **total de la línea** (`(precio − coste_final − salary) × cantidad`), NO por unidad suelta.
+5. **Inventario migrado:** Queda fuera del alcance por ahora. No se le aplican pozos ni costos fijos, se venderá con su costo puro heredado del Excel.
 
 ---
 

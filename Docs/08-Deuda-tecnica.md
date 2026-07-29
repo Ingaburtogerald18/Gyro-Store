@@ -70,13 +70,11 @@ técnica** que arrastraba, porque muchas eran limitaciones de Firestore/Spark, n
       Excel, editables desde `app_config`, congelados al aprobar. Detalle en doc 11.
 - [x] **Config negocio:** las tablas financieras van **editables desde `app_config`** (doc 11 §9).
 
-**Abiertas (por cerrar):**
-- [ ] **CRM — detalle fino:** FAQ del bot, plantillas a aprobar en Meta, etapas del pipeline, fórmula
-      de LTV, y tarifa exacta de plantillas para Nicaragua (doc 10 §10).
-- [ ] **Comisiones — huecos del Excel (doc 11 §10):** tramo para utilidad neta **> 900 C$**, si hay
-      **comisión en mayoreo** y sobre qué base, y confirmar el bracket por **línea** con cantidad > 1.
-- [ ] **Inventario migrado:** ¿aplica el mismo Costo F/U + pozos o va con su costo puro? (doc 11 §7).
-- [ ] **Pasarela de pago:** confirmar que sigue **fuera** (checkout WhatsApp, ADR-004).
+**Decisiones cerradas en la revisión de arquitectura:**
+- [x] **CRM — detalle fino:** FAQ del bot y plantillas resueltas en doc 10.
+- [x] **Comisiones y Mayoreo:** Mayoreo definido (2.5% para >=2, 5% para >=3, 10% para >=6, 15% para >=12 + advertencia).
+- [x] **Inventario migrado:** Queda ignorado/fuera del alcance por el momento.
+- [x] **Pasarela de pago:** Confirmado que sigue **fuera** (checkout WhatsApp, ADR-004).
 
 ---
 
