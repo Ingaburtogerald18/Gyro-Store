@@ -27,12 +27,8 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const parsed = adminProductInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos del producto inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    res.status(201).json(await createAdminProduct(parsed.data));
+    const data = adminProductInputSchema.parse(req.body);
+    res.status(201).json(await createAdminProduct(data));
   }),
 );
 
@@ -65,12 +61,8 @@ router.put(
       res.status(404).json({ error: 'Producto no encontrado.' });
       return;
     }
-    const parsed = adminProductInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos del producto inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    const updated = await updateAdminProduct(id.data, parsed.data);
+    const data = adminProductInputSchema.parse(req.body);
+    const updated = await updateAdminProduct(id.data, data);
     if (!updated) {
       res.status(404).json({ error: 'Producto no encontrado.' });
       return;

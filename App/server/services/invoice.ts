@@ -15,6 +15,7 @@
 // aplican: eso ya lo hizo `sales.ts` al registrar/aprobar la venta.
 import { db } from '../supabase';
 import { round } from './finance';
+import { BadRequestError } from '../utils/httpError';
 import type { CreateInvoiceInput } from '../../shared/schemas';
 
 export interface Invoice {
@@ -71,10 +72,10 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
     .maybeSingle();
   if (orderError) throw orderError;
   if (!order) {
-    throw new Error('Venta no encontrada.');
+    throw new BadRequestError('Venta no encontrada.');
   }
   if (order.status !== 'approved') {
-    throw new Error('Solo se factura una venta aprobada.');
+    throw new BadRequestError('Solo se factura una venta aprobada.');
   }
 
   const { data: existing, error: existingError } = await db
@@ -84,7 +85,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
     .maybeSingle();
   if (existingError) throw existingError;
   if (existing) {
-    throw new Error('Esta venta ya tiene una factura emitida.');
+    throw new BadRequestError('Esta venta ya tiene una factura emitida.');
   }
 
   const deliveryFee = round(input.deliveryFee ?? 0, 2);

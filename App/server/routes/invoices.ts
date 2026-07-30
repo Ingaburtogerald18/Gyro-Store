@@ -20,17 +20,9 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const parsed = createInvoiceInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos de la factura inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    try {
-      const invoice = await createInvoice(parsed.data);
-      res.status(201).json(invoice);
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : 'No se pudo emitir la factura.' });
-    }
+    const data = createInvoiceInputSchema.parse(req.body);
+    const invoice = await createInvoice(data);
+    res.status(201).json(invoice);
   }),
 );
 

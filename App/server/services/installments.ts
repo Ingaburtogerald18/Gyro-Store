@@ -15,6 +15,7 @@
 import { db } from '../supabase';
 import { round } from './finance';
 import { firstOfEmbed } from '../utils/firstOfEmbed';
+import { BadRequestError } from '../utils/httpError';
 import type { CreateInstallmentPlanInput, RegisterInstallmentPaymentInput } from '../../shared/schemas';
 
 export interface InstallmentPayment {
@@ -144,13 +145,13 @@ export async function createInstallmentPlan(input: CreateInstallmentPlanInput): 
 
   const order = orderResult.data;
   if (!order) {
-    throw new Error('Venta no encontrada.');
+    throw new BadRequestError('Venta no encontrada.');
   }
   if (order.status !== 'approved') {
-    throw new Error('Solo se puede poner en cuotas una venta aprobada.');
+    throw new BadRequestError('Solo se puede poner en cuotas una venta aprobada.');
   }
   if (existingResult.data) {
-    throw new Error('Esta venta ya tiene un plan de cuotas.');
+    throw new BadRequestError('Esta venta ya tiene un plan de cuotas.');
   }
 
   const { data: created, error: insertError } = await db
@@ -167,7 +168,7 @@ export async function createInstallmentPlan(input: CreateInstallmentPlanInput): 
   if (insertError) throw insertError;
 
   const plan = await getInstallmentPlan(created.id);
-  if (!plan) throw new Error('El plan se creó pero no se pudo leer de vuelta.');
+  if (!plan) throw new BadRequestError('El plan se creó pero no se pudo leer de vuelta.');
   return plan;
 }
 
@@ -186,7 +187,7 @@ export async function registerInstallmentPayment(
   if (existingError) throw existingError;
   if (!existing) return null;
   if (existing.status === 'completed') {
-    throw new Error('Este plan de cuotas ya está completamente pagado.');
+    throw new BadRequestError('Este plan de cuotas ya está completamente pagado.');
   }
 
   const { error: paymentError } = await db.from('payments').insert({
@@ -199,7 +200,7 @@ export async function registerInstallmentPayment(
   if (paymentError) throw paymentError;
 
   const updated = await getInstallmentPlan(installmentId);
-  if (!updated) throw new Error('El pago se registró pero no se pudo releer el plan.');
+  if (!updated) throw new BadRequestError('El pago se registró pero no se pudo releer el plan.');
 
   const completed = updated.amountPending <= 0;
   if (completed && updated.status !== 'completed') {
@@ -218,7 +219,7 @@ export async function cancelInstallmentPlan(id: string): Promise<boolean> {
   const plan = await getInstallmentPlan(id);
   if (!plan) return false;
   if (plan.payments.length > 0) {
-    throw new Error('No se puede cancelar un plan de cuotas con pagos registrados.');
+    throw new BadRequestError('No se puede cancelar un plan de cuotas con pagos registrados.');
   }
 
   const { error } = await db.from('installments').delete().eq('id', id);

@@ -20,6 +20,7 @@ import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
+import { QueryState } from '~/components/ui/QueryState';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { errMsg, formatCordobas, withoutIds } from '~/lib/utils';
 import { useCreateInvoiceMutation, useGetInvoicesQuery, type Invoice } from '~/store/api/invoicesApi';
@@ -34,8 +35,12 @@ const METHODS = [
 ] as const;
 
 export default function AdminFacturacion() {
-  const { data: approvedSales = [], isLoading: loadingSales } = useGetSalesQuery({ status: 'approved' });
-  const { data: invoices = [], isLoading: loadingInvoices } = useGetInvoicesQuery();
+  const {
+    data: approvedSales = [],
+    isLoading: loadingSales,
+    isError: salesError,
+  } = useGetSalesQuery({ status: 'approved' });
+  const { data: invoices = [], isLoading: loadingInvoices, isError: invoicesError } = useGetInvoicesQuery();
   const [createInvoice, { isLoading: creating }] = useCreateInvoiceMutation();
 
   const [saleFor, setSaleFor] = useState<SaleListItem | null>(null);
@@ -122,16 +127,20 @@ export default function AdminFacturacion() {
           <CardDescription className="text-muted">Aprobadas, todavía sin correlativo.</CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingSales ? (
-            <div className="h-32 animate-pulse rounded-lg bg-surface-2" />
-          ) : pendingSales.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-surface-2/50 py-10 text-center">
-              <FileText className="mx-auto mb-3 h-9 w-9 text-muted opacity-50" aria-hidden />
-              <p className="font-medium text-text">No hay ventas pendientes de facturar.</p>
-            </div>
-          ) : (
+          <QueryState
+            loading={loadingSales}
+            error={salesError}
+            empty={pendingSales.length === 0}
+            loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-surface-2" />}
+            emptyFallback={
+              <div className="rounded-lg border border-dashed border-border bg-surface-2/50 py-10 text-center">
+                <FileText className="mx-auto mb-3 h-9 w-9 text-muted opacity-50" aria-hidden />
+                <p className="font-medium text-text">No hay ventas pendientes de facturar.</p>
+              </div>
+            }
+          >
             <DataTable columns={pendingColumns} data={pendingSales} hideSearch emptyText="No hay ventas pendientes de facturar." />
-          )}
+          </QueryState>
         </CardContent>
       </Card>
 
@@ -140,11 +149,13 @@ export default function AdminFacturacion() {
           <CardTitle className="text-lg text-text">Facturas emitidas</CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingInvoices ? (
-            <div className="h-32 animate-pulse rounded-lg bg-surface-2" />
-          ) : (
+          <QueryState
+            loading={loadingInvoices}
+            error={invoicesError}
+            loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-surface-2" />}
+          >
             <DataTable columns={invoiceColumns} data={invoices} searchPlaceholder="Buscar…" emptyText="Todavía no se emitió ninguna factura." />
-          )}
+          </QueryState>
         </CardContent>
       </Card>
 

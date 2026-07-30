@@ -19,6 +19,7 @@ import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
+import { QueryState } from '~/components/ui/QueryState';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { StatusBadge, type BadgeStatus } from '~/components/ui/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
@@ -62,7 +63,11 @@ export default function AdminVentas() {
   const [rejectSale, { isLoading: rejecting }] = useRejectSaleMutation();
 
   const [statusFilter, setStatusFilter] = useState('pending_approval');
-  const { data: sales = [], isLoading: loadingSales } = useGetSalesQuery({
+  const {
+    data: sales = [],
+    isLoading: loadingSales,
+    isError: salesError,
+  } = useGetSalesQuery({
     status: statusFilter === 'all' ? undefined : statusFilter,
   });
 
@@ -374,11 +379,13 @@ export default function AdminVentas() {
 
           <Card className="bg-surface border-border shadow-sm">
             <CardContent className="pt-6">
-              {loadingSales ? (
-                <div className="h-48 animate-pulse rounded-lg bg-surface-2" />
-              ) : (
+              <QueryState
+                loading={loadingSales}
+                error={salesError}
+                loadingFallback={<div className="h-48 animate-pulse rounded-lg bg-surface-2" />}
+              >
                 <DataTable columns={columns} data={sales} searchPlaceholder="Buscar por teléfono…" emptyText="No hay ventas en este estado." />
-              )}
+              </QueryState>
             </CardContent>
           </Card>
         </TabsContent>

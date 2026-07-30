@@ -8,6 +8,7 @@
 import { db } from '../supabase';
 import { getFinancialConfig } from './appConfig';
 import { costPurchaseOnArrival, round } from './finance';
+import { BadRequestError } from '../utils/httpError';
 import type {
   NewPurchaseInput,
   UpdatePurchaseInput,
@@ -449,7 +450,7 @@ export async function updatePurchase(id: string, input: UpdatePurchaseInput): Pr
 
   if (costingInputsChanged) {
     if (existing.exchange_rate == null) {
-      throw new Error('El lote está marcado como recibido pero no tiene tasa de cambio congelada.');
+      throw new BadRequestError('El lote está marcado como recibido pero no tiene tasa de cambio congelada.');
     }
     const config = await getFinancialConfig();
     const costing = costPurchaseOnArrival(
@@ -488,10 +489,10 @@ export async function revertPurchase(id: string): Promise<boolean> {
   if (!existing) return false;
 
   if (existing.status !== 'received') {
-    throw new Error('Solo se puede revertir un lote que ya fue recibido.');
+    throw new BadRequestError('Solo se puede revertir un lote que ya fue recibido.');
   }
   if (existing.quantity_sold > 0 || existing.quantity_reserved > 0) {
-    throw new Error('No se puede revertir un lote con stock ya vendido o reservado.');
+    throw new BadRequestError('No se puede revertir un lote con stock ya vendido o reservado.');
   }
 
   const { error } = await db
@@ -523,7 +524,7 @@ export async function deletePurchase(id: string): Promise<boolean> {
   if (!existing) return false;
 
   if (existing.quantity_sold > 0 || existing.quantity_reserved > 0) {
-    throw new Error('No se puede borrar un lote con stock ya vendido o reservado.');
+    throw new BadRequestError('No se puede borrar un lote con stock ya vendido o reservado.');
   }
 
   const { error } = await db.from('purchases').delete().eq('id', id);
@@ -609,7 +610,7 @@ export async function deleteMigratedItem(id: string): Promise<boolean> {
   if (!existing) return false;
 
   if (existing.quantity_sold > 0 || existing.quantity_reserved > 0) {
-    throw new Error('No se puede borrar un ítem migrado con salidas o reservas registradas.');
+    throw new BadRequestError('No se puede borrar un ítem migrado con salidas o reservas registradas.');
   }
 
   const { error } = await db.from('migrated_inventory').delete().eq('id', id);
@@ -707,7 +708,7 @@ async function walkFifoLots(
     for (const lot of taken) {
       await releaseFifoLot(lot.purchaseId, column, lot.quantity);
     }
-    throw new Error(`Stock insuficiente de "${productName}": faltan ${remaining} unidad(es).`);
+    throw new BadRequestError(`Stock insuficiente de "${productName}": faltan ${remaining} unidad(es).`);
   }
 
   return taken;

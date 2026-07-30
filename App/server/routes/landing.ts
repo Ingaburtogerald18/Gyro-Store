@@ -19,15 +19,8 @@ router.put(
   '/',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const parsed = landingConfigSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({
-        error: 'Configuración de landing inválida.',
-        issues: parsed.error.issues,
-      });
-      return;
-    }
-    res.json(await saveLandingConfig(parsed.data));
+    const data = landingConfigSchema.parse(req.body);
+    res.json(await saveLandingConfig(data));
   }),
 );
 

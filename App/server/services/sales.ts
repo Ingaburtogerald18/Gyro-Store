@@ -21,6 +21,7 @@
 import { db } from '../supabase';
 import { getFinancialConfig } from './appConfig';
 import { computeCosteFinal, round } from './finance';
+import { BadRequestError } from '../utils/httpError';
 import { applyWholesaleDiscount, computeLineCommission, computeOrderLineSnapshot } from './commission';
 import {
   getAvailableInventory,
@@ -277,7 +278,7 @@ export async function approveSale(orderId: string): Promise<boolean> {
   if (orderError) throw orderError;
   if (!order) return false;
   if (order.status !== 'pending_approval') {
-    throw new Error('Solo se aprueban ventas pendientes.');
+    throw new BadRequestError('Solo se aprueban ventas pendientes.');
   }
 
   const { data: itemRows, error: itemsError } = await db
@@ -363,7 +364,7 @@ export async function rejectSale(orderId: string, reason: string, rejectedBy: st
   if (orderError) throw orderError;
   if (!order) return false;
   if (order.status !== 'pending_approval') {
-    throw new Error('Solo se pueden rechazar ventas pendientes.');
+    throw new BadRequestError('Solo se pueden rechazar ventas pendientes.');
   }
 
   await releaseReservations(orderId);

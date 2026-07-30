@@ -22,6 +22,7 @@ import { Label } from '~/components/ui/label';
 import { Badge } from '~/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { QueryState } from '~/components/ui/QueryState';
 import { errMsg, formatCordobas, withoutIds } from '~/lib/utils';
 import {
   useCancelInstallmentPlanMutation,
@@ -288,7 +289,7 @@ function CreatePlanDialog({ sale, onClose }: { sale: SaleListItem | null; onClos
 
 export default function AdminCuotas() {
   const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'completed'>('active');
-  const { data: plans = [], isLoading } = useGetInstallmentsQuery(statusFilter === 'all' ? undefined : statusFilter);
+  const { data: plans = [], isLoading, isError } = useGetInstallmentsQuery(statusFilter === 'all' ? undefined : statusFilter);
   const { data: approvedSales = [] } = useGetSalesQuery({ status: 'approved' });
 
   const [payFor, setPayFor] = useState<InstallmentPlan | null>(null);
@@ -331,23 +332,29 @@ export default function AdminCuotas() {
         </TabsList>
       </Tabs>
 
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="h-48 animate-pulse rounded-xl bg-surface" />
-          <div className="h-48 animate-pulse rounded-xl bg-surface" />
-        </div>
-      ) : plans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface-2/50 py-20 text-center">
-          <CreditCard className="h-10 w-10 text-muted opacity-40" aria-hidden />
-          <p className="text-muted">No hay planes de cuotas en esta categoría.</p>
-        </div>
-      ) : (
+      <QueryState
+        loading={isLoading}
+        error={isError}
+        empty={plans.length === 0}
+        loadingFallback={
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="h-48 animate-pulse rounded-xl bg-surface" />
+            <div className="h-48 animate-pulse rounded-xl bg-surface" />
+          </div>
+        }
+        emptyFallback={
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface-2/50 py-20 text-center">
+            <CreditCard className="h-10 w-10 text-muted opacity-40" aria-hidden />
+            <p className="text-muted">No hay planes de cuotas en esta categoría.</p>
+          </div>
+        }
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           {plans.map((plan) => (
             <PlanCard key={plan.id} plan={plan} onPay={() => setPayFor(plan)} />
           ))}
         </div>
-      )}
+      </QueryState>
 
       <PaymentDialog plan={payFor} onClose={() => setPayFor(null)} />
       <CreatePlanDialog sale={createFor} onClose={() => setCreateFor(null)} />

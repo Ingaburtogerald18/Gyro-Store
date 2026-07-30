@@ -53,14 +53,10 @@ router.put(
   '/images',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const parsed = imageResourcesSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Configuración de imágenes inválida.', issues: parsed.error.issues });
-      return;
-    }
+    const data = imageResourcesSchema.parse(req.body);
 
     const oldConfig = await getImageResources();
-    const updated = await updateImageResources(parsed.data);
+    const updated = await updateImageResources(data);
 
     // Delete orphaned images from R2
     const oldImages = [oldConfig.logoStatic, oldConfig.logoAnimated, oldConfig.favicon, oldConfig.posLogo].filter(Boolean) as string[];

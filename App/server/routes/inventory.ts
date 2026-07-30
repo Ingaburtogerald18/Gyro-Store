@@ -8,6 +8,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
+import { parseUuidParam } from '../utils/params';
 import {
   newPurchaseInputSchema,
   updatePurchaseInputSchema,
@@ -35,7 +36,6 @@ const router = Router();
 
 router.use(requireAdmin);
 
-const idSchema = z.uuid();
 const periodSchema = z.string().regex(/^\d{4}-\d{2}$/);
 
 // "all"/vacío/formato inválido = sin filtro (historial completo), igual que
@@ -85,29 +85,17 @@ router.get(
 router.post(
   '/purchases',
   asyncHandler(async (req, res) => {
-    const parsed = newPurchaseInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos de la compra inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    res.status(201).json(await createPurchase(parsed.data));
+    const data = newPurchaseInputSchema.parse(req.body);
+    res.status(201).json(await createPurchase(data));
   }),
 );
 
 router.patch(
   '/purchases/:id/arrival',
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
-      res.status(404).json({ error: 'Compra no encontrada.' });
-      return;
-    }
-    const parsed = arrivalInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos de recepción inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    const ok = await reportArrival(id.data, parsed.data);
+    const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
+    const data = arrivalInputSchema.parse(req.body);
+    const ok = await reportArrival(id, data);
     if (!ok) {
       res.status(404).json({ error: 'Compra no encontrada.' });
       return;
@@ -119,17 +107,9 @@ router.patch(
 router.put(
   '/purchases/:id',
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
-      res.status(404).json({ error: 'Compra no encontrada.' });
-      return;
-    }
-    const parsed = updatePurchaseInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos de la compra inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    const ok = await updatePurchase(id.data, parsed.data);
+    const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
+    const data = updatePurchaseInputSchema.parse(req.body);
+    const ok = await updatePurchase(id, data);
     if (!ok) {
       res.status(404).json({ error: 'Compra no encontrada.' });
       return;
@@ -141,12 +121,8 @@ router.put(
 router.patch(
   '/purchases/:id/revert',
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
-      res.status(404).json({ error: 'Compra no encontrada.' });
-      return;
-    }
-    const ok = await revertPurchase(id.data);
+    const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
+    const ok = await revertPurchase(id);
     if (!ok) {
       res.status(404).json({ error: 'Compra no encontrada.' });
       return;
@@ -158,12 +134,8 @@ router.patch(
 router.delete(
   '/purchases/:id',
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
-      res.status(404).json({ error: 'Compra no encontrada.' });
-      return;
-    }
-    const ok = await deletePurchase(id.data);
+    const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
+    const ok = await deletePurchase(id);
     if (!ok) {
       res.status(404).json({ error: 'Compra no encontrada.' });
       return;
@@ -184,29 +156,17 @@ router.get(
 router.post(
   '/migrated',
   asyncHandler(async (req, res) => {
-    const parsed = newMigratedInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos del ítem migrado inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    res.status(201).json(await createMigratedItem(parsed.data));
+    const data = newMigratedInputSchema.parse(req.body);
+    res.status(201).json(await createMigratedItem(data));
   }),
 );
 
 router.put(
   '/migrated/:id',
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
-      res.status(404).json({ error: 'Ítem migrado no encontrado.' });
-      return;
-    }
-    const parsed = newMigratedInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos del ítem migrado inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    const updated = await updateMigratedItem(id.data, parsed.data);
+    const id = parseUuidParam(req.params.id, 'Ítem migrado no encontrado.');
+    const data = newMigratedInputSchema.parse(req.body);
+    const updated = await updateMigratedItem(id, data);
     if (!updated) {
       res.status(404).json({ error: 'Ítem migrado no encontrado.' });
       return;
@@ -218,12 +178,8 @@ router.put(
 router.delete(
   '/migrated/:id',
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
-      res.status(404).json({ error: 'Ítem migrado no encontrado.' });
-      return;
-    }
-    const ok = await deleteMigratedItem(id.data);
+    const id = parseUuidParam(req.params.id, 'Ítem migrado no encontrado.');
+    const ok = await deleteMigratedItem(id);
     if (!ok) {
       res.status(404).json({ error: 'Ítem migrado no encontrado.' });
       return;

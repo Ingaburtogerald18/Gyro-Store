@@ -6,6 +6,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler';
 import { requireSeller, requireAdmin } from '../middleware/auth';
+import { parseUuidParam } from '../utils/params';
 import { quoteInputSchema, registerSaleInputSchema, rejectSaleInputSchema } from '../../shared/schemas';
 import {
   listSellableProducts,
@@ -20,7 +21,6 @@ const router = Router();
 
 router.use(requireSeller);
 
-const idSchema = z.uuid();
 const isAdminLike = (roles: string[]) => roles.includes('admin') || roles.includes('global_admin');
 
 router.get(
@@ -33,33 +33,17 @@ router.get(
 router.post(
   '/quote',
   asyncHandler(async (req, res) => {
-    const parsed = quoteInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos de la cotización inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    try {
-      res.json(await quoteSale(parsed.data.items));
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : 'No se pudo cotizar la venta.' });
-    }
+    const data = quoteInputSchema.parse(req.body);
+    res.json(await quoteSale(data.items));
   }),
 );
 
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const parsed = registerSaleInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Datos de la venta inválidos.', issues: parsed.error.issues });
-      return;
-    }
-    try {
-      const sale = await registerSale(parsed.data, { uid: req.user!.uid, email: req.user!.email });
-      res.status(201).json(sale);
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : 'No se pudo registrar la venta.' });
-    }
+    const data = registerSaleInputSchema.parse(req.body);
+    const sale = await registerSale(data, { uid: req.user!.uid, email: req.user!.email });
+    res.status(201).json(sale);
   }),
 );
 
@@ -67,21 +51,13 @@ router.post(
   '/:id/approve',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
+    const id = parseUuidParam(req.params.id, 'Venta no encontrada.');
+    const ok = await approveSale(id);
+    if (!ok) {
       res.status(404).json({ error: 'Venta no encontrada.' });
       return;
     }
-    try {
-      const ok = await approveSale(id.data);
-      if (!ok) {
-        res.status(404).json({ error: 'Venta no encontrada.' });
-        return;
-      }
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : 'No se pudo aprobar la venta.' });
-    }
+    res.json({ ok: true });
   }),
 );
 
@@ -89,26 +65,14 @@ router.post(
   '/:id/reject',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const id = idSchema.safeParse(req.params.id);
-    if (!id.success) {
+    const id = parseUuidParam(req.params.id, 'Venta no encontrada.');
+    const data = rejectSaleInputSchema.parse(req.body);
+    const ok = await rejectSale(id, data.reason, req.user!.uid);
+    if (!ok) {
       res.status(404).json({ error: 'Venta no encontrada.' });
       return;
     }
-    const parsed = rejectSaleInputSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'El motivo de rechazo es obligatorio.', issues: parsed.error.issues });
-      return;
-    }
-    try {
-      const ok = await rejectSale(id.data, parsed.data.reason, req.user!.uid);
-      if (!ok) {
-        res.status(404).json({ error: 'Venta no encontrada.' });
-        return;
-      }
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : 'No se pudo rechazar la venta.' });
-    }
+    res.json({ ok: true });
   }),
 );
 
