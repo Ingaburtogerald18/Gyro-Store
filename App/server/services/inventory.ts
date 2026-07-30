@@ -813,3 +813,30 @@ export async function consumeReservation(orderId: string): Promise<{ consumed: n
 
   return { consumed: reservations.length };
 }
+
+// Contraparte de consumeReservation: libera reservas activas de un pedido sin
+// convertirlas en venta (rechazo de pedido, o limpieza si el registro falló a
+// mitad de camino). Devuelve quantity_reserved en cada lote y marca las
+// reservas como liberadas.
+export async function releaseReservations(orderId: string): Promise<{ released: number }> {
+  const { data, error } = await db
+    .from('stock_reservations')
+    .select('id, purchase_id, quantity')
+    .eq('order_id', orderId)
+    .eq('status', 'active');
+  if (error) throw error;
+
+  const reservations = (data ?? []) as unknown as { id: string; purchase_id: string; quantity: number }[];
+  if (!reservations.length) return { released: 0 };
+
+  for (const reservation of reservations) {
+    await releaseFifoLot(reservation.purchase_id, 'quantity_reserved', reservation.quantity);
+    const { error: markError } = await db
+      .from('stock_reservations')
+      .update({ status: 'released' })
+      .eq('id', reservation.id);
+    if (markError) throw markError;
+  }
+
+  return { released: reservations.length };
+}

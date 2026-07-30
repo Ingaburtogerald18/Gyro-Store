@@ -38,7 +38,7 @@ Como tu IA local generará los archivos uno por uno, **NO le pidas que haga todo
 |---|---|---|---|
 | 6 | `supabase/migrations/0001_init.sql` | tipos `enum` + tablas núcleo (`profiles`, `catalog_items`, `templates`, `combos`) + **RLS deny-all** | doc 03 |
 | 7 | `supabase/migrations/0002_inventory.sql` | `purchases`, `products`, `migrated_inventory`, `stock_reservations` + `CHECK`s | 6 |
-| 8 | `supabase/migrations/0003_sales.sql` | `orders`, `order_items`, `order_reservations`, `invoices`, `public_orders(+items)` | 7 |
+| 8 | `supabase/migrations/0003_sales.sql` | `orders`, `order_items`, `invoices`, `public_orders(+items)` (creó también `order_reservations`, duplicado de `stock_reservations`/0002 — eliminado en 0008, doc 09 ítem 60) | 7 |
 | 9 | `supabase/migrations/0004_support.sql` | `app_config`, `losses`, `audit_logs`, `installments`, `payments`, `commission_adjustments`, `logistics_*`, `contacts(+activities)`, `followups`, `analytics_events`, `feedback`, `discount_codes` + sequences | 8 |
 | 10 | `supabase/seed.sql` | data mínima de arranque para dev | 9 |
 
