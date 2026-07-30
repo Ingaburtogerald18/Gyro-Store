@@ -13,6 +13,7 @@ import landingRouter from './routes/landing';
 import catalogRouter from './routes/catalog';
 import adminCatalogRouter from './routes/adminCatalog';
 import adminUsersRouter from './routes/adminUsers';
+import inventoryRouter from './routes/inventory';
 import uploadRouter from './routes/upload';
 
 import combosRouter from './routes/combos';
@@ -67,6 +68,7 @@ app.use('/api/catalog', catalogRouter);
 app.use('/api/admin/catalog', adminCatalogRouter);
 app.use('/api/admin/users', adminUsersRouter);
 app.use('/api/admin/config', adminConfigRouter);
+app.use('/api/inventory', inventoryRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/combos', combosRouter);
 

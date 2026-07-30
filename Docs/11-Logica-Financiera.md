@@ -265,9 +265,11 @@ Las dudas que el Excel no cerraba ya fueron resueltas y quedan estipuladas así:
 
 ## 11. Dónde vive en el modelo de datos (ver doc 03)
 - **`purchases`:** `costo_china_usd`, `impuesto_unit_usd`, `envio_unit_usd`, `exchange_rate` (congelada),
-  🧮 `costo_real_usd`, 🧮 `costo_real_cs`.
-- **`products`/`catalog_items`:** 🧮 `costo_f_u`, 🧮 `coste_final`, 🧮 `precio_sugerido`,
-  `precio_tentativo` (el precio real de venta).
+  🧮 `costo_real_usd`, 🧮 `costo_real_cs`, 🧮 `costo_f_u`, 🧮 `coste_final` (estas dos últimas, migración
+  0007 — el Costo F/U y el coste final del §2 se calculan y persisten al recibir el lote, en la misma
+  fila de `purchases`; no en `products`, porque el FIFO real corre sobre `purchases`).
+- **`catalog_items`:** 🧮 `precio_sugerido`, `precio_tentativo` (el precio real de venta) — se completan
+  cuando el catálogo admin (doc 09 ítem 54) vincula una compra recibida a un ítem publicable.
 - **`order_items` (snapshot al aprobar):** `precio_unit`, `coste_final_snap`, `utilidad_bruta`,
   `salary`, `utilidad_neta`, `comision`, `ganancia_tienda`, `pozos` (jsonb con los 7 montos).
 - **`app_config`:** las 7 tablas configurables del §9.
