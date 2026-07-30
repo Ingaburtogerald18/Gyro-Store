@@ -8,14 +8,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
-import { migratedItemFormSchema, type MigratedItemFormInput } from "~/lib/validators";
+import { migratedItemFormSchema, type MigratedItemFormInput, type MigratedItemFormValues } from "~/lib/validators";
 import {
   useCreateMigratedItemMutation,
   useUpdateMigratedItemMutation,
   useGetMigratedInventoryQuery,
   type MigratedItem,
 } from "~/store/api/inventoryV1Api";
-import { Input } from "~/components/ui/input";
 import { Input } from "~/components/ui/input";
 import { formatUsd, formatCordobas } from "~/lib/utils";
 
@@ -31,7 +30,7 @@ const EMPTY_MIGRATED = {
   costUnit: "",
   shippingUnit: "",
   comments: "",
-} as unknown as DefaultValues<MigratedItemFormInput>;
+} as unknown as DefaultValues<MigratedItemFormValues>;
 
 export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | null; onDone?: () => void } = {}) {
   const isEdit = !!item;
@@ -46,7 +45,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
     watch,
     reset,
     formState: { errors },
-  } = useForm<MigratedItemFormInput>({
+  } = useForm<MigratedItemFormValues, any, MigratedItemFormInput>({
     resolver: zodResolver(migratedItemFormSchema),
     defaultValues: item
       ? ({
@@ -58,7 +57,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
           costUnit: item.costUnit,
           shippingUnit: item.shippingUnit,
           comments: item.comments ?? "",
-        } as unknown as DefaultValues<MigratedItemFormInput>)
+        } as unknown as DefaultValues<MigratedItemFormValues>)
       : EMPTY_MIGRATED,
   });
 
@@ -144,7 +143,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
 
       <div className="grid gap-2">
   <Label>"Fecha" </Label>
-        <Input type="date" control={control} name="purchaseDate" invalid={!!errors.purchaseDate} />
+        <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
       </div>
       <div className="grid gap-2">
   <Label>"Lote" </Label>
@@ -158,7 +157,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
               onChange={field.onChange}
               onBlur={field.onBlur}
               name={field.name}
-              invalid={!!errors.lot}
+              aria-invalid={!!errors.lot}
             />
           )}
         />
@@ -181,7 +180,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
                 onChange={field.onChange}
                 onBlur={field.onBlur}
                 name={field.name}
-                invalid={!!errors.productName}
+                aria-invalid={!!errors.productName}
               />
             )}
           />

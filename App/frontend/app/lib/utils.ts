@@ -32,15 +32,35 @@ export function createSlug(name: string): string {
 
 // URL del detalle: slug legible + id al final para que la ruta lo resuelva sin
 // depender del nombre (que puede cambiar).
-export function getProductUrl(id: string, name: string): string {
+function detailUrl(base: string, id: string, name: string): string {
   const slug = createSlug(name);
-  return slug ? `/producto/${slug}--${id}` : `/producto/${id}`;
+  return `/${base}/${slug ? `${slug}--${id}` : id}`;
 }
+export const getProductUrl = (id: string, name: string) => detailUrl('producto', id, name);
+export const getComboUrl = (id: string, name: string) => detailUrl('combo', id, name);
+
 export const EXCHANGE_RATE = 36.6241;
+
+// Mensaje de error de una respuesta RTK Query fallida (`{ data: { error } }`),
+// con fallback si no vino en ese shape.
+export function errMsg(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'data' in err) {
+    const data = (err as { data?: { error?: string } }).data;
+    if (data?.error) return data.error;
+  }
+  return fallback;
+}
+
+// `items` que todavía no aparecen en `linkedIds` (ej. ventas aprobadas sin
+// factura/plan de cuotas todavía) — un solo id "ya vinculado" por item.
+export function withoutIds<T, K>(items: T[], linkedIds: K[], getId: (item: T) => K): T[] {
+  const linked = new Set(linkedIds);
+  return items.filter((item) => !linked.has(getId(item)));
+}
 
 export function formatUsd(amount: number, maxDecimals: number = 2, minDecimals: number = 2): string {
   const max = Math.max(2, maxDecimals);
-  return $ + amount.toLocaleString("en-US", {
+  return '$' + amount.toLocaleString("en-US", {
     minimumFractionDigits: Math.min(Math.max(2, minDecimals), max),
     maximumFractionDigits: max
   });

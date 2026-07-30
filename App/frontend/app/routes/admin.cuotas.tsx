@@ -1,0 +1,383 @@
+// Portal de Cuotas (doc 09 ítem 67): crear plan sobre una venta aprobada,
+// registrar pagos, ver saldo, cancelar. Solo admin (mismo criterio que v1 y
+// que server/routes/installments.ts).
+//
+// Reciclaje de v1 (admin.cuotas.tsx): se recicla el layout de tarjetas con
+// barra de progreso + historial de pagos expandible — es un patrón sólido y
+// el shape de InstallmentPlan (Hito 3) es parecido. Se reescribe: v1 creaba
+// el plan armando sus propias líneas (con FIFO y comisión incluidos); acá el
+// plan solo agenda el cobro de una venta que sales.ts ya aprobó — no hay
+// customerName/customerPhone propios, se usan phone/sellerEmail de la orden
+// vinculada (server/services/installments.ts los agrega vía join). No hay
+// nextPaymentDate por cuota (no existe esa columna en v2): se muestra solo la
+// fecha de la primera cuota.
+import { useMemo, useState } from 'react';
+import type { MetaFunction } from '@remix-run/node';
+import { toast } from 'sonner';
+import { ChevronDown, ChevronUp, CreditCard, Plus } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import { Button } from '~/components/ui/button';
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import { Badge } from '~/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { errMsg, formatCordobas, withoutIds } from '~/lib/utils';
+import {
+  useCancelInstallmentPlanMutation,
+  useCreateInstallmentPlanMutation,
+  useGetInstallmentsQuery,
+  useRegisterInstallmentPaymentMutation,
+  type InstallmentPlan,
+} from '~/store/api/installmentsApi';
+import { useGetSalesQuery, type SaleListItem } from '~/store/api/salesApi';
+
+export const meta: MetaFunction = () => [{ title: 'Cuotas | Gyro Store Admin' }];
+
+function pctPaid(paid: number, total: number): number {
+  return total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
+}
+
+function ProgressBar({ paid, total }: { paid: number; total: number }) {
+  const pct = pctPaid(paid, total);
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+      <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function PaymentDialog({ plan, onClose }: { plan: InstallmentPlan | null; onClose: () => void }) {
+  const [registerPayment, { isLoading }] = useRegisterInstallmentPaymentMutation();
+  const [amount, setAmount] = useState(0);
+  const [method, setMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta'>('efectivo');
+  const [note, setNote] = useState('');
+
+  async function handleSubmit() {
+    if (!plan || amount <= 0) {
+      toast.error('El monto debe ser mayor a 0.');
+      return;
+    }
+    try {
+      const res = await registerPayment({ id: plan.id, body: { amount, method, note: note.trim() || undefined } }).unwrap();
+      toast.success(
+        res.completed
+          ? '¡Plan completamente pagado!'
+          : `Pago registrado. Pendiente: ${formatCordobas(res.amountPending)}`,
+      );
+      setAmount(0);
+      setNote('');
+      onClose();
+    } catch (err) {
+      toast.error(errMsg(err, 'No se pudo registrar el pago.'));
+    }
+  }
+
+  return (
+    <Dialog open={!!plan} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Registrar pago{plan?.phone ? ` · ${plan.phone}` : ''}</DialogTitle>
+        </DialogHeader>
+        {plan && (
+          <div className="space-y-4">
+            <div className="space-y-1 rounded-lg border border-border bg-surface-2 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted">Total</span>
+                <span className="font-semibold">{formatCordobas(plan.total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Pagado</span>
+                <span className="font-semibold text-accent-2">{formatCordobas(plan.amountPaid)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Pendiente</span>
+                <span className="font-bold text-warning">{formatCordobas(plan.amountPending)}</span>
+              </div>
+              <ProgressBar paid={plan.amountPaid} total={plan.total} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Monto recibido (C$) *</Label>
+              <Input type="number" min={1} step="0.01" value={amount} onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Método de pago</Label>
+              <select
+                className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={method}
+                onChange={(e) => setMethod(e.target.value as typeof method)}
+              >
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="tarjeta">Tarjeta</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notas (opcional)</Label>
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opcional…" />
+            </div>
+          </div>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={isLoading}>
+            Registrar pago
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [cancelPlan, { isLoading: cancelling }] = useCancelInstallmentPlanMutation();
+
+  async function handleCancel() {
+    try {
+      await cancelPlan(plan.id).unwrap();
+      toast.success('Plan cancelado.');
+    } catch (err) {
+      toast.error(errMsg(err, 'No se pudo cancelar el plan.'));
+    }
+  }
+
+  const pct = pctPaid(plan.amountPaid, plan.total);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+      <div className="space-y-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="truncate font-semibold text-text">{plan.phone ?? 'Sin teléfono'}</p>
+              <Badge
+                variant="outline"
+                className={plan.status === 'completed' ? 'text-accent-2 border-accent/30 bg-accent/10' : 'text-warning border-warning/30 bg-warning/10'}
+              >
+                {plan.status === 'completed' ? 'Pagado' : 'Activo'}
+              </Badge>
+            </div>
+            {plan.sellerEmail && <p className="text-xs text-muted">Vendedor: {plan.sellerEmail}</p>}
+          </div>
+          <div className="text-right text-sm">
+            <p className="font-bold text-text">{formatCordobas(plan.total)}</p>
+            <p className="text-xs text-muted">{plan.numCuotas} cuotas</p>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted">
+            <span>{pct}% pagado</span>
+            <span>Pendiente: {formatCordobas(plan.amountPending)}</span>
+          </div>
+          <ProgressBar paid={plan.amountPaid} total={plan.total} />
+        </div>
+
+        {plan.status === 'active' && (
+          <p className="text-xs text-muted">
+            Primera cuota: {new Date(`${plan.firstDue}T00:00:00`).toLocaleDateString('es-NI')}
+          </p>
+        )}
+
+        <div className="flex items-center gap-2 pt-1">
+          {plan.status === 'active' && (
+            <Button size="sm" onClick={onPay}>
+              <CreditCard className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+              Registrar pago
+            </Button>
+          )}
+          {plan.payments.length === 0 && (
+            <Button size="sm" variant="ghost" onClick={handleCancel} loading={cancelling} className="text-danger">
+              Cancelar
+            </Button>
+          )}
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="ml-auto flex items-center gap-1 text-xs text-muted transition-colors hover:text-text"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
+            {plan.payments.length} {plan.payments.length === 1 ? 'pago' : 'pagos'}
+          </button>
+        </div>
+      </div>
+
+      {expanded && plan.payments.length > 0 && (
+        <div className="divide-y divide-border border-t border-border">
+          {plan.payments.map((p) => (
+            <div key={p.id} className="flex items-center justify-between px-4 py-2 text-sm">
+              <div>
+                <span className="font-medium text-text">{formatCordobas(p.amount)}</span>
+                <span className="ml-2 text-xs capitalize text-muted">{p.method ?? 'efectivo'}</span>
+              </div>
+              <span className="text-xs text-muted">
+                {p.paidAt ? new Date(p.paidAt).toLocaleDateString('es-NI') : '—'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreatePlanDialog({ sale, onClose }: { sale: SaleListItem | null; onClose: () => void }) {
+  const [createPlan, { isLoading }] = useCreateInstallmentPlanMutation();
+  const [numCuotas, setNumCuotas] = useState(2);
+  const [firstDue, setFirstDue] = useState('');
+
+  async function handleSubmit() {
+    if (!sale || numCuotas < 2 || !firstDue) {
+      toast.error('Completá cantidad de cuotas (mín. 2) y fecha de la primera.');
+      return;
+    }
+    try {
+      await createPlan({ orderId: sale.id, numCuotas, firstDue }).unwrap();
+      toast.success('Plan de cuotas creado.');
+      setNumCuotas(2);
+      setFirstDue('');
+      onClose();
+    } catch (err) {
+      toast.error(errMsg(err, 'No se pudo crear el plan de cuotas.'));
+    }
+  }
+
+  return (
+    <Dialog open={!!sale} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nuevo plan de cuotas</DialogTitle>
+        </DialogHeader>
+        {sale && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted">Cliente</span>
+                <span className="font-medium text-text">{sale.phone ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Total</span>
+                <span className="font-semibold text-text">{formatCordobas(sale.total)}</span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cantidad de cuotas (mín. 2)</Label>
+              <Input type="number" min={2} max={36} value={numCuotas} onChange={(e) => setNumCuotas(Math.max(2, Number(e.target.value) || 2))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Fecha de la primera cuota</Label>
+              <Input type="date" value={firstDue} onChange={(e) => setFirstDue(e.target.value)} />
+            </div>
+          </div>
+        )}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={isLoading}>
+            Crear plan
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function AdminCuotas() {
+  const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'completed'>('active');
+  const { data: plans = [], isLoading } = useGetInstallmentsQuery(statusFilter === 'all' ? undefined : statusFilter);
+  const { data: approvedSales = [] } = useGetSalesQuery({ status: 'approved' });
+
+  const [payFor, setPayFor] = useState<InstallmentPlan | null>(null);
+  const [createFor, setCreateFor] = useState<SaleListItem | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Ventas aprobadas sin plan todavía (installments.order_id es UNIQUE — doc
+  // 09 migración 0010).
+  const salesWithoutPlan = useMemo(
+    () => withoutIds(approvedSales, plans.map((p) => p.orderId), (s) => s.id),
+    [approvedSales, plans],
+  );
+
+  const activeCount = plans.filter((p) => p.status === 'active').length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-text">Ventas en Cuotas</h2>
+          <p className="text-muted">Seguimiento de pagos hasta saldar el total.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {activeCount > 0 && (
+            <span className="rounded-full bg-warning/15 px-3 py-1.5 text-sm font-medium text-warning">
+              {activeCount} activas
+            </span>
+          )}
+          <Button onClick={() => setPickerOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" aria-hidden /> Nuevo plan
+          </Button>
+        </div>
+      </div>
+
+      <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+        <TabsList className="bg-surface border border-border">
+          <TabsTrigger value="active">Activas</TabsTrigger>
+          <TabsTrigger value="all">Todas</TabsTrigger>
+          <TabsTrigger value="completed">Completadas</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="h-48 animate-pulse rounded-xl bg-surface" />
+          <div className="h-48 animate-pulse rounded-xl bg-surface" />
+        </div>
+      ) : plans.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface-2/50 py-20 text-center">
+          <CreditCard className="h-10 w-10 text-muted opacity-40" aria-hidden />
+          <p className="text-muted">No hay planes de cuotas en esta categoría.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {plans.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} onPay={() => setPayFor(plan)} />
+          ))}
+        </div>
+      )}
+
+      <PaymentDialog plan={payFor} onClose={() => setPayFor(null)} />
+      <CreatePlanDialog sale={createFor} onClose={() => setCreateFor(null)} />
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elegí la venta aprobada</DialogTitle>
+          </DialogHeader>
+          {salesWithoutPlan.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted">No hay ventas aprobadas sin plan de cuotas todavía.</p>
+          ) : (
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {salesWithoutPlan.map((sale) => (
+                <button
+                  key={sale.id}
+                  onClick={() => {
+                    setCreateFor(sale);
+                    setPickerOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-surface-2"
+                >
+                  <span>{sale.phone ?? sale.sellerEmail}</span>
+                  <span className="font-semibold">{formatCordobas(sale.total)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

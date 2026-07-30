@@ -21,8 +21,9 @@ import uploadRouter from './routes/upload';
 
 import combosRouter from './routes/combos';
 import ordersRouter from './routes/orders';
+import contactRouter from './routes/contact';
 import authRouter from './routes/auth';
-import { apiLimiter, publicOrderLimiter } from './middleware/rateLimiter';
+import { apiLimiter, publicOrderLimiter, contactLimiter } from './middleware/rateLimiter';
 import { sanitizeBody } from './utils/sanitize';
 import { logger } from './utils/logger';
 import { startUserCleanupCron } from './services/cleanupUsers';
@@ -84,6 +85,10 @@ app.use('/api/combos', combosRouter);
 // handler del método, la petición continúa hacia ordersRouter.
 app.post('/api/orders/public', publicOrderLimiter);
 app.use('/api/orders', ordersRouter);
+
+// Mismo patrón: el límite propio intercepta el POST antes del router.
+app.post('/api/contact', contactLimiter);
+app.use('/api/contact', contactRouter);
 
 // ── Cierre de la cadena ──
 app.use('/api', notFoundHandler);

@@ -15,7 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { Search, Check, ArrowUp, ArrowDown, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import { TableSkeleton } from "./Skeleton";
+import { TableSkeleton } from "./skeleton";
 import { cn } from "~/lib/utils";
 
 // Tope de filas para la entrada escalonada: por encima, se renderiza sin motion

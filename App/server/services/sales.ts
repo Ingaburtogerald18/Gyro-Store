@@ -30,6 +30,7 @@ import {
   type InventoryRow,
 } from './inventory';
 import type { SaleLineInput, RegisterSaleInput } from '../../shared/schemas';
+import { firstOfEmbed } from '../utils/firstOfEmbed';
 
 // ── Semana ISO (doc 03 B.4: orders.week_of agrupa pagos de comisión) ──
 // Reciclado tal cual de v1 (getISOWeekString): algoritmo puro, sin Firebase.
@@ -263,13 +264,6 @@ interface PurchaseEmbed {
   costo_f_u: number | null;
 }
 
-// PostgREST puede devolver la relación embebida como objeto o como array de
-// un elemento según cómo detecte la FK; mismo patrón defensivo que
-// adminCatalog.ts (firstTemplate).
-function firstPurchase(value: PurchaseEmbed | PurchaseEmbed[] | null): PurchaseEmbed | null {
-  return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
 // Consume las reservas (reservado → vendido en purchases, vía inventory.ts) y
 // congela el snapshot financiero de doc 11 §4 en cada order_item. El costo
 // por línea sale de los lotes que stock_reservations realmente asignó a esa
@@ -314,7 +308,7 @@ export async function approveSale(orderId: string): Promise<boolean> {
 
   for (const item of items) {
     const lots = reservations
-      .map((r) => ({ quantity: r.quantity, purchase: firstPurchase(r.purchases) }))
+      .map((r) => ({ quantity: r.quantity, purchase: firstOfEmbed(r.purchases) }))
       .filter((r) => r.purchase?.product_name === item.sku);
     const takenQty = lots.reduce((sum, lot) => sum + lot.quantity, 0);
 

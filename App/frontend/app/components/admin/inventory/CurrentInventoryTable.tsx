@@ -16,7 +16,7 @@ import {
   type InventoryRow,
   type Purchase,
 } from "~/store/api/inventoryV1Api";
-import { useGetAdminCatalogQuery } from "~/store/api/catalogApi";
+import { useGetAdminCatalogQuery } from "~/store/api/catalogAdminApi";
 import { formatUsd, formatCordobas } from "~/lib/utils";
 import { CodeCell } from "~/components/ui/cells";
 import { useNavigate } from "@remix-run/react";

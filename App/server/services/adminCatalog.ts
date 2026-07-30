@@ -7,6 +7,7 @@
 // plano y acá se traduce.
 import { db } from '../supabase';
 import type { AdminProduct, AdminProductInput, SpecRow } from '../../shared/schemas';
+import { firstOfEmbed } from '../utils/firstOfEmbed';
 
 // Se listan las columnas a mano (nunca `select('*')`): así una columna nueva no
 // se filtra sola a una respuesta sin que nadie lo revise.
@@ -40,10 +41,6 @@ interface AdminRow {
   template: { id: string; name: string | null; specs: unknown } | { id: string; name: string | null; specs: unknown }[] | null;
 }
 
-function firstTemplate(template: AdminRow['template']) {
-  return Array.isArray(template) ? (template[0] ?? null) : template;
-}
-
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((v): v is string => typeof v === 'string');
@@ -68,7 +65,7 @@ function toSpecs(value: unknown): SpecRow[] {
 }
 
 function toAdminProduct(row: AdminRow): AdminProduct {
-  const template = firstTemplate(row.template);
+  const template = firstOfEmbed(row.template);
   return {
     id: row.id,
     templateId: row.template_id,

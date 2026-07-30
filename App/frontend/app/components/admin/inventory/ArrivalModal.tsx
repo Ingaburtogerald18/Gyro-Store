@@ -6,10 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/u
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
-import { arrivalFormSchema, type ArrivalFormInput } from "~/lib/validators";
+import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useReportArrivalMutation, type Purchase } from "~/store/api/inventoryV1Api";
-import { useGetConfigQuery } from "~/store/api/catalogApi";
-import { useGetConfigQuery } from "~/store/api/catalogApi";
+import { useGetConfigQuery } from "~/store/api/configApi";
 import { formatCordobas } from "~/lib/utils";
 
 const RATE = 37;
@@ -30,7 +29,7 @@ export function ArrivalModal({
     reset,
     setValue,
     formState: { errors, dirtyFields },
-  } = useForm<ArrivalFormInput>({
+  } = useForm<ArrivalFormValues, any, ArrivalFormInput>({
     resolver: zodResolver(arrivalFormSchema),
     defaultValues: { arrivalDate: undefined, shippingUnit: undefined, suggestedPrice: undefined },
   });

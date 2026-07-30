@@ -62,6 +62,12 @@ export const purchaseFormSchema = z.object({
   suggestedPrice: z.coerce.number().nonnegative("No puede ser negativo").optional(),
 });
 export type PurchaseFormInput = z.infer<typeof purchaseFormSchema>;
+// `quantity`/`costUnit`/`taxUnit` usan z.preprocess (un campo vacío debe
+// rechazar, no convertirse en 0): el tipo de ENTRADA del formulario (lo que
+// register()/Controller sostienen antes de validar) no es el mismo que el de
+// SALIDA (PurchaseFormInput, ya coercionado) — react-hook-form necesita los
+// dos por separado para que el resolver tipe bien.
+export type PurchaseFormValues = z.input<typeof purchaseFormSchema>;
 
 // Número requerido: un campo vacío ("") debe FALLAR, no convertirse en 0.
 // (z.coerce.number() convierte "" → 0 y lo deja pasar; aquí lo mapeamos a NaN.)
@@ -87,6 +93,9 @@ export const migratedItemFormSchema = z.object({
   comments: z.string().optional(),
 });
 export type MigratedItemFormInput = z.infer<typeof migratedItemFormSchema>;
+// Mismo motivo que PurchaseFormValues: campos con z.preprocess necesitan su
+// tipo de entrada (pre-coerción) separado del de salida.
+export type MigratedItemFormValues = z.input<typeof migratedItemFormSchema>;
 
 // Reportar llegada a Nicaragua.
 export const arrivalFormSchema = z.object({
@@ -96,6 +105,8 @@ export const arrivalFormSchema = z.object({
   suggestedPrice: z.coerce.number().nonnegative("No puede ser negativo").optional(),
 });
 export type ArrivalFormInput = z.infer<typeof arrivalFormSchema>;
+// Mismo motivo: shippingUnit/suggestedPrice usan z.coerce.number().
+export type ArrivalFormValues = z.input<typeof arrivalFormSchema>;
 
 // Venta en cuotas (solo admin).
 export const installmentFormSchema = z.object({

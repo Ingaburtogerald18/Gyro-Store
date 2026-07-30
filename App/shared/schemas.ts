@@ -472,4 +472,25 @@ export const registerInstallmentPaymentInputSchema = z.object({
   method: z.enum(['efectivo', 'transferencia', 'tarjeta']).optional(),
   note: z.string().max(300).optional(),
 });
-export type RegisterInstallmentPaymentInput = z.infer<typeof registerInstallmentPaymentInputSchema>;
+export type RegisterInstallmentPaymentInput = z.infer<typeof registerInstallmentPaymentInputSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: CONTACTO PÚBLICO / CRM (doc 09 ítems 33-34) ──
+// ============================================================================
+// El formulario público de "Contacto" captura el lead directo en el CRM
+// (contacts/contact_activities) — v1 solo mandaba un correo (sin servicio de
+// email en v2 todavía). Teléfono obligatorio: es la clave de `contacts.phone`
+// (unique) — mismo criterio que doc 14 ("teléfono siempre obligatorio, es la
+// llave"). `contacts` no tiene columna de email; si lo mandan, viaja dentro
+// de la nota de la actividad en vez de perderse.
+export const publicContactInputSchema = z.object({
+  name: z.string().min(2, 'Ingresá tu nombre.').max(80),
+  phone: z
+    .string()
+    .min(1, 'El teléfono es obligatorio.')
+    .max(20, 'El teléfono es demasiado largo.')
+    .regex(PHONE_RE, 'Ingresá un teléfono válido: 8 a 15 dígitos, con + opcional.'),
+  email: z.string().email('Correo inválido.').max(120).optional().or(z.literal('')),
+  message: z.string().min(1, 'Escribí tu mensaje.').max(1000, 'Máximo 1000 caracteres.'),
+});
+export type PublicContactInput = z.infer<typeof publicContactInputSchema>;

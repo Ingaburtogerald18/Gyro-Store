@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
-import { purchaseFormSchema, type PurchaseFormInput } from "~/lib/validators";
+import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useUpdatePurchaseMutation, useGetPurchasesQuery, type Purchase } from "~/store/api/inventoryV1Api";
 import { Input } from "~/components/ui/input";
 import { formatUsd } from "~/lib/utils";
@@ -16,7 +16,7 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
   const { data: purchases = [] } = useGetPurchasesQuery();
   const [codeWarn, setCodeWarn] = useState<string | null>(null);
 
-  const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<PurchaseFormInput>({
+  const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<PurchaseFormValues, any, PurchaseFormInput>({
     resolver: zodResolver(purchaseFormSchema),
     mode: "onBlur",
   });

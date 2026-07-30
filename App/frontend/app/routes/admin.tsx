@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
 import {
   Boxes,
+  CreditCard,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -59,14 +60,15 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true, ready: true },
       { name: 'Inventario', to: '/admin/inventario', icon: Boxes, ready: true },
-      { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart, ready: false },
+      { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart, ready: true },
+      { name: 'Cuotas', to: '/admin/cuotas', icon: CreditCard, ready: true },
     ],
   },
   {
     label: "Tienda",
     items: [
       { name: 'Catálogo', to: '/admin/catalogo', icon: Package, ready: true },
-      { name: 'Facturación', to: '/admin/facturacion', icon: FileText, ready: false },
+      { name: 'Facturación', to: '/admin/facturacion', icon: FileText, ready: true },
     ],
   },
   {
