@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
-import { getPublicConfig } from '../services/config';
+import { getPublicConfig } from '../services/config.js';
+import { getImageResources } from '../services/appConfig.js';
 
 const router = Router();
 
@@ -9,7 +10,8 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const publicConfig = getPublicConfig();
-    res.json(publicConfig);
+    const images = await getImageResources();
+    res.json({ ...publicConfig, images });
   })
 );
 

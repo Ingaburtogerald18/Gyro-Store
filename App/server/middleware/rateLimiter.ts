@@ -17,3 +17,18 @@ export const telemetryLimiter: RateLimitRequestHandler = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Límite estricto para el checkout público (POST /api/orders/public): 10 pedidos
+// cada 15 minutos por IP. Es el único endpoint anónimo que ESCRIBE en la base, así
+// que el límite general de 300/15min es demasiado holgado: bastaría un script para
+// llenar `public_orders` de basura y ensuciar el CRM. Un comprador real no hace
+// más de un par de pedidos seguidos.
+export const publicOrderLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    error: 'Recibimos varios pedidos desde esta conexión. Esperá unos minutos e intentá de nuevo.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

@@ -30,18 +30,48 @@ export function primaryRole(roles: AppRole[]): AppRole | null {
   return config.rolePriority.find((r) => roles.includes(r)) || roles[0] || null;
 }
 
-// Lee el perfil por id de auth (una sola vez). Devuelve la fila o null.
+// Lee el perfil por id de auth. Si no existe, lo crea (primer login).
 // Tolera que la tabla `profiles` aún no exista (durante el Hito 0): captura y
 // devuelve null, para que la whitelist por env siga funcionando.
-async function fetchProfile(uid: string) {
+async function fetchProfile(supaUser: any) {
   try {
     const { data, error } = await db
       .from('profiles')
       .select('roles, status, deleted_at, name, avatar_url')
-      .eq('id', uid)
+      .eq('id', supaUser.id)
       .maybeSingle();
+      
     if (error) return null;
-    return data;
+    if (data) {
+      const meta = supaUser.user_metadata || {};
+      const authAvatar = meta.avatar_url || meta.picture || '';
+      
+      // Sincronizar el avatar si en la tabla profiles está vacío pero Auth ya lo tiene (ej. login con Entra ID)
+      if (authAvatar && authAvatar !== data.avatar_url && !data.avatar_url) {
+        db.from('profiles').update({ avatar_url: authAvatar }).eq('id', supaUser.id).then();
+        data.avatar_url = authAvatar;
+      }
+      return data;
+    }
+
+    // Si no existe, insertarlo automáticamente (Sync de perfil)
+    const meta = supaUser.user_metadata || {};
+    const name = meta.name || meta.full_name || 'Nuevo Usuario';
+    const avatar_url = meta.avatar_url || meta.picture || '';
+
+    const { data: newProfile, error: insertError } = await db
+      .from('profiles')
+      .insert({
+        id: supaUser.id,
+        email: supaUser.email,
+        name,
+        avatar_url
+      })
+      .select('roles, status, deleted_at, name, avatar_url')
+      .single();
+
+    if (insertError) return null;
+    return newProfile;
   } catch {
     return null;
   }
@@ -88,7 +118,24 @@ export async function authenticate(
     return { error: 403, message: 'Esta cuenta no pertenece al personal de Gyro Store.' };
   }
 
-  const profile = await fetchProfile(supaUser.id);
+  // El chequeo de arriba mira SOLO el correo, y el correo de un JWT de Supabase lo
+  // elige quien se registra. Con la anon key cualquiera puede hacer un signup
+  // email/password de `admin@gyrostorenic.com` (o del correo de la whitelist) y
+  // obtener un token válido que pasaría el filtro de dominio. El login del staff
+  // SIEMPRE es por Entra/Azure (doc 03), así que exigimos que el token venga de ese
+  // proveedor: es lo que ata la identidad al tenant de Microsoft y no al string del
+  // correo.
+  const appMeta = (supaUser.app_metadata ?? {}) as { provider?: string; providers?: unknown };
+  const linkedProviders = Array.isArray(appMeta.providers) ? appMeta.providers : [];
+  const isAzureIdentity = appMeta.provider === 'azure' || linkedProviders.includes('azure');
+  if (!isAzureIdentity) {
+    return {
+      error: 403,
+      message: 'Esta cuenta debe iniciar sesión con Microsoft Entra ID.',
+    };
+  }
+
+  const profile = await fetchProfile(supaUser);
   const roles = rolesFromEnvOrProfile(email, profile);
   if (!roles.length) {
     return { error: 403, message: 'Esta cuenta no tiene permisos asignados.' };

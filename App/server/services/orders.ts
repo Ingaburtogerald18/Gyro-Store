@@ -1,4 +1,5 @@
 import { db } from '../supabase';
+import { config } from '../config';
 import type { PublicOrderInput } from '../../shared/schemas';
 
 export interface CreatedPublicOrder {
@@ -6,17 +7,73 @@ export interface CreatedPublicOrder {
   phone: string;
   total: number;
   status: string;
-  items: Array<{ catalogItemId: string; quantity: number; unitPrice: number }>;
+  items: Array<{
+    catalogItemId: string;
+    quantity: number;
+    unitPrice: number;
+    variantName?: string;
+  }>;
+  /** Link a WhatsApp con el pedido ya formateado, listo para abrir. */
+  whatsappUrl: string;
+}
+
+interface MessageLine {
+  name: string;
+  variantName?: string;
+  quantity: number;
+  lineTotal: number;
+}
+
+// El mensaje se arma en el SERVIDOR a propósito: lleva el total recalculado
+// (autoritativo) y el número de la tienda sale de config, nunca del cliente.
+function buildWhatsappMessage(
+  input: PublicOrderInput,
+  lines: MessageLine[],
+  total: number,
+): string {
+  const money = (n: number) => `${config.currency}${Number(n || 0).toLocaleString('es-NI')}`;
+  const div = '━━━━━━━━━━━━━━━';
+
+  let msg = '🛒 *NUEVO PEDIDO — Gyro Store*\n';
+  msg += `${div}\n`;
+  msg += `👤 *${input.customerName}*\n`;
+  msg += `📞 ${input.phone}\n`;
+  if (input.deliveryMethod === 'envio') {
+    msg += '🚚 *Envío a domicilio*\n';
+    if (input.address) msg += `📍 ${input.address}\n`;
+    if (input.locationUrl) msg += `🗺️ Ubicación: ${input.locationUrl}\n`;
+  } else {
+    msg += '🏬 *Retiro en tienda*\n';
+  }
+  if (input.note) msg += `📝 _${input.note}_\n`;
+
+  msg += `${div}\n`;
+  msg += '🛍️ *Mi pedido*\n\n';
+  for (const line of lines) {
+    const variant =
+      line.variantName && line.variantName !== 'Estándar' ? `  _(${line.variantName})_` : '';
+    msg += `🔹 *${line.name}*${variant}  ×${line.quantity}\n`;
+    msg += `   💵 ${money(line.lineTotal)}\n\n`;
+  }
+
+  msg += `${div}\n`;
+  msg += `💰 *TOTAL:  ${money(total)}*\n`;
+  msg += `${div}\n`;
+  msg += '_¡Gracias! Quedo atento(a) para coordinar el pago._ 🙌';
+
+  return `https://wa.me/${config.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
 }
 
 export async function createPublicOrder(input: PublicOrderInput): Promise<CreatedPublicOrder> {
   // 1. Sacar la lista de ids
   const ids = input.items.map((item) => item.catalogItemId);
 
-  // 2. Consultar catalog_items filtrando por los ids y validando que estén publicados
+  // 2. Consultar catalog_items filtrando por los ids y validando que estén
+  // publicados. Se trae el nombre del template para poder nombrar cada línea en
+  // el mensaje de WhatsApp sin confiar en lo que mandó el cliente.
   const { data: catalogData, error: catalogError } = await db
     .from('catalog_items')
-    .select('id, price, base_price')
+    .select('id, price, base_price, template:templates(name)')
     .in('id', ids)
     .eq('published', true);
 
@@ -26,13 +83,23 @@ export async function createPublicOrder(input: PublicOrderInput): Promise<Create
 
   // 3. Armar un Map<string, number | null>
   const priceMap = new Map<string, number | null>();
+  const nameMap = new Map<string, string>();
   if (catalogData) {
     for (const row of catalogData) {
       priceMap.set(row.id, row.price ?? row.base_price);
+      // El join llega como objeto o como array según la cardinalidad inferida.
+      const template = row.template as unknown as { name?: string | null } | { name?: string | null }[] | null;
+      const name = Array.isArray(template) ? template[0]?.name : template?.name;
+      nameMap.set(row.id, name ?? 'Producto');
     }
   }
 
-  const orderItems: Array<{ catalogItemId: string; quantity: number; unitPrice: number }> = [];
+  const orderItems: Array<{
+    catalogItemId: string;
+    quantity: number;
+    unitPrice: number;
+    variantName?: string;
+  }> = [];
 
   // 4 y 5. Buscar y validar los precios en el Map para armar el array de items de la orden
   for (const item of input.items) {
@@ -49,6 +116,7 @@ export async function createPublicOrder(input: PublicOrderInput): Promise<Create
       catalogItemId: item.catalogItemId,
       quantity: item.quantity,
       unitPrice: price,
+      variantName: item.variantName,
     });
   }
 
@@ -83,9 +151,19 @@ export async function createPublicOrder(input: PublicOrderInput): Promise<Create
     throw itemsError;
   }
 
-  // 10. Devolver la orden construida
+  // 10. Devolver la orden construida + el link de WhatsApp ya formateado.
   return {
     ...order,
     items: orderItems,
+    whatsappUrl: buildWhatsappMessage(
+      input,
+      orderItems.map((item) => ({
+        name: nameMap.get(item.catalogItemId) ?? 'Producto',
+        variantName: item.variantName,
+        quantity: item.quantity,
+        lineTotal: item.unitPrice * item.quantity,
+      })),
+      total,
+    ),
   };
 }

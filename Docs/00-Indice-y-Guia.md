@@ -80,7 +80,10 @@ lleva una marca de confianza. La mantengo porque me sirve para saber en qué con
 | 09 | **Orden de construcción** | Qué archivos de código creo primero y en qué orden, uno por uno, para armar el repo. |
 | 10 | **CRM y automatización WhatsApp** | Ficha 360, agenda de seguimientos, bandeja e integración con WhatsApp Cloud API (Meta). Decisiones de costo y plan por fases. |
 | 11 | **Lógica financiera y operativa** | Toda la matemática del negocio: costeo, Costo F/U y pozos, PVP, comisiones, mayoreo y reportería. Sale de mi Excel real. |
+| 12 | **Especificación de módulos, seguridad y arranque** | Consolida la lógica técnica de cada módulo, la auditoría de seguridad del diseño y el paso a paso (con prompts) para arrancar a programar. |
+| 13 | **Arquitectura de interfaces (UI)** | Qué ve cada quien: los dos mundos (storefront y back-office) y el mapa de vistas y módulos por rol. |
 | 14 | **Cuentas de comprador y lealtad** | Dominio transversal opcional: auth de comprador (OTP), tarjeta de sellos, cliente mayorista, panel de intención, atribución de canal. |
+| 15 | **Auditoría de código y docs** | Revisión externa del set 00–14 contra el código real de `App/`: bloqueantes antes del Hito 2, riesgos de código, huecos de documentación y las decisiones abiertas A1–A3. |
 
 ## Documentos canónicos que ya existían (no los duplico acá)
 

@@ -20,6 +20,8 @@ Dropdown, Tabs, Command, Table, etc.) dentro de `app/components/ui/`, construido
 - Para **charts del admin** sigo con **Recharts** (o Tremor si quiero KPIs listos); shadcn no hace charts.
 - Regla: **ningún componente de `ui/` usa colores crudos**; todo sale de tokens (`bg-bg`, `text-accent`,
   `border-border`), así el flip dark↔light y el skin store/admin siguen funcionando.
+- **[NUEVO v2] Excepciones Visuales del Admin**: Aunque la convención es usar Tablas de shadcn para listar datos, en módulos más "humanos" como **Gestión de Personal**, preferimos vistas de **Tarjetas (Cards) / Nómina** con avatares visuales para mejor UX.
+- **[NUEVO v2] UX de Navegación**: Se implementó una **barra de progreso global (Global Progress Bar)** con Framer Motion en el `root.tsx` para brindar feedback visual instantáneo (estilo NProgress) durante las transiciones lentas entre módulos o llamadas pesadas al backend.
 
 ## 2. Rutas reales (Remix, convención plana) [se mantiene]
 
@@ -66,6 +68,8 @@ del storefront público exige pasar por acá.
 | `admin.feedback` | feedback de usuarios |
 | `admin.busquedas` | telemetría de búsquedas |
 | `admin.configuracion` | config del negocio |
+
+> **Nota sobre el Layout del Admin:** A diferencia del estándar de shadcn (perfil al fondo del sidebar), el perfil de usuario del personal (con su foto de Microsoft Entra) vive en la **esquina superior derecha (Header)**, al lado del botón "Ver tienda", manteniendo consistencia visual con la experiencia pública estilo Amazon.
 
 ## 3. Estado — RTK Query en todo [se mantiene]
 El frontend usa **RTK Query** para casi todo el dato (no es loaders-first).

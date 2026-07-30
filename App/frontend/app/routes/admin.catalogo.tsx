@@ -1,0 +1,282 @@
+import { useState } from 'react';
+import type { MetaFunction } from '@remix-run/node';
+import { 
+  useGetAdminCatalogQuery, 
+  useCreateAdminProductMutation, 
+  useUpdateAdminProductMutation, 
+  useDeleteAdminProductMutation,
+  useReorderAdminCatalogMutation,
+} from '~/store/api/catalogAdminApi';
+import type { AdminProductInput, AdminProduct } from '@shared/schemas';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '~/components/ui/card';
+import { Button } from '~/components/ui/button';
+import { Badge } from '~/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '~/components/ui/dialog';
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import { Switch } from '~/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { Plus, Search, AlertTriangle, Tag, LayoutTemplate, BoxSelect, Package } from 'lucide-react';
+import { SortableCatalogGrid } from '~/components/catalog/SortableCatalogGrid';
+import { toast } from 'sonner';
+
+export const meta: MetaFunction = () => {
+  return [{ title: 'Catálogo | Gyro Store Admin' }];
+};
+
+export default function AdminCatalogo() {
+  const { data: catalog = [], isLoading, isError } = useGetAdminCatalogQuery();
+  const [createProduct, { isLoading: isCreating }] = useCreateAdminProductMutation();
+  const [updateProduct, { isLoading: isUpdating }] = useUpdateAdminProductMutation();
+  const [deleteProduct] = useDeleteAdminProductMutation();
+  const [reorderCatalog] = useReorderAdminCatalogMutation();
+  
+  const [activeTab, setActiveTab] = useState("catalog");
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+
+  const [formData, setFormData] = useState<AdminProductInput>({
+    name: '',
+    price: 0,
+    basePrice: 0,
+    images: [],
+    specs: [],
+    published: false,
+    isPromo: false,
+    sortOrder: 0,
+  });
+
+  const handleOpenCreate = () => {
+    setEditingProduct(null);
+    setFormData({
+      name: '', price: 0, basePrice: 0, images: [], specs: [], published: false, isPromo: false, sortOrder: 0
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEdit = (product: AdminProduct) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      price: product.price,
+      basePrice: product.basePrice || 0,
+      images: product.images,
+      specs: product.specs,
+      published: product.published,
+      isPromo: product.isPromo,
+      sortOrder: product.sortOrder,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingProduct) {
+        await updateProduct({ id: editingProduct.id, data: formData }).unwrap();
+        toast.success('Producto actualizado.');
+      } else {
+        await createProduct(formData).unwrap();
+        toast.success('Producto creado.');
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast.success('Acción simulada (Backend pendiente).');
+      setIsDialogOpen(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Seguro que deseas eliminar este producto?')) {
+      try {
+        await deleteProduct(id).unwrap();
+        toast.success('Producto eliminado.');
+      } catch (error) {
+        toast.success('Eliminación simulada (Backend pendiente).');
+      }
+    }
+  };
+
+  const handleReorder = async (newItems: AdminProduct[]) => {
+    try {
+      const reorderPayload = newItems.map((item, index) => ({
+        id: item.id!,
+        sortOrder: index,
+      }));
+      await reorderCatalog({ items: reorderPayload }).unwrap();
+      toast.success('Orden actualizado.');
+    } catch (error) {
+      toast.error('No se pudo guardar el orden (Simulado).');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-text">Gestión de Catálogo</h2>
+          <p className="text-muted">Arrastra productos para reordenar, edítalos, o administra las plantillas.</p>
+        </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+          <TabsList className="bg-surface border border-border">
+            <TabsTrigger value="catalog" className="data-[state=active]:bg-slate-800"><Package className="w-4 h-4 mr-2" /> Artículos</TabsTrigger>
+            <TabsTrigger value="templates" className="data-[state=active]:bg-slate-800"><LayoutTemplate className="w-4 h-4 mr-2" /> Templates</TabsTrigger>
+            <TabsTrigger value="combos" className="data-[state=active]:bg-slate-800"><BoxSelect className="w-4 h-4 mr-2" /> Combos</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsContent value="catalog" className="space-y-4 outline-none">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="relative flex-1 max-w-sm w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+              <Input 
+                placeholder="Buscar productos..." 
+                className="pl-9 bg-surface border-border focus-visible:ring-indigo-500 text-text w-full"
+              />
+            </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Button onClick={handleOpenCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10">
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Producto
+          </Button>
+
+          <DialogContent className="bg-surface border-border text-text w-full sm:max-w-xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-indigo-400 font-bold text-xl">
+                {editingProduct ? 'Editar Producto' : 'Crear Producto'}
+              </DialogTitle>
+              <DialogDescription className="text-muted">
+                Completa los detalles. Estos cambios afectarán el storefront inmediatamente si lo publicas.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSave} className="space-y-6 mt-6 pb-20">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-slate-300">Nombre del Producto</Label>
+                  <Input 
+                    id="name" 
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    className="bg-slate-900 border-slate-800 focus-visible:ring-indigo-500" 
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-slate-300">Precio Final (C$)</Label>
+                    <Input 
+                      id="price" type="number" min="0" step="0.01"
+                      value={formData.price}
+                      onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                      className="bg-slate-900 border-slate-800 focus-visible:ring-indigo-500" 
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="basePrice" className="text-slate-300 text-xs">Precio "Antes" (Tachado)</Label>
+                    <Input 
+                      id="basePrice" type="number" min="0" step="0.01"
+                      value={formData.basePrice}
+                      onChange={e => setFormData({ ...formData, basePrice: parseFloat(e.target.value) || 0 })}
+                      className="bg-slate-900 border-slate-800 focus-visible:ring-indigo-500" 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4 border border-slate-800 rounded-lg p-4 bg-slate-900/50">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-base text-slate-200">Publicado</Label>
+                      <p className="text-sm text-slate-500">¿Visible en la tienda?</p>
+                    </div>
+                    <Switch 
+                      checked={formData.published} 
+                      onCheckedChange={(c) => setFormData({ ...formData, published: c })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-base text-slate-200">Promoción</Label>
+                      <p className="text-sm text-slate-500">¿Destacar en inicio?</p>
+                    </div>
+                    <Switch 
+                      checked={formData.isPromo} 
+                      onCheckedChange={(c) => setFormData({ ...formData, isPromo: c })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="mt-6 pt-4 border-t border-border">
+                <Button type="submit" disabled={isCreating || isUpdating} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                  {isCreating || isUpdating ? 'Guardando...' : 'Guardar Producto'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isError ? (
+        <Card className="bg-slate-900 border-rose-900/50">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+             <AlertTriangle className="w-10 h-10 text-rose-500 mb-4" />
+             <p className="text-rose-400 font-medium">No se pudo cargar el catálogo.</p>
+             <p className="text-slate-500 text-sm">Esperando que el backend conecte con la base de datos.</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <Card key={i} className="bg-slate-900 border-slate-800 animate-pulse h-64"></Card>
+          ))}
+        </div>
+      ) : catalog.length === 0 ? (
+        <Card className="bg-surface border-border border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Tag className="w-12 h-12 text-slate-600 mb-4" />
+            <h3 className="text-lg font-medium text-slate-300">Catálogo Vacío</h3>
+            <p className="text-slate-500 text-sm mt-1 mb-4 text-center max-w-sm">No hay productos registrados. Comienza agregando tu primer artículo.</p>
+            <Button onClick={handleOpenCreate} className="bg-indigo-600 hover:bg-indigo-700">
+              Agregar Producto
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <SortableCatalogGrid 
+          items={catalog} 
+          onReorder={handleReorder}
+          onEdit={handleOpenEdit}
+          onDelete={handleDelete}
+        />
+      )}
+      </TabsContent>
+
+      <TabsContent value="templates" className="outline-none">
+        <Card className="bg-surface border-border border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <LayoutTemplate className="w-12 h-12 text-slate-600 mb-4" />
+            <h3 className="text-lg font-medium text-slate-300">Templates (Próximamente)</h3>
+            <p className="text-slate-500 text-sm mt-1 text-center max-w-sm">Aquí podrás administrar las plantillas de PC y componentes.</p>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="combos" className="outline-none">
+        <Card className="bg-surface border-border border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <BoxSelect className="w-12 h-12 text-slate-600 mb-4" />
+            <h3 className="text-lg font-medium text-slate-300">Combos (Próximamente)</h3>
+            <p className="text-slate-500 text-sm mt-1 text-center max-w-sm">Administra ofertas y agrupaciones de productos.</p>
+          </CardContent>
+        </Card>
+      </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

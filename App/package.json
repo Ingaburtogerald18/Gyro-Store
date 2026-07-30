@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch server/index.ts",
+    "dev:frontend": "npm --prefix frontend run dev",
     "start": "tsx server/index.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -14,17 +15,21 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1098.0",
     "@supabase/supabase-js": "^2.111.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "express-rate-limit": "^7.4.0",
+    "express-rate-limit": "^7.5.1",
     "helmet": "^8.3.0",
+    "multer": "^2.2.0",
+    "sharp": "^0.35.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^26.1.2",
     "tsx": "^4.20.0",
     "typescript": "^7.0.2"

@@ -1,0 +1,157 @@
+// Modal para editar los datos base de una compra en tránsito (China).
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Button } from "~/components/ui/button";
+import { Label } from "~/components/ui/label";
+import { purchaseFormSchema, type PurchaseFormInput } from "~/lib/validators";
+import { useUpdatePurchaseMutation, useGetPurchasesQuery, type Purchase } from "~/store/api/inventoryV1Api";
+import { Input } from "~/components/ui/input";
+import { formatUsd } from "~/lib/utils";
+
+export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
+  const [updatePurchase, { isLoading }] = useUpdatePurchaseMutation();
+  const { data: purchases = [] } = useGetPurchasesQuery();
+  const [codeWarn, setCodeWarn] = useState<string | null>(null);
+
+  const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<PurchaseFormInput>({
+    resolver: zodResolver(purchaseFormSchema),
+    mode: "onBlur",
+  });
+
+  useEffect(() => {
+    if (purchase) {
+      reset({
+        purchaseDate: purchase.purchaseDate || "",
+        lot: purchase.lot || "",
+        code: purchase.code || "",
+        productName: purchase.productName || "",
+        quantity: purchase.quantity,
+        costUnit: purchase.costUnit,
+        taxUnit: purchase.taxUnit,
+      });
+    }
+  }, [purchase, reset]);
+
+  const cost = Number(watch("costUnit")) || 0;
+  const tax = Number(watch("taxUnit")) || 0;
+  const qty = Number(watch("quantity")) || 0;
+  const subtotal = cost * qty;
+  const totalTax = tax * qty;
+  const totalFinal = subtotal + totalTax;
+
+  async function onSubmit(data: PurchaseFormInput) {
+    if (!purchase) return;
+    data.lot = data.lot.toUpperCase();
+    data.code = data.code.toUpperCase();
+    try {
+      await updatePurchase({ id: purchase.id, body: data }).unwrap();
+      toast.success("Compra modificada correctamente.");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.error || "No se pudo actualizar la compra.");
+    }
+  }
+
+  return (
+    <Dialog open={!!purchase} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Editar compra · {purchase?.code ?? ""}</DialogTitle>
+        </DialogHeader>
+      <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-5">
+
+        {/* ── Bloque 1: Datos del ítem ── */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {/* Fila 1: Fecha + Lote */}
+          <div className="grid gap-2">
+            <Label>Fecha de compra</Label>
+            <Input type="date" {...register("purchaseDate")} />
+          </div>
+          <div className="grid gap-2">
+            <Label>Lote</Label>
+            <input className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("lot")} />
+          </div>
+
+          {/* Fila 2: Código — media columna */}
+          <div className="grid gap-2">
+            <Label>Código</Label>
+            {(() => {
+              const { onBlur: rhfBlur, onChange: rhfChange, ...codeReg } = register("code");
+              return (
+                <input
+                    className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    {...codeReg}
+                    onChange={(e) => { rhfChange(e); setCodeWarn(null); }}
+                    onBlur={(e) => {
+                      rhfBlur(e);
+                      const val = e.target.value.trim().toUpperCase();
+                      const isDuplicate = purchases.some(
+                        (p) => p.code.toUpperCase() === val && p.id !== purchase?.id
+                      );
+                      if (val && isDuplicate) {
+                        setCodeWarn(`El código "${val}" ya está en uso por otra compra.`);
+                        toast.warning(`"${val}" ya está registrado en el inventario.`);
+                      } else {
+                        setCodeWarn(null);
+                      }
+                    }}
+                />
+              );
+            })()}
+            {codeWarn && <span className="text-xs text-amber-500">{codeWarn}</span>}
+          </div>
+
+          {/* Fila 3: Nombre — ancho completo */}
+          <div className="sm:col-span-2">
+            <div className="grid gap-2">
+              <Label>Nombre del producto</Label>
+              <input className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("productName")} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bloque 2: Datos financieros ── */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-2">
+            <Label>Cantidad</Label>
+            <input type="number" min={1} className="input h-10 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("quantity")} />
+          </div>
+          <div className="grid gap-2">
+            <Label>Precio base (USD)</Label>
+            <input type="number" step="0.01" min={0} className="input h-10 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("costUnit")} />
+          </div>
+          <div className="grid gap-2">
+            <Label>Imp. unitario (USD)</Label>
+            <input type="number" step="0.0001" min={0} className="input h-10 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("taxUnit")} />
+          </div>
+
+          {/* Tarjeta de totales estilo ticket */}
+          <div className="col-span-3 flex flex-col gap-2 rounded-xl border border-accent/20 bg-accent/5 p-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Subtotal (Base × Cantidad)</span>
+              <span className="font-medium text-text">{formatUsd(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Total de Impuestos (Imp × Cantidad)</span>
+              <span className="font-medium text-text">+{formatUsd(totalTax, 4)}</span>
+            </div>
+            <div className="my-1 border-t border-accent/10" />
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-accent/70">Total Final</span>
+              <span className="font-heading text-xl font-bold text-accent-2">{formatUsd(totalFinal)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-border pt-4">
+          <Button variant="ghost" size="sm" onClick={onClose} type="button">Cancelar</Button>
+          <Button type="submit" size="sm" loading={isLoading}>Guardar cambios</Button>
+        </div>
+      </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

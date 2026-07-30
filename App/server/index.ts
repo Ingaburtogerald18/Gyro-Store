@@ -8,12 +8,20 @@ import { asyncHandler } from './utils/asyncHandler';
 import { requireAnyRole } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import configRouter from './routes/config';
+import adminConfigRouter from './routes/adminConfig';
+import landingRouter from './routes/landing';
 import catalogRouter from './routes/catalog';
+import adminCatalogRouter from './routes/adminCatalog';
+import adminUsersRouter from './routes/adminUsers';
+import uploadRouter from './routes/upload';
+
 import combosRouter from './routes/combos';
 import ordersRouter from './routes/orders';
-import { apiLimiter } from './middleware/rateLimiter';
+import authRouter from './routes/auth';
+import { apiLimiter, publicOrderLimiter } from './middleware/rateLimiter';
 import { sanitizeBody } from './utils/sanitize';
 import { logger } from './utils/logger';
+import { startUserCleanupCron } from './services/cleanupUsers';
 
 const app: Express = express();
 
@@ -53,8 +61,20 @@ app.get(
 );
 
 app.use('/api/config', configRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/landing-config', landingRouter);
 app.use('/api/catalog', catalogRouter);
+app.use('/api/admin/catalog', adminCatalogRouter);
+app.use('/api/admin/users', adminUsersRouter);
+app.use('/api/admin/config', adminConfigRouter);
+app.use('/api/upload', uploadRouter);
 app.use('/api/combos', combosRouter);
+
+// Límite propio para el checkout público, ANTES de montar el router de pedidos:
+// es el único endpoint anónimo que escribe en la base. Solo intercepta el POST
+// (el resto de /api/orders sigue con el límite general); al no ser el último
+// handler del método, la petición continúa hacia ordersRouter.
+app.post('/api/orders/public', publicOrderLimiter);
 app.use('/api/orders', ordersRouter);
 
 // ── Cierre de la cadena ──
@@ -63,4 +83,7 @@ app.use(errorHandler);
 
 app.listen(config.port, () => {
   logger.info(`Gyro Store API arriba en puerto ${config.port}`, { env: config.env });
+  
+  // Iniciar tareas en segundo plano
+  startUserCleanupCron();
 });

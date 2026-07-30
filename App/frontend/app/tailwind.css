@@ -1,0 +1,183 @@
+/*
+ * Sistema de diseño "Editorial Dark" — tokens de marca Gyro Store.
+ *
+ * Fuente de verdad: DESIGN.md (§2 Color). Los valores se portaron del código
+ * que hoy corre en gyrostorenic.com (v1 `app/styles/globals.css`), que es el
+ * look aprobado; donde DESIGN.md y ese código divergían, mandó el código.
+ *
+ * Regla dura: ningún componente usa colores crudos de Tailwind
+ * (`bg-slate-800`, `text-cyan-400`). Todo sale de estos tokens semánticos.
+ */
+@import "tailwindcss";
+/* Animaciones enter/exit (animate-in / animate-out) de las primitivas shadcn. */
+@import "tw-animate-css";
+
+/* La variante `dark:` sigue a nuestro data-theme, no al prefers-color-scheme
+   del sistema: el tema lo controla useTheme (doc 05 §7). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  /* ── Superficies — Midnight (neutros fríos casi-negros, nunca negro puro).
+     Cada nivel sube un peldaño real de luminosidad → profundidad legible. ── */
+  --color-bg: #0a0a0f;
+  --color-surface: #15151e;
+  --color-surface-2: #1e1e2a;
+  --color-surface-hover: #2a2a38;
+  --color-border: rgba(148, 184, 255, 0.09);
+
+  /* ── Acento: TEAL de marca (logo #42c5b0). El primario vivo resalta sobre el
+     fondo oscuro; el hover baja al teal profundo. ── */
+  --color-accent: #2dd4bf;
+  --color-accent-2: #5eead4;
+  --color-accent-hover: #14b8a6;
+  /* WhatsApp en su verde canónico: distinto del teal para no confundirse. */
+  --color-whatsapp: #25d366;
+  --color-grad-from: #14b8a6;
+  --color-grad-to: #0d9488;
+
+  /* ── Texto ── */
+  --color-text: #eaf1ff;
+  --color-muted: #8b9bb8;
+
+  /* ── Estados semánticos ── */
+  --color-danger: #f87171;
+  --color-warning: #fbbf24;
+  --color-info: #38bdf8;
+  --color-success: #22c55e;
+
+  /* ── Violeta acento (segundo color de marca) — badges y detalles ── */
+  --color-badge: #885cf6;
+  --color-badge-2: #a78bfa;
+
+  /* Tipografía UNIFICADA: Inter para todo (body + headings). La jerarquía se
+     logra con tamaño y peso, no con familias distintas. */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-heading: "Inter", system-ui, -apple-system, sans-serif;
+
+  --radius-card: 20px;
+  --radius-input: 14px;
+  --radius-pill: 99px;
+
+  /* Entradas y reveals: ease-out exponencial. */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Puente para las primitivas de shadcn/ui.
+   El CLI genera componentes con la nomenclatura estándar
+   (background/foreground/primary/muted/…). En vez de repintar cada
+   archivo, se mapean acá a los MISMOS tokens de marca: un solo lugar
+   de verdad y el flip dark↔light sigue funcionando.
+
+   OJO con `accent`: shadcn lo usa como fondo de hover sutil, pero en
+   Gyro `accent` es el esmeralda de marca (precio, CTA). Manda la marca
+   — los componentes de ui/ que traían `hover:bg-accent` se corrigieron
+   a `hover:bg-surface-hover`.
+   ────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text);
+  --color-popover: var(--color-surface-2);
+  --color-popover-foreground: var(--color-text);
+
+  /* El esmeralda es medio-claro: el CTA plano lleva texto OSCURO (~10:1).
+     Nunca texto blanco sobre el accent plano (DESIGN.md §2). */
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: var(--color-bg);
+
+  --color-secondary: var(--color-surface-2);
+  --color-secondary-foreground: var(--color-text);
+  --color-muted-bg: var(--color-surface-2);
+  --color-muted-foreground: var(--color-muted);
+  --color-accent-foreground: var(--color-bg);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: var(--color-bg);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-accent);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Modo claro "Daylight" — variante calibrada; el oscuro sigue siendo
+   la identidad de marca. El acento se OSCURECE a emerald-700 para que
+   un solo token sirva como relleno y como texto legible (DESIGN.md §2.1).
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  /* "Alabaster / Frosted Pearl": nunca blanco clínico. El fondo es una perla con
+     tinte frío y la superficie separa sin necesidad de sombra dura. */
+  --color-bg: #e9edf3;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef2f7;
+  --color-surface-hover: #e3e9f1;
+  --color-border: rgba(15, 40, 70, 0.12);
+
+  /* Teal profundo: legible como texto sobre blanco y mantiene la marca. */
+  --color-accent: #0f766e;
+  --color-accent-2: #115e59;
+  --color-accent-hover: #115e59;
+  --color-whatsapp: #128c3e;
+  --color-grad-from: #0f766e;
+  --color-grad-to: #0d9488;
+
+  --color-text: #0f2420;
+  --color-muted: #5c6b66;
+
+  --color-danger: #e11d48;
+  --color-warning: #d97706;
+  --color-info: #0284c7;
+  --color-success: #16a34a;
+
+  --color-badge: #6366f1;
+  --color-badge-2: #4f46e5;
+
+  color-scheme: light;
+}
+
+/* Puente de hairlines: las utilidades `border-white/α` y `bg-white/α` que usa
+   el storefront son INVISIBLES sobre fondo claro; se remapean a tinta oscura
+   translúcida. Si agregás un `border-white/N` nuevo, sumalo también acá
+   (DESIGN.md §2.1, regla 2). */
+[data-theme="light"] .border-white\/5 { border-color: rgba(15, 23, 42, 0.07); }
+[data-theme="light"] .border-white\/10 { border-color: rgba(15, 23, 42, 0.11); }
+[data-theme="light"] .border-white\/20 { border-color: rgba(15, 23, 42, 0.16); }
+[data-theme="light"] .border-white\/25 { border-color: rgba(15, 23, 42, 0.2); }
+[data-theme="light"] .bg-white\/5 { background-color: rgba(15, 23, 42, 0.04); }
+[data-theme="light"] .bg-white\/10 { background-color: rgba(15, 23, 42, 0.06); }
+[data-theme="light"] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.05); }
+[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.07); }
+
+/* Escenario del producto: transparente a propósito — las fotos del catálogo ya
+   traen su propio fondo, así que un recuadro extra solo ensuciaría. Se conserva
+   como gancho de layout para poder cambiarlo en un solo lugar. */
+@utility product-stage {
+  background-color: transparent;
+}
+
+/* Curva de salida exponencial: entradas rápidas que desaceleran con elegancia. */
+@utility ease-expo {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cifras siempre tabulares (precios, stock, contadores) — DESIGN.md §3. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes login-enter-rise { from { opacity: 0; transform: translateY(28px); } }
+@keyframes login-enter-slide { from { opacity: 0; transform: translateX(-48px); } }
+
+.login-enter-slide { animation: login-enter-slide 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.login-enter-rise { animation: login-enter-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.12s backwards; }
+.login-enter-item { animation: login-enter-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }

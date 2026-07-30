@@ -129,9 +129,9 @@ Cuando el vendedor registra una venta, por cada línea el sistema calcula:
 | **> 900** | **27%** (el último tramo se extiende como catch-all — decisión §10.3) |
 
 - **Tramo único:** se busca el rango y ese % se aplica a **toda** la utilidad neta (no marginal). [decisión]
-- **Por línea:** la utilidad neta de la línea es `(precio − coste) × cantidad`; con ese total se busca
-  el tramo. [decisión] *(En el Excel todas las ventas de prueba son de 1 unidad, así que el efecto de
-  cantidad > 1 conviene confirmarlo con un caso real — ver §10.)*
+- **Por línea:** la utilidad **bruta** de la línea es `(precio − coste_final) × cantidad`, y la neta es
+  esa bruta menos el Salary: `(precio − coste_final) × cantidad × (1 − salary%)`. Con ese total se
+  busca el tramo. [decisión, cerrada en §10.4]
 - **El Salary (20%) es un fondo de la empresa**: no es del vendedor ni cuenta como "ganancia tienda";
   se acumula aparte (§8).
 - **Todo esto se congela al aprobar** la venta (foto en `order_items`).
@@ -258,7 +258,7 @@ Las dudas que el Excel no cerraba ya fueron resueltas y quedan estipuladas así:
    - `>= 12 unidades` = **15%** de descuento. El sistema muestra una alerta al vendedor: *"Mejor haz una cotización para obtener mejores descuentos"*.
 2. **Base del descuento de mayoreo:** Aplica directamente sobre el precio base o tentativo cargado en el producto (no sobre el sugerido matemático).
 3. **Comisiones en Mayoreo y >900 C$:** Se utiliza la misma tabla escalonada base, ya que el mayoreo al reducir el precio, automáticamente reduce la Utilidad Neta (sobre la que se calcula la comisión). La tabla escalonada sube libremente para utilidades de >900 C$.
-4. **Cantidad > 1 en comisión:** El tramo de la tabla escalonada se busca sobre la utilidad neta **total de la línea** (`(precio − coste_final − salary) × cantidad`), NO por unidad suelta.
+4. **Cantidad > 1 en comisión:** El tramo de la tabla escalonada se busca sobre la utilidad neta **total de la línea** (`utilidad_neta = (precio − coste_final) × cantidad × (1 − salary%)`), NO por unidad suelta. Ojo con la forma de la fórmula: el Salary es un **porcentaje de la utilidad bruta de la línea** (§4), no un monto en C$ que se reste al precio unitario.
 5. **Inventario migrado:** Queda fuera del alcance por ahora. No se le aplican pozos ni costos fijos, se venderá con su costo puro heredado del Excel.
 
 ---
