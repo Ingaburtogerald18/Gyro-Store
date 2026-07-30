@@ -14,6 +14,9 @@ import catalogRouter from './routes/catalog';
 import adminCatalogRouter from './routes/adminCatalog';
 import adminUsersRouter from './routes/adminUsers';
 import inventoryRouter from './routes/inventory';
+import salesRouter from './routes/sales';
+import invoicesRouter from './routes/invoices';
+import installmentsRouter from './routes/installments';
 import uploadRouter from './routes/upload';
 
 import combosRouter from './routes/combos';
@@ -69,6 +72,9 @@ app.use('/api/admin/catalog', adminCatalogRouter);
 app.use('/api/admin/users', adminUsersRouter);
 app.use('/api/admin/config', adminConfigRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/sales', salesRouter);
+app.use('/api/invoices', invoicesRouter);
+app.use('/api/installments', installmentsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/combos', combosRouter);
 

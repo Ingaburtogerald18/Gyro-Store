@@ -106,7 +106,7 @@ middleware, **paralelo** a todo lo de A.2–A.4 (que sigue siendo exclusivamente
 |---|---|---|
 | Catálogo | `catalog_items`, `templates`, `combos` | catalog, templates, combos |
 | Inventario | `purchases`, `products`, `migrated_inventory`, `stock_reservations` | idem |
-| Ventas | `orders`, `order_items`, `order_reservations` | orders (arrays embebidos → tablas hijas) |
+| Ventas | `orders`, `order_items` (reservas: `stock_reservations`, doc 03 B.3) | orders (arrays embebidos → tablas hijas) |
 | Facturación | `invoices` | invoices |
 | Pedidos públicos | `public_orders`, `public_order_items` | public_orders |
 | Cuotas | `installments`, `payments` | installments, payments |
@@ -209,8 +209,9 @@ no un array suelto; la integridad la garantiza la base.
 aprobar** (solo admin): `coste_final_snap`, `utilidad_bruta`, `salary`, `utilidad_neta`, `comision`,
 `ganancia_tienda`, `pozos` (jsonb con los 7 montos). Toda la matemática está en el doc 11. [v2]
 
-**`order_reservations`** — enlaza venta ↔ stock reservado (**tabla hija**, antes array embebido)
-`order_id` FK, `purchase_id` FK, `code`, `quantity`, `unit_final_usd`. [v2]
+La venta ↔ stock reservado se enlaza con **`stock_reservations`** (B.3 arriba, `order_id` FK) — no
+hay una tabla `order_reservations` aparte: 0003_sales.sql había creado una duplicada por error
+(mismo shape, sin usar); se eliminó en la migración 0008 (doc 09 ítem 60).
 
 > Los costos (`cost`, `commission`) se filtran (`publicItems`) antes de responder a no-admin. Con
 > tablas separadas es aún más fácil: el `SELECT` para no-admin simplemente no trae esas columnas.

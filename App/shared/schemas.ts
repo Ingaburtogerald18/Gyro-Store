@@ -396,4 +396,80 @@ export const newMigratedInputSchema = z.object({
   shippingUnit: z.number().min(0),
   comments: z.string().max(500).optional(),
 });
-export type NewMigratedInput = z.infer<typeof newMigratedInputSchema>;
+export type NewMigratedInput = z.infer<typeof newMigratedInputSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: VENTAS (ADMIN/SELLER) ──
+// ============================================================================
+// MVP de Hito 3 (doc 09 ítem 60): cotizar, registrar, aprobar, rechazar,
+// listar. Sin fotos de recibo, sin venta vía ticket de factura, sin edición
+// post-aprobación ni pago de comisiones por lotes — ver doc 11 §4-5 para la
+// cadena financiera que server/services/sales.ts arma con estos datos.
+
+export const saleLineInputSchema = z.object({
+  // Mismo límite que inventario (doc 09 ítem 51): sin un catalog_item_id real
+  // en purchases todavía, el producto se identifica por nombre, no por SKU.
+  productName: z.string().min(1, 'El producto es obligatorio.').max(160),
+  quantity: z.number().int().positive('La cantidad debe ser mayor a 0.'),
+  salePrice: z.number().min(0),
+  // Mayoreo es herramienta del cotizador (doc 11 §5), no automático: default
+  // true a nivel de servicio, pero el vendedor lo puede desactivar por línea.
+  applyWholesale: z.boolean().optional(),
+});
+export type SaleLineInput = z.infer<typeof saleLineInputSchema>;
+
+export const quoteInputSchema = z.object({
+  items: z.array(saleLineInputSchema).min(1, 'Selecciona al menos un producto.').max(50),
+});
+export type QuoteInput = z.infer<typeof quoteInputSchema>;
+
+export const registerSaleInputSchema = z.object({
+  phone: z.string().max(20).optional(),
+  items: z
+    .array(saleLineInputSchema)
+    .min(1, 'La venta necesita al menos un producto.')
+    .max(50)
+    .refine((items) => new Set(items.map((i) => i.productName)).size === items.length, {
+      message: 'No repitas el mismo producto en dos líneas: sumá la cantidad en una sola.',
+    }),
+});
+export type RegisterSaleInput = z.infer<typeof registerSaleInputSchema>;
+
+export const rejectSaleInputSchema = z.object({
+  reason: z.string().min(1, 'El motivo de rechazo es obligatorio.').max(500),
+});
+export type RejectSaleInput = z.infer<typeof rejectSaleInputSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: FACTURACIÓN (ADMIN/CASHIER) ──
+// ============================================================================
+// Modelo delgado (doc 09 ítem 61): la factura numera una venta YA aprobada
+// (server/services/sales.ts) — no tiene líneas propias, esas viven en
+// order_items. `invoiceNumber` nunca lo manda el cliente: lo asigna el
+// `nextval()` de la secuencia en server/services/invoice.ts.
+export const createInvoiceInputSchema = z.object({
+  orderId: z.uuid(),
+  method: z.enum(['efectivo', 'transferencia', 'tarjeta']),
+  deliveryFee: z.number().min(0).optional(),
+});
+export type CreateInvoiceInput = z.infer<typeof createInvoiceInputSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: CUOTAS (ADMIN) ──
+// ============================================================================
+// Mismo modelo delgado que facturación: el plan de cuotas envuelve una venta
+// YA aprobada (server/services/sales.ts) — no repite FIFO ni comisión, solo
+// agenda el cobro. `total` sale de `orders.total`, no lo manda el cliente.
+export const createInstallmentPlanInputSchema = z.object({
+  orderId: z.uuid(),
+  numCuotas: z.number().int().min(2, 'Mínimo 2 cuotas.').max(36),
+  firstDue: z.iso.date(),
+});
+export type CreateInstallmentPlanInput = z.infer<typeof createInstallmentPlanInputSchema>;
+
+export const registerInstallmentPaymentInputSchema = z.object({
+  amount: z.number().positive('El monto debe ser mayor a 0.'),
+  method: z.enum(['efectivo', 'transferencia', 'tarjeta']).optional(),
+  note: z.string().max(300).optional(),
+});
+export type RegisterInstallmentPaymentInput = z.infer<typeof registerInstallmentPaymentInputSchema>;

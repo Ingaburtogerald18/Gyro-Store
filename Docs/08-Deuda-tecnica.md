@@ -130,7 +130,7 @@ Catálogo, templates, combos, PDP, checkout WhatsApp (`public_orders` con recál
 CRUD, imágenes vía Sharp+R2, promo). Máquina de estados del lote (`enum`).
 
 ### Hito 3 — Ventas y facturación
-`orders` (+ `order_items`, `order_reservations`), comisiones (escala progresiva — documentar tramos),
+`orders` (+ `order_items`, reservas en `stock_reservations`), comisiones (escala progresiva — documentar tramos),
 pagos por semana, `invoices` (POS 80mm, sequence para numerar, 1 ticket=1 uso), `installments`,
 `audit_logs`.
 
