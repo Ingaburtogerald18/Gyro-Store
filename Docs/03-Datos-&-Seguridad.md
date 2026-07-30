@@ -177,13 +177,20 @@ variantes. Se leen junto al catálogo (join o segundo query).
 | `costo_china_usd`, `impuesto_unit_usd`, `envio_unit_usd` | entradas de costo por unidad (USD) — ver doc 11 §1 |
 | `exchange_rate` | **congelada al recibir el lote** (el costo histórico no se mueve) [v2] |
 | 🧮 `costo_real_usd`, 🧮 `costo_real_cs` | costo real derivado (base de todos los cálculos, doc 11) |
+| `product_name`, `category`, `arrival_date`, `suggested_price` | campos del panel v1 (migración 0007) — `product_name` es texto libre: a esta altura del flujo la compra **no** está vinculada a `catalog_items`/`products`, eso pasa recién en el catálogo admin (ítem 54) |
+| 🧮 `costo_f_u`, 🧮 `coste_final` | Costo F/U + coste final (doc 11 §2), migración 0007 — viven acá y no en `products` porque `stock_reservations.purchase_id` prueba que el FIFO real corre sobre `purchases`, no sobre `products` |
 
 **`products`** — stock por SKU (vista de bodega). `sku`/`code` 🔑 (`unique`), `stock` 🧮 descontado
 atómicamente. En Postgres el detalle de catálogo resuelve stock con un `JOIN` normal (adiós al
-`where('sku','in',<=10)` por lotes que imponía Firestore). [v2]
+`where('sku','in',<=10)` por lotes que imponía Firestore). [v2] **Aún sin uso**: nada en el Hito 2 de
+inventario (`purchases`/FIFO) la toca todavía — se activa cuando el catálogo admin (ítem 54) vincule
+una compra a un `catalog_item`/SKU.
 
 **`migrated_inventory`** — inventario histórico (Excel viejo), `origin='migrated'`, costo real ya
-dado (no corre FIFO). Aislado de `purchases`.
+dado (no corre FIFO). Aislado de `purchases`. Migración 0005 le agrega el resto de campos que pide el
+panel v1: `status` (texto libre, no el enum `purchase_status` — no tiene sentido "en tránsito" para
+algo migrado), `lot`, `code`, `purchase_date`, `quantity_sold`, `quantity_reserved`, `cost_unit_usd`,
+`shipping_unit_usd`, `suggested_price`, `comments`.
 
 **`stock_reservations`** — reservas de stock. En v2 es una **tabla con FK** a `orders` y `purchases`,
 no un array suelto; la integridad la garantiza la base.

@@ -335,4 +335,65 @@ export const financialConfigSchema = z.object({
   path: ['pozos'],
 });
 
-export type FinancialConfig = z.infer<typeof financialConfigSchema>;
+export type FinancialConfig = z.infer<typeof financialConfigSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: INVENTARIO (ADMIN) ──
+// ============================================================================
+// Contrato de entrada de server/routes/inventory.ts. Los shapes de salida
+// (Purchase, InventoryRow, InventoryKpis, MigratedItem) viven como interfaces
+// TS en server/services/inventory.ts, no acá: son datos derivados que arma el
+// servicio, no algo que un cliente mande y haya que validar en el borde.
+
+export const newPurchaseInputSchema = z.object({
+  purchaseDate: z.iso.date(),
+  lot: z.string().min(1, 'El lote es obligatorio.').max(40),
+  code: z.string().min(1, 'El código es obligatorio.').max(40),
+  productName: z.string().min(1, 'El nombre del producto es obligatorio.').max(160),
+  // >0: una compra de 0 unidades no tiene sentido y dividiría por cero en
+  // finance.ts al recibirla (doc 11 §1: costo unitario origen = total/cantidad).
+  quantity: z.number().int().positive('La cantidad debe ser mayor a 0.'),
+  costUnit: z.number().min(0),
+  taxUnit: z.number().min(0),
+  suggestedPrice: z.number().min(0).optional(),
+});
+export type NewPurchaseInput = z.infer<typeof newPurchaseInputSchema>;
+
+// Edición post-creación. Deliberadamente NO es un `Partial<Purchase>` real:
+// solo expone los campos de negocio editables a mano (insumos de costeo,
+// identificación del lote). `status`, `quantitySold`, `quantityReserved`,
+// `priceUnit`/`total` (derivados) quedan fuera — esos los mueven
+// reportArrival/revertPurchase/el FIFO, no una edición libre.
+export const updatePurchaseInputSchema = z.object({
+  purchaseDate: z.iso.date().optional(),
+  lot: z.string().min(1).max(40).optional(),
+  code: z.string().min(1).max(40).optional(),
+  productName: z.string().min(1).max(160).optional(),
+  category: z.string().min(1).max(80).optional(),
+  quantity: z.number().int().positive().optional(),
+  costUnit: z.number().min(0).optional(),
+  taxUnit: z.number().min(0).optional(),
+  shippingUnit: z.number().min(0).optional(),
+  suggestedPrice: z.number().min(0).optional(),
+});
+export type UpdatePurchaseInput = z.infer<typeof updatePurchaseInputSchema>;
+
+export const arrivalInputSchema = z.object({
+  arrivalDate: z.iso.date(),
+  shippingUnit: z.number().min(0),
+  category: z.string().min(1, 'La categoría es obligatoria.').max(80),
+  suggestedPrice: z.number().min(0).optional(),
+});
+export type ArrivalInput = z.infer<typeof arrivalInputSchema>;
+
+export const newMigratedInputSchema = z.object({
+  purchaseDate: z.iso.date(),
+  lot: z.string().max(40).optional(),
+  code: z.string().min(1, 'El código es obligatorio.').max(40),
+  productName: z.string().min(1, 'El nombre del producto es obligatorio.').max(160),
+  quantity: z.number().int().positive('La cantidad debe ser mayor a 0.'),
+  costUnit: z.number().min(0),
+  shippingUnit: z.number().min(0),
+  comments: z.string().max(500).optional(),
+});
+export type NewMigratedInput = z.infer<typeof newMigratedInputSchema>;

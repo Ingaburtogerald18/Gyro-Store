@@ -28,6 +28,10 @@ export default defineConfig({
     // Contrato único front/back: los forms extienden shared/schemas.ts (doc 05 §6).
     alias: {
       '@shared': path.resolve(dirname, '../shared'),
+      // App/shared vive fuera de esta carpeta y no tiene su propio node_modules,
+      // así que la resolución normal de Node (subiendo desde shared/) no encuentra
+      // 'zod'. Se fuerza a usar la copia ya instalada en frontend/node_modules.
+      zod: path.resolve(dirname, 'node_modules/zod'),
     },
   },
   server: {
