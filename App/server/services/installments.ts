@@ -14,6 +14,7 @@
 // fecha en vez de una "próxima cuota" calculada.
 import { db } from '../supabase';
 import { round } from './finance';
+import { firstOfEmbed } from '../utils/firstOfEmbed';
 import type { CreateInstallmentPlanInput, RegisterInstallmentPaymentInput } from '../../shared/schemas';
 
 export interface InstallmentPayment {
@@ -28,6 +29,10 @@ export interface InstallmentPayment {
 export interface InstallmentPlan {
   id: string;
   orderId: string;
+  // De la orden vinculada (doc 03: orders.phone/seller_email) — sin esto la
+  // lista de planes solo mostraría un UUID, nada de a quién le vendieron.
+  phone: string | null;
+  sellerEmail: string | null;
   total: number;
   numCuotas: number;
   firstDue: string;
@@ -48,6 +53,11 @@ interface PaymentEmbedRow {
   created_at: string;
 }
 
+interface OrderEmbed {
+  phone: string | null;
+  seller_email: string | null;
+}
+
 interface InstallmentRow {
   id: string;
   order_id: string;
@@ -58,13 +68,15 @@ interface InstallmentRow {
   created_at: string;
   updated_at: string;
   // payments.installment_id → installments.id es many-to-one desde payments,
-  // así que embebido desde acá siempre es un array (a diferencia de los
-  // embeds many-to-one que sí necesitan el normalizador objeto|array).
+  // así que embebido desde acá siempre es un array (a diferencia de
+  // orders, many-to-one desde installments, que sí necesita
+  // firstOfEmbed — ver utils/firstOfEmbed.ts).
   payments: PaymentEmbedRow[];
+  orders: OrderEmbed | OrderEmbed[] | null;
 }
 
 const INSTALLMENT_COLUMNS =
-  'id, order_id, total, num_cuotas, first_due, status, created_at, updated_at, payments(id, amount, method, paid_at, note, created_at)';
+  'id, order_id, total, num_cuotas, first_due, status, created_at, updated_at, payments(id, amount, method, paid_at, note, created_at), orders(phone, seller_email)';
 
 function toPayment(row: PaymentEmbedRow): InstallmentPayment {
   return {
@@ -87,10 +99,13 @@ function toInstallmentPlan(row: InstallmentRow): InstallmentPlan {
   );
   const total = row.total ?? 0;
   const amountPending = round(Math.max(0, total - amountPaid), 2);
+  const order = firstOfEmbed(row.orders);
 
   return {
     id: row.id,
     orderId: row.order_id,
+    phone: order?.phone ?? null,
+    sellerEmail: order?.seller_email ?? null,
     total,
     numCuotas: row.num_cuotas,
     firstDue: row.first_due,
@@ -119,26 +134,22 @@ export async function listInstallments(status?: string): Promise<InstallmentPlan
 }
 
 export async function createInstallmentPlan(input: CreateInstallmentPlanInput): Promise<InstallmentPlan> {
-  const { data: order, error: orderError } = await db
-    .from('orders')
-    .select('id, status, total')
-    .eq('id', input.orderId)
-    .maybeSingle();
-  if (orderError) throw orderError;
+  // Independientes entre sí (una lee orders, la otra installments): en paralelo.
+  const [orderResult, existingResult] = await Promise.all([
+    db.from('orders').select('id, status, total').eq('id', input.orderId).maybeSingle(),
+    db.from('installments').select('id').eq('order_id', input.orderId).maybeSingle(),
+  ]);
+  if (orderResult.error) throw orderResult.error;
+  if (existingResult.error) throw existingResult.error;
+
+  const order = orderResult.data;
   if (!order) {
     throw new Error('Venta no encontrada.');
   }
   if (order.status !== 'approved') {
     throw new Error('Solo se puede poner en cuotas una venta aprobada.');
   }
-
-  const { data: existing, error: existingError } = await db
-    .from('installments')
-    .select('id')
-    .eq('order_id', input.orderId)
-    .maybeSingle();
-  if (existingError) throw existingError;
-  if (existing) {
+  if (existingResult.data) {
     throw new Error('Esta venta ya tiene un plan de cuotas.');
   }
 
@@ -164,9 +175,17 @@ export async function registerInstallmentPayment(
   installmentId: string,
   input: RegisterInstallmentPaymentInput,
 ): Promise<{ amountPaid: number; amountPending: number; completed: boolean } | null> {
-  const plan = await getInstallmentPlan(installmentId);
-  if (!plan) return null;
-  if (plan.status === 'completed') {
+  // Lectura angosta: acá solo hace falta el status, no el plan completo
+  // (pagos + orden embebidos) — eso se trae una sola vez más abajo, después
+  // de insertar, para calcular el resultado real.
+  const { data: existing, error: existingError } = await db
+    .from('installments')
+    .select('status')
+    .eq('id', installmentId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (!existing) return null;
+  if (existing.status === 'completed') {
     throw new Error('Este plan de cuotas ya está completamente pagado.');
   }
 

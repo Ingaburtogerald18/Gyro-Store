@@ -6,9 +6,8 @@ import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
-import { purchaseFormSchema, type PurchaseFormInput } from "~/lib/validators";
+import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
-import { Input } from "~/components/ui/input";
 import { Input } from "~/components/ui/input";
 import { formatUsd } from "~/lib/utils";
 
@@ -20,7 +19,7 @@ const EMPTY_PURCHASE = {
   quantity: "",
   costUnit: "",
   taxUnit: "",
-} as unknown as DefaultValues<PurchaseFormInput>;
+} as unknown as DefaultValues<PurchaseFormValues>;
 
 export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   const [createPurchase, { isLoading }] = useCreatePurchaseMutation();
@@ -34,7 +33,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
     watch,
     reset,
     formState: { errors },
-  } = useForm<PurchaseFormInput>({
+  } = useForm<PurchaseFormValues, any, PurchaseFormInput>({
     resolver: zodResolver(purchaseFormSchema),
     defaultValues: EMPTY_PURCHASE,
     mode: "onBlur",
@@ -92,7 +91,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
         {/* Fila 1: Fecha + Lote */}
         <div className="grid gap-2">
   <Label>"Fecha de compra" </Label>
-          <Input type="date" control={control} name="purchaseDate" invalid={!!errors.purchaseDate} />
+          <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
         </div>
         <div className="grid gap-2">
   <Label>"Lote" </Label>
@@ -106,7 +105,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
                 onChange={field.onChange}
                 onBlur={field.onBlur}
                 name={field.name}
-                invalid={!!errors.lot}
+                aria-invalid={!!errors.lot}
               />
             )}
           />
@@ -154,7 +153,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
                   onChange={field.onChange}
                   onBlur={field.onBlur}
                   name={field.name}
-                  invalid={!!errors.productName}
+                  aria-invalid={!!errors.productName}
                 />
               )}
             />

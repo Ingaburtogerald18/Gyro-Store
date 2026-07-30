@@ -20,3 +20,25 @@ export async function listPublishedCombos(): Promise<Combo[]> {
   // cliente no tiene nada que corregir en su request (ver parseDbRows).
   return parseDbRows(comboSchema, data, 'combos');
 }
+
+// Un combo publicado por id, para la página de detalle. Devuelve null si no
+// existe o no está publicado — desde afuera son el mismo 404, así un combo
+// despublicado no se puede sondear por id (mismo criterio que
+// getPublishedCatalogItem en catalog.ts).
+export async function getPublishedCombo(id: string): Promise<Combo | null> {
+  const { data, error } = await db
+    .from('combos')
+    .select('*')
+    .eq('id', id)
+    .eq('published', true)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    return null;
+  }
+
+  return parseDbRows(comboSchema, [data], 'combos')[0] ?? null;
+}

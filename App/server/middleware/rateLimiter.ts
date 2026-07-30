@@ -32,3 +32,17 @@ export const publicOrderLimiter: RateLimitRequestHandler = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Mismo criterio que publicOrderLimiter: POST /api/contact es el otro
+// endpoint anónimo que escribe en la base (crea/actualiza un contacto del
+// CRM). Sin esto, un script podría llenar `contacts`/`contact_activities` de
+// basura tan fácil como el checkout público.
+export const contactLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    error: 'Recibimos varios mensajes desde esta conexión. Esperá unos minutos e intentá de nuevo.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

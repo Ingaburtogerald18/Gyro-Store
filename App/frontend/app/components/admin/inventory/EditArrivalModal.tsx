@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
-import { arrivalFormSchema, type ArrivalFormInput } from "~/lib/validators";
+import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useUpdatePurchaseMutation, type Purchase } from "~/store/api/inventoryV1Api";
-import { useGetConfigQuery } from "~/store/api/catalogApi";
+import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
 
 export function EditArrivalModal({
@@ -27,7 +27,7 @@ export function EditArrivalModal({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<ArrivalFormInput>({
+  } = useForm<ArrivalFormValues, any, ArrivalFormInput>({
     resolver: zodResolver(arrivalFormSchema),
   });
 
