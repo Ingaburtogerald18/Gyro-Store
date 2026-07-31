@@ -5,14 +5,13 @@ import { Slot } from "radix-ui"
 import { cn } from "~/lib/utils"
 
 const markerVariants = cva(
-  "group/marker relative flex min-h-4 w-full items-center gap-2 text-left text-sm text-muted-foreground [&_svg:not([class*='size-'])]:size-4 [a]:underline [a]:underline-offset-3 [a]:hover:text-foreground",
+  "cn-marker group/marker relative flex w-full items-center",
   {
     variants: {
       variant: {
-        default: "",
-        separator:
-          "before:mr-1 before:h-px before:min-w-0 before:flex-1 before:bg-border after:ml-1 after:h-px after:min-w-0 after:flex-1 after:bg-border",
-        border: "border-b border-border pb-2",
+        default: "cn-marker-variant-default",
+        separator: "cn-marker-variant-separator",
+        border: "cn-marker-variant-border",
       },
     },
   }
@@ -44,10 +43,7 @@ function MarkerIcon({ className, ...props }: React.ComponentProps<"span">) {
     <span
       data-slot="marker-icon"
       aria-hidden="true"
-      className={cn(
-        "size-4 shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
-      )}
+      className={cn("cn-marker-icon shrink-0", className)}
       {...props}
     />
   )
@@ -57,10 +53,7 @@ function MarkerContent({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       data-slot="marker-content"
-      className={cn(
-        "min-w-0 wrap-break-word group-data-[variant=separator]/marker:flex-none group-data-[variant=separator]/marker:text-center *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
-        className
-      )}
+      className={cn("cn-marker-content min-w-0 wrap-break-word", className)}
       {...props}
     />
   )

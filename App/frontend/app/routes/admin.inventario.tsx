@@ -9,6 +9,7 @@ import {
   useReportArrivalMutation,
   type Purchase
 } from '~/store/api/inventoryV1Api';
+import { useGetCategoriesQuery } from '~/store/api/catalogAdminApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
@@ -20,6 +21,7 @@ import { Label } from '~/components/ui/label';
 import { PackagePlus, RefreshCcw, AlertTriangle, Boxes, Archive, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { getSupabaseClient } from '~/lib/supabase.client';
 
 
@@ -53,6 +55,7 @@ export default function AdminInventario() {
   const [createPurchase, { isLoading: isRegistering }] = useCreatePurchaseMutation();
   const [deletePurchase, { isLoading: isDeleting }] = useDeletePurchaseMutation();
   const [reportArrival, { isLoading: isReceiving }] = useReportArrivalMutation();
+  const { data: categories = [] } = useGetCategoriesQuery();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("purchases");
@@ -567,12 +570,20 @@ export default function AdminInventario() {
             </div>
             <div className="space-y-2">
               <Label className="text-slate-300">Categoría</Label>
-              <Input required 
+              <Select 
+                required 
                 value={receiveData.category} 
-                onChange={e => setReceiveData({...receiveData, category: e.target.value})}
-                className="bg-slate-950 border-slate-800 focus-visible:ring-emerald-500"
-                placeholder="Ej. Audífonos"
-              />
+                onValueChange={v => setReceiveData({...receiveData, category: v})}
+              >
+                <SelectTrigger className="bg-slate-950 border-slate-800 focus-visible:ring-emerald-500">
+                  <SelectValue placeholder="Selecciona una categoría" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800">
+                  {categories.map(c => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="ghost" onClick={() => setReceiveItem(null)} className="hover:bg-slate-800 text-slate-300">Cancelar</Button>

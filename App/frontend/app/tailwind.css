@@ -11,6 +11,21 @@
 @import "tailwindcss";
 /* Animaciones enter/exit (animate-in / animate-out) de las primitivas shadcn. */
 @import "tw-animate-css";
+/* Style "Rhea" del preset: viste cada primitiva vía clases .cn-* (geometría,
+   densidad y estados). Va DESPUÉS de tailwindcss porque usa @apply. */
+@import "./style-rhea.css";
+
+/* `no-scrollbar` la define el sitio de shadcn en su propio globals.css, no el
+   registry — pero style-rhea.css la usa con @apply (listas de command/combobox).
+   Sin esto el build falla con "Cannot apply unknown utility class". */
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
 
 /* La variante `dark:` sigue a nuestro data-theme, no al prefers-color-scheme
    del sistema: el tema lo controla useTheme (doc 05 §7). */

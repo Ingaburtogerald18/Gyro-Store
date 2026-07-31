@@ -4,13 +4,14 @@ function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="skeleton"
-      className={cn("animate-pulse rounded-md bg-surface-2", className)}
+      className={cn("cn-skeleton animate-pulse", className)}
       {...props}
     />
   )
 }
 
 // Placeholder de carga para DataTable: `rows` × `cols` celdas de skeleton.
+// Añadido sobre el registry: lo consume `ui/DataTable.tsx`.
 function TableSkeleton({ rows = 6, cols = 4 }: { rows?: number; cols?: number }) {
   return (
     <div className="space-y-2">

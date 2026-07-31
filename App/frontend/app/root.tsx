@@ -46,7 +46,14 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     // suppressHydrationWarning: el script anti-flash puede cambiar data-theme
     // antes de que React hidrate; ese "mismatch" es intencional.
-    <html lang="es" data-theme="dark" data-skin="store" suppressHydrationWarning>
+    // `style-rhea`: activa el style del preset shadcn sobre todas las primitivas.
+    <html
+      lang="es"
+      className="style-rhea"
+      data-theme="dark"
+      data-skin="store"
+      suppressHydrationWarning
+    >
       <head>
         {/* Anti-flash de tema: aplica el tema guardado ANTES del primer paint.
             Debe ir primero en <head>. Clave sincronizada con useTheme. */}
