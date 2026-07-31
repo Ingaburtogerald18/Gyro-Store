@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   Boxes,
   CreditCard,
@@ -58,6 +58,7 @@ import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { useGetMeQuery } from '~/store/api/authApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
+import { ModuleLoader, useAnyQueryPending } from '~/components/ui/module-loader';
 
 interface NavItem {
   name: string;
@@ -138,6 +139,36 @@ export default function AdminLayout() {
   const { isLoading: isConfigLoading } = useGetConfigQuery();
 
   const isAdmin = useAppSelector(selectIsAdmin);
+
+  // ── Overlay de transición entre módulos ──
+  // Se muestra al cambiar de ruta y se queda hasta que las queries del módulo
+  // nuevo respondan (con un mínimo anti-parpadeo y un tope de seguridad), para
+  // no revelar la vista hasta que el backend haya contestado.
+  const anyPending = useAnyQueryPending();
+  const reduceMotion = useReducedMotion();
+  const [moduleLoading, setModuleLoading] = useState(false);
+  const loadStartRef = useRef(0);
+
+  useEffect(() => {
+    loadStartRef.current = Date.now();
+    setModuleLoading(true);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    // Aún hay requests en vuelo: mantené el overlay.
+    if (!moduleLoading || anyPending) return;
+    const MIN = reduceMotion ? 0 : 450;
+    const remaining = Math.max(0, MIN - (Date.now() - loadStartRef.current));
+    const t = setTimeout(() => setModuleLoading(false), remaining);
+    return () => clearTimeout(t);
+  }, [anyPending, moduleLoading, reduceMotion]);
+
+  useEffect(() => {
+    // Tope: si algo se cuelga, nunca dejar el overlay pegado.
+    if (!moduleLoading) return;
+    const t = setTimeout(() => setModuleLoading(false), 6000);
+    return () => clearTimeout(t);
+  }, [moduleLoading]);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -281,7 +312,8 @@ export default function AdminLayout() {
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset>
+      <SidebarInset className="relative">
+        <ModuleLoader show={moduleLoading} />
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border bg-background/80 px-4 backdrop-blur-md">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
