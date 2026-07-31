@@ -1,13 +1,11 @@
 // ProductCard — estilo panel del V1: la tarjeta es una superficie con marco
 // hairline que se eleva entera al hover (no solo la foto), con la imagen en un
 // stage 4:3 y el CTA anclado al fondo para que toda la fila alinee parejo.
-//
-// PENDIENTE del Hito 1: con >1 combinación de variantes, la tienda actual abre
-// un QuickAddSheet para elegir. Ese componente y la ficha de producto son piezas
-// posteriores; hasta entonces se agrega la variante por defecto (el backend de
-// v2 recalcula por catalogItemId y todavía no maneja variantes en el pedido).
+// Con >1 combinación de variantes, el CTA abre el QuickAddSheet para elegir
+// antes de agregar; con una sola va directo al carrito.
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ImageNotFound01Icon, Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
+import { useState } from 'react';
 import { Link } from '@remix-run/react';
 import { motion, useReducedMotion } from 'framer-motion';
 
@@ -15,6 +13,7 @@ import { toast } from 'sonner';
 import type { CatalogProduct } from '@shared/schemas';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+import { QuickAddSheet } from '~/components/product/quick-add-sheet';
 import { useGetConfigQuery } from '~/store/api/configApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
@@ -34,6 +33,7 @@ export function ProductCard({
   const dispatch = useAppDispatch();
   const { data: config } = useGetConfigQuery();
   const reduce = useReducedMotion();
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const image = product.images[0];
   // Segunda foto: si existe, hace crossfade al pasar el mouse (patrón del V1).
@@ -54,6 +54,11 @@ export function ProductCard({
     e.preventDefault();
     e.stopPropagation();
     if (soldOut) return;
+    // Con más de una combinación hay que elegir variante: sheet, no carrito.
+    if (product.variantCount > 1) {
+      setQuickAddOpen(true);
+      return;
+    }
     dispatch(
       addItem({
         catalogId: product.id,
@@ -247,22 +252,34 @@ export function ProductCard({
     'transition-colors duration-300 hover:border-foreground/20',
   );
 
+  // El sheet se monta junto a la tarjeta pero renderiza por portal (Radix):
+  // el whileTap/whileHover del article no lo afectan.
+  const quickAdd = product.variantCount > 1 && (
+    <QuickAddSheet product={product} open={quickAddOpen} onOpenChange={setQuickAddOpen} />
+  );
+
   if (isList) {
     return (
-      <motion.article {...motionProps} className={cn(shell, 'gap-3 sm:gap-4')}>
-        <div className="relative w-[40%] max-w-[200px] shrink-0 self-center">{Stage}</div>
-        {Info}
-      </motion.article>
+      <>
+        <motion.article {...motionProps} className={cn(shell, 'gap-3 sm:gap-4')}>
+          <div className="relative w-[40%] max-w-[200px] shrink-0 self-center">{Stage}</div>
+          {Info}
+        </motion.article>
+        {quickAdd}
+      </>
     );
   }
 
   return (
-    <motion.article {...motionProps} className={cn(shell, 'h-full flex-col')}>
-      {Stage}
-      {Info}
-      {/* El CTA vive fuera del <Link> flex-1: así todas las tarjetas de una fila
-          alinean su botón a la misma altura sin importar el largo del nombre. */}
-      <div className="pt-3">{Cta}</div>
-    </motion.article>
+    <>
+      <motion.article {...motionProps} className={cn(shell, 'h-full flex-col')}>
+        {Stage}
+        {Info}
+        {/* El CTA vive fuera del <Link> flex-1: así todas las tarjetas de una fila
+            alinean su botón a la misma altura sin importar el largo del nombre. */}
+        <div className="pt-3">{Cta}</div>
+      </motion.article>
+      {quickAdd}
+    </>
   );
 }

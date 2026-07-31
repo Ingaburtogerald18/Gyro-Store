@@ -5,16 +5,19 @@
 // El dato se carga en el SERVIDOR para que el título, la descripción y la foto
 // estén en el HTML (Open Graph al compartir por WhatsApp).
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft01Icon, Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
+import { Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
-import { Link, useLoaderData } from '@remix-run/react';
+import { useLoaderData } from '@remix-run/react';
 
 import { toast } from 'sonner';
 import type { CatalogDetail, CatalogProduct } from '@shared/schemas';
 import { CartDrawer } from '~/components/cart/cart-drawer';
 import { ProductCarousel } from '~/components/product/product-carousel';
+import { ProductDetailTabs } from '~/components/product/product-detail-tabs';
 import { ProductGallery } from '~/components/product/product-gallery';
+import { ProductTopNav } from '~/components/product/product-top-nav';
+import { TrustBox } from '~/components/product/trust-box';
 import {
   VariantPicker,
   variantLabel,
@@ -138,15 +141,19 @@ export default function ProductDetail() {
   return (
     <>
       <StoreHeader />
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
-          <Link to="/#catalogo" prefetch="intent">
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden /> Volver al catálogo
-          </Link>
-        </Button>
+      <main className="mx-auto max-w-7xl px-4">
+        <ProductTopNav productName={product.name} />
 
-        <div className="grid gap-8 md:grid-cols-2 md:gap-12">
-          <ProductGallery images={product.images} name={product.name} />
+        <div className="grid gap-8 py-6 md:grid-cols-2 md:gap-12">
+          {/* Galería sticky en desktop (header h-16 + top nav h-12 = top-32),
+              con el trust box debajo. En móvil el trust box baja después del
+              bloque de compra (ver copia más abajo). */}
+          <div className="space-y-4 md:sticky md:top-32 md:self-start">
+            <ProductGallery images={product.images} name={product.name} />
+            <div className="hidden md:block">
+              <TrustBox />
+            </div>
+          </div>
 
           <div className="flex flex-col gap-5">
             <div className="space-y-3">
@@ -170,11 +177,6 @@ export default function ProductDetail() {
                 )}
               </div>
 
-              {product.description && (
-                <p className="max-w-[65ch] leading-relaxed text-pretty text-muted-foreground">
-                  {product.description.replace(/<[^>]*>?/gm, '')}
-                </p>
-              )}
             </div>
 
             {pickableAxes.length > 0 && (
@@ -207,26 +209,17 @@ export default function ProductDetail() {
               </Button>
             </div>
 
-            {product.specs.length > 0 && (
-              <>
-                <Separator className="bg-border" />
-                <div>
-                  <h2 className="mb-3 text-sm font-bold tracking-[0.18em] text-muted-foreground uppercase">
-                    Especificaciones
-                  </h2>
-                  {/* Grilla con hairlines: el gap de 1px sobre el borde dibuja
-                      las líneas, sin bordes por celda. */}
-                  <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-xl bg-border sm:grid-cols-2">
-                    {product.specs.map((spec) => (
-                      <div key={spec.label} className="bg-card px-4 py-3">
-                        <dt className="text-xs text-muted-foreground capitalize">{spec.label}</dt>
-                        <dd className="mt-0.5 text-sm font-medium text-foreground">{spec.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              </>
-            )}
+            {/* Trust box en móvil: después del bloque de compra, antes de los
+                tabs — en desktop vive bajo la galería sticky. */}
+            <div className="md:hidden">
+              <TrustBox />
+            </div>
+
+            <Separator className="bg-border" />
+            <ProductDetailTabs
+              description={product.description?.replace(/<[^>]*>?/gm, '') ?? ''}
+              specs={product.specs}
+            />
           </div>
         </div>
 
