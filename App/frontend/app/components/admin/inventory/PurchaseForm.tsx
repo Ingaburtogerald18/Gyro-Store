@@ -90,33 +90,38 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* Fila 1: Fecha + Lote */}
         <div className="grid gap-2">
-  <Label>"Fecha de compra" </Label>
+  <Label>Fecha de compra</Label>
           <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
         </div>
         <div className="grid gap-2">
-  <Label>"Lote" </Label>
+  <Label>Lote</Label>
           <Controller
             control={control}
             name="lot"
             render={({ field }) => (
-              <Input type="text"
-                list="options-list"
-                value={field.value || ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                aria-invalid={!!errors.lot}
-              />
-      <datalist id="options-list">
-        {Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean))).map((opt: string) => <option key={opt} value={opt} />)}
-      </datalist>
+              <>
+                <Input
+                  type="text"
+                  list="lot-options"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  aria-invalid={!!errors.lot}
+                />
+                <datalist id="lot-options">
+                  {Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean))).map((opt: string) => (
+                    <option key={opt} value={opt} />
+                  ))}
+                </datalist>
+              </>
             )}
           />
         </div>
 
         {/* Fila 1 cont. (lg): Código */}
         <div className="grid gap-2">
-  <Label>"Código" </Label>
+  <Label>Código</Label>
           {(() => {
             const { onBlur: rhfBlur, onChange: rhfChange, ...codeReg } = register("code");
             return (
@@ -145,22 +150,27 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
         {/* Fila 2: Nombre del producto — ancho completo */}
         <div className="sm:col-span-2 lg:col-span-3">
           <div className="grid gap-2">
-  <Label>"Nombre del producto" </Label>
+  <Label>Nombre del producto</Label>
             <Controller
               control={control}
               name="productName"
               render={({ field }) => (
-                <Input type="text"
-                  list="options-list"
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  aria-invalid={!!errors.productName}
-                />
-      <datalist id="options-list">
-        {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => <option key={opt} value={opt} />)}
-      </datalist>
+                <>
+                  <Input
+                    type="text"
+                    list="product-name-options"
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    aria-invalid={!!errors.productName}
+                  />
+                  <datalist id="product-name-options">
+                    {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => (
+                      <option key={opt} value={opt} />
+                    ))}
+                  </datalist>
+                </>
               )}
             />
           </div>
@@ -170,15 +180,15 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
       {/* ── Bloque 2: Datos financieros ── */}
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="grid gap-2">
-  <Label>"Cantidad" </Label>
+  <Label>Cantidad</Label>
           <input type="number" min={1} className="input h-10" {...register("quantity")} />
         </div>
         <div className="grid gap-2">
-  <Label>"Precio base (USD)" </Label>
+  <Label>Precio base (USD)</Label>
           <input type="number" step="0.01" min={0} className="input h-10" {...register("costUnit")} />
         </div>
         <div className="grid gap-2">
-  <Label>"Imp. unitario (USD)" </Label>
+  <Label>Imp. unitario (USD)</Label>
           <input type="number" step="0.0001" min={0} className="input h-10" {...register("taxUnit")} />
         </div>
 

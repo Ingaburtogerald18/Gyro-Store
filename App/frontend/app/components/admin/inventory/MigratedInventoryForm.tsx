@@ -142,11 +142,11 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
       </div>
 
       <div className="grid gap-2">
-  <Label>"Fecha" </Label>
+  <Label>Fecha</Label>
         <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
       </div>
       <div className="grid gap-2">
-  <Label>"Lote" </Label>
+  <Label>Lote</Label>
         <Controller
           control={control}
           name="lot"
@@ -163,13 +163,13 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
         />
       </div>
       <div className="grid gap-2">
-  <Label>"Código" </Label>
+  <Label>Código</Label>
         <input className="input" {...register("code")} />
       </div>
 
       <div className="sm:col-span-2 lg:col-span-3">
         <div className="grid gap-2">
-  <Label>"Nombre del producto" </Label>
+  <Label>Nombre del producto</Label>
           <Controller
             control={control}
             name="productName"
@@ -188,15 +188,15 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
       </div>
 
       <div className="grid gap-2">
-  <Label>"Entradas (cantidad)" </Label>
+  <Label>Entradas (cantidad)</Label>
         <input type="number" min={1} className="input" {...register("quantity")} />
       </div>
       <div className="grid gap-2">
-  <Label>"Precio base (USD)" </Label>
+  <Label>Precio base (USD)</Label>
         <input type="number" step="0.0001" min={0} className="input" {...register("costUnit")} />
       </div>
       <div className="grid gap-2">
-  <Label>"Costo de envío unit. (USD)" </Label>
+  <Label>Costo de envío unit. (USD)</Label>
         <input type="number" step="0.0001" min={0} className="input" {...register("shippingUnit")} />
       </div>
 
@@ -218,7 +218,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
 
       <div className="sm:col-span-2 lg:col-span-3">
         <div className="grid gap-2">
-  <Label>"Comentarios" </Label>
+  <Label>Comentarios</Label>
           <input className="input" placeholder="Opcional" {...register("comments")} />
         </div>
       </div>
