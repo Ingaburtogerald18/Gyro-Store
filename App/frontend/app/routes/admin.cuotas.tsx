@@ -93,7 +93,7 @@ function PaymentDialog({ plan, onClose }: { plan: InstallmentPlan | null; onClos
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pendiente</span>
-                <span className="font-bold text-amber-500">{formatCordobas(plan.amountPending)}</span>
+                <span className="font-bold text-warning">{formatCordobas(plan.amountPending)}</span>
               </div>
               <ProgressBar paid={plan.amountPaid} total={plan.total} />
             </div>
@@ -158,7 +158,7 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
               <p className="truncate font-semibold text-foreground">{plan.phone ?? 'Sin teléfono'}</p>
               <Badge
                 variant="outline"
-                className={plan.status === 'completed' ? 'text-primary-2 border-primary/30 bg-primary/10' : 'text-amber-500 border-warning/30 bg-amber-500/10'}
+                className={plan.status === 'completed' ? 'text-primary-2 border-primary/30 bg-primary/10' : 'text-warning border-warning/30 bg-warning/10'}
               >
                 {plan.status === 'completed' ? 'Pagado' : 'Activo'}
               </Badge>
@@ -317,7 +317,7 @@ export default function AdminCuotas() {
         </div>
         <div className="flex items-center gap-3">
           {activeCount > 0 && (
-            <span className="rounded-full bg-amber-500/15 px-3 py-1.5 text-sm font-medium text-amber-500">
+            <span className="rounded-full bg-warning/15 px-3 py-1.5 text-sm font-medium text-warning">
               {activeCount} activas
             </span>
           )}

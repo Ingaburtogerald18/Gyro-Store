@@ -57,7 +57,7 @@ export function FilterSelect({
   const Dot = () => (
     <span
       title={dotTitle}
-      className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.7)]"
+      className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning shadow-[0_0_6px_rgba(245,158,11,0.7)]"
     />
   );
 

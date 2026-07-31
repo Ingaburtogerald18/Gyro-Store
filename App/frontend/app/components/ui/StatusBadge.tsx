@@ -7,9 +7,9 @@ export type BadgeStatus = "success" | "pending" | "error" | "info" | "neutral" |
 
 const VARIANTS: Record<BadgeStatus, string> = {
   success: "border-primary/20 bg-primary/10 text-primary-2",
-  pending: "border-warning/20 bg-amber-500/10 text-amber-500",
+  pending: "border-warning/20 bg-warning/10 text-warning",
   error: "border-destructive/20 bg-destructive/10 text-destructive",
-  info: "border-info/20 bg-blue-500/10 text-blue-500",
+  info: "border-info/20 bg-info/10 text-info",
   neutral: "border bg-muted text-muted-foreground",
   whatsapp: "border-whatsapp/20 bg-whatsapp/10 text-whatsapp",
 };

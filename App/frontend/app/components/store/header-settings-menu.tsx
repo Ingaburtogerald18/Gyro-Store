@@ -56,7 +56,7 @@ function ThemeSwitch({ isDark, onToggle }: { isDark: boolean; onToggle: () => vo
           {isDark ? (
             <Moon className="h-3 w-3 text-primary" />
           ) : (
-            <Sun className="h-3 w-3 text-amber-500" />
+            <Sun className="h-3 w-3 text-warning" />
           )}
         </motion.span>
       </button>

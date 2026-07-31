@@ -101,7 +101,7 @@ export default function Login() {
           <div className="flex w-full flex-col justify-center p-8 sm:p-12 lg:w-[55%]">
             <h1 className="text-3xl font-bold tracking-tight">Iniciar sesión</h1>
             {greeting && (
-              <p className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+              <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="text-lg">{greeting.emoji}</span> {greeting.text} — ingresa con tu cuenta corporativa
               </p>
             )}
@@ -116,7 +116,7 @@ export default function Login() {
                 {busy !== "microsoft" ? <OutlookIcon className="mr-3 h-6 w-6" /> : <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
                 Continuar con Microsoft
               </Button>
-              <p className="mt-6 text-center text-xs text-gray-500 leading-relaxed">
+              <p className="mt-6 text-center text-xs text-muted-foreground leading-relaxed">
                 Acceso exclusivo para colaboradores de Gyro Store.<br/>
                 Solo se admiten cuentas autorizadas (@gyrostorenic.com, @hotmail o @outlook).
               </p>
@@ -140,7 +140,7 @@ export default function Login() {
             </div>
             <div className="mt-8">
               <h2 className="text-3xl font-extrabold text-white">Acceso a Colaboradores</h2>
-              <p className="mt-3 text-sm leading-relaxed text-gray-400">
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                 Accede al centro de administración para la gestión de Gyro Store.
               </p>
             </div>

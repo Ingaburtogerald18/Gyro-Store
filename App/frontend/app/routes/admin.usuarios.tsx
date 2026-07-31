@@ -183,7 +183,7 @@ export default function AdminUsuarios() {
                 {user.name}
                 {isProtected && (
                   <span title="Protegido por el sistema" className="inline-flex shrink-0">
-                    <Shield aria-label="Protegido por el sistema" className="w-3.5 h-3.5 text-amber-500" />
+                    <Shield aria-label="Protegido por el sistema" className="w-3.5 h-3.5 text-warning" />
                   </span>
                 )}
               </span>
