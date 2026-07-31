@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
+import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
 import { formatUsd } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
@@ -18,6 +19,7 @@ const EMPTY_PURCHASE = {
   lot: "",
   code: "",
   productName: "",
+  category: "",
   quantity: "",
   costUnit: "",
   taxUnit: "",
@@ -26,6 +28,7 @@ const EMPTY_PURCHASE = {
 export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   const [createPurchase, { isLoading }] = useCreatePurchaseMutation();
   const { data: purchases = [] } = useGetPurchasesQuery();
+  const { data: config } = useGetConfigQuery();
   const [codeError, setCodeError] = useState<string | null>(null);
   const [showSuccessPrompt, setShowSuccessPrompt] = useState(false);
   const {
@@ -177,6 +180,26 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
             />
           </div>
         </div>
+      </div>
+
+      {/* Categoría: obligatoria en el backend al registrar la compra. */}
+      <div className="grid gap-2">
+        <Label>Categoría</Label>
+        <select
+          className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+          defaultValue=""
+          aria-invalid={!!errors.category}
+          {...register("category")}
+        >
+          <option value="" disabled>
+            Selecciona una categoría
+          </option>
+          {config?.categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.icon} {c.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* ── Bloque 2: Datos financieros ── */}

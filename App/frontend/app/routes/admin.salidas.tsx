@@ -20,7 +20,7 @@ import {
 } from '~/store/api/salidasApi';
 import { useGetAccountsQuery } from '~/store/api/cajaApi';
 import { format } from 'date-fns';
-import type { Salida } from '~/shared/schemas';
+import type { Salida } from '@shared/schemas';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Salidas de Tienda | Gyro Store' }];
@@ -134,7 +134,7 @@ export default function AdminSalidasRoute() {
       header: 'Destino',
       accessorKey: 'destino',
       cell: (info: any) => (
-        <StatusBadge status={info.getValue() === 'delivery' ? 'approved' : 'pending'} label={info.getValue()} />
+        <StatusBadge status={info.getValue() === 'delivery' ? 'info' : 'pending'} label={info.getValue()} />
       ),
     },
     {
@@ -210,12 +210,11 @@ export default function AdminSalidasRoute() {
         </Button>
       </div>
 
-      <QueryState isLoading={isLoading} isError={isError} onRetry={refetch}>
+      <QueryState loading={isLoading} error={isError} onRetry={refetch}>
         <DataTable
           columns={columns}
           data={salidas}
           searchPlaceholder="Buscar artículo..."
-          searchColumn="articulo"
         />
       </QueryState>
 

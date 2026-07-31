@@ -53,6 +53,9 @@ export const purchaseFormSchema = z.object({
     .min(1, "Código requerido")
     .regex(/^IN\d+$/i, "Formato incorrecto (ej. IN1, IN13)"),
   productName: z.string().min(2, "Nombre requerido"),
+  // El backend la exige al registrar la compra (newPurchaseInputSchema), así
+  // que el formulario tiene que pedirla: sin esto el POST vuelve 400.
+  category: z.string().min(1, "Categoría requerida"),
   quantity: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? NaN : Number(v)),
     z.number({ message: "Requerido" }).int("Debe ser entero").positive("Debe ser mayor a 0"),

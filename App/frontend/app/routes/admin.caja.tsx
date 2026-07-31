@@ -20,7 +20,7 @@ import {
 } from '~/store/api/cajaApi';
 import { useGetCuadreQuery } from '~/store/api/cuadreApi';
 import { format } from 'date-fns';
-import type { AccountMovement } from '~/shared/schemas';
+import type { AccountMovement } from '@shared/schemas';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Caja y Bancos | Gyro Store' }];
@@ -152,21 +152,20 @@ export default function AdminCajaRoute() {
           return (
             <StatCard
               key={acc.id}
-              title={acc.nombre}
+              label={acc.nombre}
               value={`${bal.toFixed(2)} ${acc.moneda}`}
               icon={Wallet}
-              description={acc.tipo === 'banco' ? 'Cuenta Bancaria' : 'Caja de Efectivo'}
+              sub={acc.tipo === 'banco' ? 'Cuenta Bancaria' : 'Caja de Efectivo'}
             />
           );
         })}
       </div>
 
-      <QueryState isLoading={isLoadingMov || isLoadingAcc} onRetry={refetch}>
+      <QueryState loading={isLoadingMov || isLoadingAcc} onRetry={refetch}>
         <DataTable
           columns={columns}
           data={movements}
           searchPlaceholder="Buscar en descripción..."
-          searchColumn="descripcion"
         />
       </QueryState>
 
