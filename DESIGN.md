@@ -148,10 +148,10 @@ cambia, solo se repintan con los tokens neutrales):
 
 ## 10. Deuda / pendientes
 
-- **Verificación visual pendiente**: la migración a Rhea compila (`tsc` limpio, build OK) pero
-  **no se ha revisado en navegador**. Es lo primero a hacer.
-- **Duplicados por resolver**: `stat-card.tsx` exporta un `Card`/`CardHeader` que choca con
-  `card.tsx`; conviven `DataTable.tsx` (custom) y `data-table.tsx` (TanStack).
-- **Gráficos sin usar**: la primitiva `chart` ya está disponible; el dashboard aún no la usa.
+- **Duplicado de tablas**: conviven `DataTable.tsx` (custom, 6 consumidores) y `data-table.tsx`
+  (TanStack, 1 consumidor: `admin.inventario`). Falta consolidar en una sola.
+- **Nombres propios ya resueltos**: `stat-card.tsx` exporta `SpotlightCard`/`SectionHeader`
+  (antes `Card`/`CardHeader`, que chocaban con la primitiva `card.tsx`). Regla: lo nuestro
+  lleva nombre propio, nunca el de una primitiva del registry.
 - **`createdAt` real en productos** para "Lo Más Nuevo".
 - **Marcas y logos reales** en `/public/brands`.
