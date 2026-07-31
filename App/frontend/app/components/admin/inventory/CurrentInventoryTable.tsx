@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Pencil, AlertTriangle, CheckCircle2 } from "lucide-react";
+
 import { DataTable } from "~/components/ui/DataTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
@@ -17,9 +18,10 @@ import {
   type Purchase,
 } from "~/store/api/inventoryV1Api";
 import { useGetAdminCatalogQuery } from "~/store/api/catalogAdminApi";
-import { formatUsd, formatCordobas } from "~/lib/utils";
+import { formatUsd, formatCordobas } from "~/lib/formatters";
 import { CodeCell } from "~/components/ui/cells";
 import { useNavigate } from "@remix-run/react";
+import { Spinner } from "~/components/ui/spinner";
 
 export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
   const navigate = useNavigate();
@@ -202,7 +204,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
             Cancelar
           </Button>
           <Button onClick={handleRevert} disabled={reverting} className="bg-destructive/90 hover:bg-destructive text-white">
-        {reverting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {reverting && <Spinner className="mr-2" />}
         Confirmar y Descartar
       </Button>
         </div>

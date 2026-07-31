@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { getSupabaseClient } from '~/lib/supabase.client';
+import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Inventario | Gyro Store Admin' }];
@@ -515,9 +516,10 @@ export default function AdminInventario() {
                       </Select>
                     </div>
 
-                    <Button type="submit" loading={isRegistering} className="w-full font-semibold mt-4 bg-primary hover:bg-primary/90 shadow-md">
-                      Confirmar compra
-                    </Button>
+                    <Button type="submit" className="w-full font-semibold mt-4 bg-primary hover:bg-primary/90 shadow-md" disabled={isRegistering}>
+  {isRegistering && <Spinner className="mr-2" />}
+  Confirmar compra
+</Button>
                   </form>
                 </DialogContent>
               </Dialog>
@@ -609,9 +611,10 @@ export default function AdminInventario() {
             <Button variant="ghost" onClick={() => setDeleteId(null)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} loading={isDeleting}>
-              Continuar a Microsoft
-            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+  {isDeleting && <Spinner className="mr-2" />}
+  Continuar a Microsoft
+</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -663,9 +666,10 @@ export default function AdminInventario() {
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="ghost" onClick={() => setReceiveItem(null)}>Cancelar</Button>
-              <Button type="submit" loading={isReceiving} className="font-medium bg-primary hover:bg-primary/90 shadow-md">
-                Confirmar llegada
-              </Button>
+              <Button type="submit" className="font-medium bg-primary hover:bg-primary/90 shadow-md" disabled={isReceiving}>
+  {isReceiving && <Spinner className="mr-2" />}
+  Confirmar llegada
+</Button>
             </DialogFooter>
           </form>
         </DialogContent>

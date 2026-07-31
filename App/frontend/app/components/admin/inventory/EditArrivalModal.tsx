@@ -10,6 +10,7 @@ import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from
 import { useUpdatePurchaseMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
+import { Spinner } from "~/components/ui/spinner";
 
 export function EditArrivalModal({
   purchase,
@@ -106,7 +107,7 @@ export function EditArrivalModal({
             Cancelar
           </Button>
           <Button type="submit" size="sm" disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Spinner className="mr-2" />}
         Guardar cambios
       </Button>
         </div>

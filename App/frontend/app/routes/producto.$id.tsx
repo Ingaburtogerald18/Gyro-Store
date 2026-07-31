@@ -196,9 +196,9 @@ export default function ProductDetail() {
                 {soldOut ? 'Agotado' : 'Agregar al carrito'}
               </Button>
               <Button
-                variant="outline" className="text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10"
+                variant="outline"
                 onClick={handleWhatsApp}
-                className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
+                className="h-12 justify-center rounded-md text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10 sm:w-auto sm:px-6"
               >
                 <MessageCircle aria-hidden />
                 {soldOut ? 'Avisame' : 'Pedir por WhatsApp'}

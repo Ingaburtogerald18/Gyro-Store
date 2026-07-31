@@ -9,7 +9,8 @@ import { Input } from "~/components/ui/input";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useReportArrivalMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
-import { formatCordobas } from "~/lib/utils";
+import { formatCordobas } from "~/lib/formatters";
+import { Spinner } from "~/components/ui/spinner";
 
 const RATE = 37;
 
@@ -140,7 +141,7 @@ export function ArrivalModal({
             Cancelar
           </Button>
           <Button type="submit" size="sm" disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Spinner className="mr-2" />}
         Confirmar llegada
       </Button>
         </div>

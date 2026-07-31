@@ -3,13 +3,15 @@ import { useState } from "react";
 import { useForm, Controller, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
+
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
 import { Input } from "~/components/ui/input";
-import { formatUsd } from "~/lib/utils";
+import { formatUsd } from "~/lib/formatters";
+import { Spinner } from "~/components/ui/spinner";
 
 const EMPTY_PURCHASE = {
   purchaseDate: "",
@@ -211,7 +213,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
       </div>
 
       <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Spinner className="mr-2" />}
         Registrar compra
       </Button>
     </form>

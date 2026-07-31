@@ -148,9 +148,9 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                     </Button>
 
                     <Button
-                      variant="outline" className="text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10"
+                      variant="outline"
                       onClick={() => window.open(whatsappOrderUrl, '_blank', 'noopener,noreferrer')}
-                      className="group/wa w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
+                      className="group/wa w-full justify-center rounded-xl py-2 text-[12px] text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10 sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
                       <MessageCircle
                         aria-hidden

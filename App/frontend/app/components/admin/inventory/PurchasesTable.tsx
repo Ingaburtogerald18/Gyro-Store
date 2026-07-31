@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Ship, Pencil, Trash2, Plus, Warehouse } from "lucide-react";
+
 import { PurchaseCommandPalette } from "./PurchaseCommandPalette";
 import { toast } from "sonner";
 import { DataTable } from "~/components/ui/DataTable";
@@ -18,7 +19,8 @@ import {
   useDeletePurchaseMutation,
   type Purchase,
 } from "~/store/api/inventoryV1Api";
-import { formatUsd } from "~/lib/utils";
+import { formatUsd } from "~/lib/formatters";
+import { Spinner } from "~/components/ui/spinner";
 
 // Tono del StatusBadge canónico por estado de la compra.
 const STATUS_META: Record<Purchase["status"], { label: string; status: BadgeStatus }> = {
@@ -236,7 +238,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
             Cancelar
           </Button>
           <Button onClick={handleDelete} disabled={deleting} className="bg-destructive/90">
-        {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {deleting && <Spinner className="mr-2" />}
         Eliminar
       </Button>
         </div>

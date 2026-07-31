@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp, CreditCard, Plus } from 'lucide-react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -32,6 +33,7 @@ import {
   type InstallmentPlan,
 } from '~/store/api/installmentsApi';
 import { useGetSalesQuery, type SaleListItem } from '~/store/api/salesApi';
+import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => [{ title: 'Cuotas | Gyro Store Admin' }];
 
@@ -125,7 +127,7 @@ function PaymentDialog({ plan, onClose }: { plan: InstallmentPlan | null; onClos
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Spinner className="mr-2" />}
         Registrar pago
       </Button>
         </div>
@@ -194,7 +196,7 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
           )}
           {plan.payments.length === 0 && (
             <Button size="sm" variant="ghost" onClick={handleCancel} disabled={cancelling} className="text-destructive">
-        {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {cancelling && <Spinner className="mr-2" />}
         Cancelar
       </Button>
           )}
@@ -281,7 +283,7 @@ function CreatePlanDialog({ sale, onClose }: { sale: SaleListItem | null; onClos
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Spinner className="mr-2" />}
         Crear plan
       </Button>
         </div>

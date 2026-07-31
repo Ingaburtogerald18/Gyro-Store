@@ -16,7 +16,8 @@ import {
   type MigratedItem,
 } from "~/store/api/inventoryV1Api";
 import { Input } from "~/components/ui/input";
-import { formatUsd, formatCordobas } from "~/lib/utils";
+import { formatUsd, formatCordobas } from "~/lib/formatters";
+import { Spinner } from "~/components/ui/spinner";
 
 const RATE = 37; // USD → C$ (igual que el server)
 
@@ -151,14 +152,22 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
           control={control}
           name="lot"
           render={({ field }) => (
-            <Input type="text"
-              options={Array.from(new Set(existingItems.map((i) => i.lot).filter(Boolean)))}
-              value={field.value || ""}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              name={field.name}
-              aria-invalid={!!errors.lot}
-            />
+            <>
+              <Input
+                type="text"
+                list="migrated-lot-options"
+                value={field.value || ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                aria-invalid={!!errors.lot}
+              />
+              <datalist id="migrated-lot-options">
+                {Array.from(new Set(existingItems.map((i) => i.lot).filter(Boolean))).map((opt) => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
+            </>
           )}
         />
       </div>
@@ -174,14 +183,22 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
             control={control}
             name="productName"
             render={({ field }) => (
-              <Input type="text"
-                options={Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean)))}
-                value={field.value || ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                aria-invalid={!!errors.productName}
-              />
+              <>
+                <Input
+                  type="text"
+                  list="migrated-product-name-options"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  aria-invalid={!!errors.productName}
+                />
+                <datalist id="migrated-product-name-options">
+                  {Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean))).map((opt) => (
+                    <option key={opt} value={opt} />
+                  ))}
+                </datalist>
+              </>
             )}
           />
         </div>
@@ -224,9 +241,10 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
       </div>
 
       <div className="flex items-end sm:col-span-2 lg:col-span-3">
-        <Button type="submit" className="w-full sm:w-auto" loading={creating || updating}>
-          {isEdit ? "Guardar cambios" : "Registrar ítem migrado"}
-        </Button>
+        <Button type="submit" className="w-full sm:w-auto" disabled={creating || updating}>
+  {creating || updating && <Spinner className="mr-2" />}
+  {isEdit ? "Guardar cambios" : "Registrar ítem migrado"}
+</Button>
       </div>
     </form>
   );

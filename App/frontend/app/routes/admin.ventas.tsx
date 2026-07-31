@@ -13,7 +13,8 @@ import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
-import { CheckCircle2, Link2, Loader2, Package, Plus, ShoppingCart, Trash2, XCircle } from 'lucide-react';
+import { CheckCircle2, Link2, Package, Plus, ShoppingCart, Trash2, XCircle } from 'lucide-react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -37,6 +38,7 @@ import {
   type SaleListItem,
 } from '~/store/api/salesApi';
 import { useGetSalidasQuery, useVincularSalidaMutation } from '~/store/api/salidasApi';
+import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => [{ title: 'Ventas | Gyro Store Admin' }];
 
@@ -260,9 +262,14 @@ export default function AdminVentas() {
                     const match = products.find((p) => p.productName === e.target.value);
                     if (match) setSalePrice(match.price);
                   }}
-                  options={productNames}
+                  list="sale-product-options"
                   placeholder="Nombre del producto"
                 />
+                <datalist id="sale-product-options">
+                  {productNames.map((opt) => (
+                    <option key={opt} value={opt} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Cantidad</Label>
@@ -327,11 +334,11 @@ export default function AdminVentas() {
                     <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="8888 8888" />
                   </div>
                   <Button variant="outline" onClick={handleQuote} disabled={quoting}>
-        {quoting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {quoting && <Spinner className="mr-2" />}
         Cotizar
       </Button>
                   <Button onClick={handleRegister} disabled={registering}>
-        {registering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {registering && <Spinner className="mr-2" />}
         Registrar venta
       </Button>
                 </div>
@@ -437,7 +444,7 @@ export default function AdminVentas() {
               Cancelar
             </Button>
             <Button onClick={handleReject} disabled={rejecting} className="bg-destructive/90">
-        {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {rejecting && <Spinner className="mr-2" />}
         Rechazar
       </Button>
           </div>

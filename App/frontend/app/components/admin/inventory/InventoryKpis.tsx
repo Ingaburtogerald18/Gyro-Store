@@ -6,7 +6,7 @@ import { Boxes, PackageCheck, PackageX, Plane, DollarSign, Receipt, Wallet, Truc
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { StatCard } from "~/components/ui/stat-card";
 import { useGetInventoryKpisQuery, useGetCurrentInventoryQuery, useGetMigratedInventoryQuery } from "~/store/api/inventoryV1Api";
-import { formatUsd, cordobasFromUsd } from "~/lib/utils";
+import { formatUsd, cordobasFromUsd } from "~/lib/formatters";
 
 interface InventoryKpisProps {
   tab: "purchases" | "current" | "migrated";

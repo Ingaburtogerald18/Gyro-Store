@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "@remix-run/react";
 import type { MetaFunction } from "@remix-run/node";
 import { toast } from "sonner";
-import {
-  ArrowLeft, Loader2
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+
 import { Button } from "~/components/ui/button";
-import { cn, buildWhatsappUrl } from "~/lib/utils";
+import { cn } from "~/lib/utils";
+import { buildWhatsappUrl } from "~/lib/formatters";
 import { getSupabaseClient } from "~/lib/supabase.client";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { loginSchema, type LoginInput } from "../../../shared/schemas";
+import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => [
   { title: "Acceso Colaboradores · Gyro Store" },
@@ -70,7 +71,7 @@ export default function Login() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#090d16]" data-skin="store">
-        <Loader2 className="w-8 h-8 animate-spin text-[#22d3ee]" />
+        <Spinner className="text-[#22d3ee]" />
       </div>
     );
   }
@@ -113,7 +114,7 @@ export default function Login() {
                 onClick={runMicrosoft}
                 className="h-14 w-full rounded-xl border-white/10 bg-[#0f111a] text-base font-bold text-white hover:bg-white/5 hover:border-white/20 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
-                {busy !== "microsoft" ? <OutlookIcon className="mr-3 h-6 w-6" /> : <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
+                {busy !== "microsoft" ? <OutlookIcon className="mr-3 h-6 w-6" /> : <Spinner className="mr-3" />}
                 Continuar con Microsoft
               </Button>
               <p className="mt-6 text-center text-xs text-muted-foreground leading-relaxed">

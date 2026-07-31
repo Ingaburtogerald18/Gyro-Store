@@ -187,7 +187,7 @@ export function ProductCard({
       </Button>
       {/* Nunca se deshabilita, ni agotado: "avísame" sigue siendo un lead. */}
       <Button
-        variant="default" className="bg-[#25D366] text-white hover:bg-[#25D366]/90"
+        variant="default"
         size="icon"
         onClick={handleWhatsAppOrder}
         aria-label={
@@ -196,7 +196,7 @@ export function ProductCard({
             : `Pedir ${product.name} por WhatsApp`
         }
         title={soldOut ? 'Avísame por WhatsApp' : 'Pedir por WhatsApp'}
-        className="h-9 w-9 rounded-lg sm:h-11 sm:w-11"
+        className="h-9 w-9 rounded-lg bg-[#25D366] text-white hover:bg-[#25D366]/90 sm:h-11 sm:w-11"
       >
         <MessageCircle aria-hidden className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
       </Button>

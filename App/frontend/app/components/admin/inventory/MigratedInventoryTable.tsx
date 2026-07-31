@@ -14,7 +14,7 @@ import {
   useDeleteMigratedItemMutation,
   type MigratedItem,
 } from "~/store/api/inventoryV1Api";
-import { formatUsd, formatCordobas } from "~/lib/utils";
+import { formatUsd, formatCordobas } from "~/lib/formatters";
 import { CodeCell } from "~/components/ui/cells";
 
 export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenForm?: () => void; period?: string }) {
