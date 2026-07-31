@@ -84,7 +84,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
           ) : (
             <button
               onClick={() => navigate(`/admin/catalogo?link=new`)}
-              className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-500 hover:bg-amber-500/25 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning hover:bg-warning/25 transition-colors cursor-pointer"
             >
               <AlertTriangle className="h-3 w-3" />
               Sin mapear
@@ -97,7 +97,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         accessorKey: "quantitySold",
         header: "Vendido",
         meta: { align: "right" },
-        cell: (c) => <span className={c.getValue() > 0 ? "text-amber-500 font-medium" : "text-muted-foreground"}>{c.getValue()}</span>
+        cell: (c) => <span className={c.getValue() > 0 ? "text-warning font-medium" : "text-muted-foreground"}>{c.getValue()}</span>
       },
 
       {
@@ -121,7 +121,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         accessorKey: "costoFijoCordobas",
         header: "Coste c/ Fijos",
         meta: { align: "right" },
-        cell: (c) => <span className="text-amber-500 font-medium">{formatCordobas(c.getValue() || 0)}</span>,
+        cell: (c) => <span className="text-warning font-medium">{formatCordobas(c.getValue() || 0)}</span>,
       },
       {
         id: "precioSugerido",
@@ -170,7 +170,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border bg-card shadow-lg" />;
   }
 
   return (

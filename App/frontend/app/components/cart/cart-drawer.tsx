@@ -96,7 +96,7 @@ export function CartDrawer() {
                   return (
                     <div
                       key={key}
-                      className="flex gap-3 rounded-xl border border bg-background p-3"
+                      className="flex gap-3 rounded-xl border bg-background p-3"
                     >
                       <div className="product-stage h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                         {item.image ? (
@@ -182,7 +182,7 @@ export function CartDrawer() {
               </div>
               {/* El total definitivo lo recalcula el servidor al crear el pedido. */}
               <Button
-                variant="default" className="bg-[#25D366] text-white hover:bg-[#25D366]/90 w-full"
+                variant="whatsapp" className="w-full"
                 onClick={() => setCheckoutOpen(true)}
               >
                 Finalizar pedido por WhatsApp

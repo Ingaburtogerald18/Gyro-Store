@@ -28,7 +28,7 @@ export function AnimatedTabs({
   indicatorClassName = "bg-gradient-accent",
 }: AnimatedTabsProps) {
   return (
-    <div className={cn("inline-flex gap-1 rounded-pill border border bg-card p-1", className)}>
+    <div className={cn("inline-flex gap-1 rounded-pill border bg-card p-1", className)}>
       {items.map((it) => {
         const active = it.id === value;
         return (

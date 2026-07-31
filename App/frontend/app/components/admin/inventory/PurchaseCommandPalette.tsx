@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { type Purchase } from "~/store/api/inventoryV1Api";
 
 const STATUS_LABEL: Record<Purchase["status"], { label: string; cls: string }> = {
-  china: { label: "En tránsito", cls: "bg-blue-500/15 text-blue-500" },
+  china: { label: "En tránsito", cls: "bg-info/15 text-info" },
   received: { label: "Recibido", cls: "bg-primary/15 text-primary-2" },
 };
 

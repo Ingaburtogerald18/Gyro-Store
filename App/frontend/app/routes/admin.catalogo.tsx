@@ -251,7 +251,7 @@ export default function AdminCatalogo() {
                   </div>
                 </div>
 
-                <div className="space-y-4 border border rounded-lg p-4 bg-card/50">
+                <div className="space-y-4 border rounded-lg p-4 bg-card/50">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-base text-foreground">Publicado</Label>
@@ -360,7 +360,7 @@ export default function AdminCatalogo() {
                   <p className="text-muted-foreground text-center py-4">No hay categorías registradas.</p>
                 ) : (
                   categories.map(c => (
-                    <div key={c.id} className="flex items-center justify-between p-4 bg-card/50 border border rounded-lg">
+                    <div key={c.id} className="flex items-center justify-between p-4 bg-card/50 border rounded-lg">
                       <div>
                         <h4 className="font-medium text-foreground">{c.name}</h4>
                         <p className="text-sm text-muted-foreground">/{c.slug}</p>

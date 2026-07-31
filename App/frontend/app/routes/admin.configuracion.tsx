@@ -165,13 +165,13 @@ function ImagesConfig() {
     const acceptAttr = isAnimated ? "image/*,video/*" : "image/*";
 
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border bg-muted p-4">
+      <div className="flex flex-col gap-3 rounded-lg border bg-muted p-4">
         <div>
           <h3 className="text-sm font-medium text-foreground">{title}</h3>
           <p className="text-xs text-muted-foreground">{desc}</p>
         </div>
         {config[key] ? (
-          <div className="relative group rounded-lg border border bg-card p-2">
+          <div className="relative group rounded-lg border bg-card p-2">
             <div className="aspect-video w-full flex items-center justify-center overflow-hidden rounded-md bg-black/20">
               {config[key]?.match(/\.(webm|mp4|mov)$/i) ? (
                 <video src={config[key]} autoPlay loop muted playsInline className="max-h-32 max-w-full object-contain" />

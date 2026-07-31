@@ -149,9 +149,9 @@ export default function ProductDetail() {
           <div className="flex flex-col gap-5">
             <div className="space-y-3">
               {onSale && (
-                <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 tabular-nums">−{discountPct}%</Badge>
+                <Badge variant="promo" className="tabular-nums">−{discountPct}%</Badge>
               )}
-              {product.isPromo && !onSale && <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80">Oferta</Badge>}
+              {product.isPromo && !onSale && <Badge variant="promo">Oferta</Badge>}
 
               <h1 className="text-2xl leading-tight font-black tracking-tight text-balance text-foreground sm:text-4xl">
                 {product.name}
@@ -196,9 +196,9 @@ export default function ProductDetail() {
                 {soldOut ? 'Agotado' : 'Agregar al carrito'}
               </Button>
               <Button
-                variant="outline"
+                variant="whatsappOutline"
                 onClick={handleWhatsApp}
-                className="h-12 justify-center rounded-md text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10 sm:w-auto sm:px-6"
+                className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
               >
                 <MessageCircle aria-hidden />
                 {soldOut ? 'Avisame' : 'Pedir por WhatsApp'}

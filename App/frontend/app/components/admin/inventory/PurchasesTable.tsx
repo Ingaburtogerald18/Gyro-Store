@@ -183,7 +183,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border bg-card shadow-lg" />;
   }
 
   return (
@@ -193,7 +193,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="flex items-center gap-3">
             {/* Resumen basado en los filtros activos */}
-            <div className="hidden sm:flex items-center divide-x divide-border rounded-xl border border bg-card px-1 py-1">
+            <div className="hidden sm:flex items-center divide-x divide-border rounded-xl border bg-card px-1 py-1">
               <SummaryPill label="Ítems" value={filteredPurchases.length.toString()} />
               <SummaryPill label="Cantidades" value={filteredPurchases.reduce((s, p) => s + (p.quantity ?? 0), 0).toString()} />
               <SummaryPill label="Impuestos" value={formatUsd(filteredPurchases.reduce((s, p) => s + (p.taxUnit ?? 0) * (p.quantity ?? 0), 0))} />

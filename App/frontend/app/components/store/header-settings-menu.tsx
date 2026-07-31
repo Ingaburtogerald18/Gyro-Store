@@ -141,7 +141,7 @@ export function HeaderSettingsMenu() {
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             role="menu"
-            className="absolute right-0 top-full z-50 mt-2 w-72 origin-top-right overflow-hidden rounded-2xl border border bg-card shadow-xl backdrop-blur-xl"
+            className="absolute right-0 top-full z-50 mt-2 w-72 origin-top-right overflow-hidden rounded-2xl border bg-card shadow-xl backdrop-blur-xl"
           >
             <div className="flex flex-col p-2">
               {/* ── VISTA INVITADO ── */}
@@ -156,7 +156,7 @@ export function HeaderSettingsMenu() {
                       propia (borde + fondo acentuado) para que no se sienta plano. */}
                   <button
                     onClick={comingSoon}
-                    className="group mb-1 flex items-center gap-3 rounded-xl border border bg-primary/5 px-2.5 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/10"
+                    className="group mb-1 flex items-center gap-3 rounded-xl border bg-primary/5 px-2.5 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/10"
                     role="menuitem"
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">

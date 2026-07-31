@@ -106,7 +106,7 @@ export function DataTable<T>({
   return (
     <div className="space-y-3">
       {!hideSearch && (
-        <div className="flex items-center gap-2 rounded-pill border border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:max-w-xs">
+        <div className="flex items-center gap-2 rounded-pill border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:max-w-xs">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={globalFilter}
@@ -127,7 +127,7 @@ export function DataTable<T>({
         </div>
       ) : (
       <>
-      <div className="hidden md:block overflow-auto max-h-[75vh] rounded-card border border bg-card shadow-premium relative">
+      <div className="hidden md:block overflow-auto max-h-[75vh] rounded-card border bg-card shadow-lg relative">
         <table className="w-full text-sm">
           <thead className="table-header-brand text-left sticky top-0 z-20 shadow-sm">
             {table.getHeaderGroups().map((hg) => (
@@ -310,7 +310,7 @@ export function DataTable<T>({
       {/* Vista móvil: tarjetas (bonitas si el panel define mobileCard; genéricas si no). */}
       <div className="space-y-3 md:hidden">
         {table.getRowModel().rows.length === 0 ? (
-          <p className="rounded-card border border bg-card shadow-premium py-8 text-center text-muted-foreground">{emptyText}</p>
+          <p className="rounded-card border bg-card shadow-lg py-8 text-center text-muted-foreground">{emptyText}</p>
         ) : (
           table.getRowModel().rows.map((row) => {
             const rowId = (row.original as any).id;
@@ -325,7 +325,7 @@ export function DataTable<T>({
                 {mobileCard ? (
                   mobileCard(row.original)
                 ) : (
-                  <div className="space-y-1.5 rounded-card border border bg-card shadow-premium p-4">
+                  <div className="space-y-1.5 rounded-card border bg-card shadow-lg p-4">
                     {row.getVisibleCells().map((cell) => {
                       const header = cell.column.columnDef.header;
                       const label = typeof header === "string" ? header : "";
@@ -376,7 +376,7 @@ function TablePagination<T>({ table }: { table: TableInstance<T> }) {
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
           aria-label="Página anterior"
-          className="grid h-11 w-11 place-items-center rounded-lg border border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
+          className="grid h-11 w-11 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -389,7 +389,7 @@ function TablePagination<T>({ table }: { table: TableInstance<T> }) {
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
           aria-label="Página siguiente"
-          className="grid h-11 w-11 place-items-center rounded-lg border border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
+          className="grid h-11 w-11 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
         >
           <ChevronRight className="h-4 w-4" />
         </button>

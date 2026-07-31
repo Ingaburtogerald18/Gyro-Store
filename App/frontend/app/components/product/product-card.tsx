@@ -94,12 +94,12 @@ export function ProductCard({
     >
       <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5">
         {onSale && (
-          <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 text-[10px] tabular-nums sm:px-2.5 sm:text-[11px]">
+          <Badge variant="promo" className="text-[10px] tabular-nums sm:px-2.5 sm:text-[11px]">
             −{discountPct}%
           </Badge>
         )}
         {product.isPromo && !onSale && (
-          <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 text-[10px] sm:px-2.5 sm:text-[11px]">
+          <Badge variant="promo" className="text-[10px] sm:px-2.5 sm:text-[11px]">
             Oferta
           </Badge>
         )}
@@ -187,7 +187,7 @@ export function ProductCard({
       </Button>
       {/* Nunca se deshabilita, ni agotado: "avísame" sigue siendo un lead. */}
       <Button
-        variant="default"
+        variant="whatsapp"
         size="icon"
         onClick={handleWhatsAppOrder}
         aria-label={
@@ -196,7 +196,7 @@ export function ProductCard({
             : `Pedir ${product.name} por WhatsApp`
         }
         title={soldOut ? 'Avísame por WhatsApp' : 'Pedir por WhatsApp'}
-        className="h-9 w-9 rounded-lg bg-[#25D366] text-white hover:bg-[#25D366]/90 sm:h-11 sm:w-11"
+        className="h-9 w-9 rounded-lg sm:h-11 sm:w-11"
       >
         <MessageCircle aria-hidden className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
       </Button>

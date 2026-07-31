@@ -84,7 +84,7 @@ export function ArrivalModal({
         </DialogHeader>
       <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-3">
         {purchase && (
-          <div className="rounded-lg bg-muted p-3 text-sm border border flex items-center gap-2">
+          <div className="rounded-lg bg-muted p-3 text-sm border flex items-center gap-2">
             <span className="font-mono text-xs font-semibold text-primary-2 bg-primary/10 px-1.5 py-0.5 rounded">{purchase.code}</span>
             <span className="font-medium text-foreground">{purchase.productName}</span>
           </div>
@@ -122,7 +122,7 @@ export function ArrivalModal({
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>Coste c/ Fijos (C$)</span>
-              <span className="font-medium text-amber-500">{formatCordobas(costoFijo)}</span>
+              <span className="font-medium text-warning">{formatCordobas(costoFijo)}</span>
             </div>
             <div className="flex justify-between font-semibold pt-1 border-t border/50">
               <span>Precio Sugerido Calculado</span>

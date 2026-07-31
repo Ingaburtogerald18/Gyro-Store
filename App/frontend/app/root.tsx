@@ -92,7 +92,7 @@ export default function App() {
           position="bottom-center"
           toastOptions={{
             className:
-              'border border bg-card text-foreground rounded-lg text-sm',
+              'border bg-card text-foreground rounded-lg text-sm',
           }}
         />
       </TooltipProvider>

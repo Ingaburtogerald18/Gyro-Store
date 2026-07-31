@@ -137,7 +137,7 @@ export default function ComboDetail() {
 
           <div className="flex flex-col gap-5">
             <div className="space-y-3">
-              <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 inline-flex items-center gap-1.5">
+              <Badge variant="promo" className="inline-flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 Combo
               </Badge>
@@ -163,9 +163,9 @@ export default function ComboDetail() {
                 Agregar al carrito
               </Button>
               <Button
-                variant="outline"
+                variant="whatsappOutline"
                 onClick={handleWhatsApp}
-                className="h-12 justify-center rounded-md text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10 sm:w-auto sm:px-6"
+                className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
               >
                 <MessageCircle aria-hidden />
                 Pedir por WhatsApp

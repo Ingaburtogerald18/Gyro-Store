@@ -172,7 +172,7 @@ export default function AdminUsuarios() {
         const isProtected = user.email === SUPER_ADMIN_EMAIL;
         return (
           <div className="flex items-center gap-3 py-1 min-w-[200px]">
-            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground border border shrink-0">
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground border shrink-0">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="avatar" className="w-full h-full rounded-full object-cover" />
               ) : (
@@ -403,7 +403,7 @@ export default function AdminUsuarios() {
       {/* Modal de confirmación custom para eliminar usuario permanentemente */}
       {userToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card border border p-6 rounded-card shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+          <div className="bg-card border p-6 rounded-card shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
             <h3 className="text-xl font-bold text-foreground mb-2">Borrar permanentemente</h3>
             <p className="text-muted-foreground mb-6 text-sm">
               ¿Seguro que deseas eliminar por completo a <strong>{userToDelete.name}</strong> y todo su acceso? Esta acción borrará su perfil de la base de datos y no se puede deshacer.

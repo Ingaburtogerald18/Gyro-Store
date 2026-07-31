@@ -356,7 +356,7 @@ export default function AdminVentas() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {quote.lines.map((line) => (
-                  <div key={line.productName} className="rounded-lg border border p-3 text-sm">
+                  <div key={line.productName} className="rounded-lg border p-3 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-foreground">{line.productName}</span>
                       <span className="font-semibold text-foreground">{formatCordobas(line.precioUnit)} c/u</span>

@@ -52,7 +52,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         header: "",
         enableSorting: false,
         cell: () => (
-          <span className="rounded-pill bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-500">
+          <span className="rounded-pill bg-warning/15 px-2 py-1 text-xs font-medium text-warning">
             Migrado
           </span>
         ),
@@ -78,7 +78,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         accessorKey: "stock",
         header: "Stock",
         meta: { align: "right" },
-        cell: (c) => <span className="nums font-bold text-blue-500 bg-blue-500/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
+        cell: (c) => <span className="nums font-bold text-info bg-info/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
       },
       // USD a 2 decimales visibles; precisión completa en el tooltip.
       { accessorKey: "priceBaseUsd", header: "P. Base", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
@@ -94,7 +94,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border bg-card shadow-lg" />;
   }
 
   return (
@@ -103,7 +103,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
       <div className="sticky top-[116px] z-10 -mx-4 bg-background/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           
-          <div className="flex items-center gap-2 rounded-pill border border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:w-80">
+          <div className="flex items-center gap-2 rounded-pill border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:w-80">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               value={globalFilter}

@@ -146,7 +146,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
                     }
                   }}
                 />
-                {codeError && <span className="mt-1 block text-xs text-amber-500">⚠ {codeError}</span>}
+                {codeError && <span className="mt-1 block text-xs text-warning">⚠ {codeError}</span>}
               </>
             );
           })()}

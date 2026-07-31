@@ -81,7 +81,7 @@ export default function Contacto() {
           </form>
 
           <div className="space-y-4">
-            <div className="rounded-md border border bg-card p-5 shadow-xs">
+            <div className="rounded-md border bg-card p-5 shadow-xs">
               <h2 className="font-semibold text-foreground">Visitanos</h2>
               <a
                 href="https://maps.google.com/?q=Managua,Nicaragua"

@@ -96,7 +96,7 @@ export function RowActionsMenu({ actions, className }: { actions: MaybeAction[];
                 exit={{ opacity: 0, y: -4, scale: 0.97 }}
                 transition={{ duration: 0.12 }}
                 style={{ position: "fixed", top: coords.top, left: coords.left, width: W }}
-                className="z-[100] flex flex-col gap-0.5 rounded-card border border bg-card p-1 shadow-2xl"
+                className="z-[100] flex flex-col gap-0.5 rounded-card border bg-card p-1 shadow-2xl"
               >
                 {items.map((a, i) => {
                   const cls = cn(

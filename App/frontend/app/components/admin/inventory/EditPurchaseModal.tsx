@@ -102,7 +102,7 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
                 />
               );
             })()}
-            {codeWarn && <span className="text-xs text-amber-500">{codeWarn}</span>}
+            {codeWarn && <span className="text-xs text-warning">{codeWarn}</span>}
           </div>
 
           {/* Fila 3: Nombre — ancho completo */}

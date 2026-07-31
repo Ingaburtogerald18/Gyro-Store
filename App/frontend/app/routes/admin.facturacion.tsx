@@ -170,7 +170,7 @@ export default function AdminFacturacion() {
           </DialogHeader>
           {saleFor && (
             <div className="space-y-4">
-              <div className="rounded-lg border border bg-muted p-3 text-sm">
+              <div className="rounded-lg border bg-muted p-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Vendedor</span>
                   <span className="font-medium text-foreground">{saleFor.sellerEmail}</span>

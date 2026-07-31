@@ -241,9 +241,9 @@ export function CheckoutDialog({
           <DialogFooter>
             <Button
               type="submit"
-              variant="default"
+              variant="whatsapp"
               disabled={isLoading}
-              className="w-full justify-center bg-[#25D366] text-white hover:bg-[#25D366]/90"
+              className="w-full justify-center"
             >
               {isLoading ? 'Creando pedido…' : 'Enviar pedido por WhatsApp'}
             </Button>

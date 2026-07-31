@@ -75,6 +75,17 @@
   --color-warning: var(--warning);
   --color-info: var(--info);
 
+  /* Acentos de las StatCard. No se mapean a --chart-*: en este preset los
+     charts son toda la escala Green, y las tarjetas necesitan tonos distintos
+     entre sí para distinguirse de un vistazo. */
+  --color-tone-indigo: var(--tone-indigo);
+  --color-tone-sky: var(--tone-sky);
+  --color-tone-amber: var(--tone-amber);
+  --color-tone-emerald: var(--tone-emerald);
+  --color-tone-rose: var(--tone-rose);
+  --color-tone-purple: var(--tone-purple);
+  --color-tone-red: var(--tone-red);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -166,6 +177,14 @@ body {
   --success: oklch(0.63 0.15 150);
   --warning: oklch(0.72 0.15 75);
   --info: oklch(0.6 0.14 245);
+  /* Acentos de StatCard (claro). */
+  --tone-indigo: oklch(0.51 0.19 275);
+  --tone-sky: oklch(0.56 0.14 233);
+  --tone-amber: oklch(0.68 0.16 62);
+  --tone-emerald: oklch(0.55 0.13 163);
+  --tone-rose: oklch(0.59 0.2 15);
+  --tone-purple: oklch(0.55 0.22 300);
+  --tone-red: oklch(0.58 0.22 27);
 }
 
 [data-theme="dark"] {
@@ -206,6 +225,14 @@ body {
   --success: oklch(0.72 0.16 150);
   --warning: oklch(0.8 0.16 78);
   --info: oklch(0.7 0.15 245);
+  /* Acentos de StatCard (oscuro): más claros para contrastar con el fondo. */
+  --tone-indigo: oklch(0.7 0.16 275);
+  --tone-sky: oklch(0.75 0.13 233);
+  --tone-amber: oklch(0.82 0.15 75);
+  --tone-emerald: oklch(0.75 0.15 163);
+  --tone-rose: oklch(0.72 0.17 15);
+  --tone-purple: oklch(0.72 0.18 300);
+  --tone-red: oklch(0.7 0.19 27);
 }
 
 @layer base {

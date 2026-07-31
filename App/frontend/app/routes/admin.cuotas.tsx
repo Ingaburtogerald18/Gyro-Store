@@ -84,7 +84,7 @@ function PaymentDialog({ plan, onClose }: { plan: InstallmentPlan | null; onClos
         </DialogHeader>
         {plan && (
           <div className="space-y-4">
-            <div className="space-y-1 rounded-lg border border bg-muted p-3 text-sm">
+            <div className="space-y-1 rounded-lg border bg-muted p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total</span>
                 <span className="font-semibold">{formatCordobas(plan.total)}</span>
@@ -152,7 +152,7 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
   const pct = pctPaid(plan.amountPaid, plan.total);
 
   return (
-    <div className="overflow-hidden rounded-xl border border bg-card shadow-sm">
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -258,7 +258,7 @@ function CreatePlanDialog({ sale, onClose }: { sale: SaleListItem | null; onClos
         </DialogHeader>
         {sale && (
           <div className="space-y-4">
-            <div className="rounded-lg border border bg-muted p-3 text-sm">
+            <div className="rounded-lg border bg-muted p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Cliente</span>
                 <span className="font-medium text-foreground">{sale.phone ?? '—'}</span>
@@ -380,7 +380,7 @@ export default function AdminCuotas() {
                     setCreateFor(sale);
                     setPickerOpen(false);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg border border px-3 py-2 text-left text-sm hover:bg-muted"
+                  className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted"
                 >
                   <span>{sale.phone ?? sale.sellerEmail}</span>
                   <span className="font-semibold">{formatCordobas(sale.total)}</span>

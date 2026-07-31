@@ -32,7 +32,7 @@ export function SpotlightCard({
     ref.current.style.setProperty("--spot-y", `${e.clientY - r.top}px`);
   }
 
-  const baseStyles = "rounded-card border border bg-card shadow-premium transition-all duration-300 hover:shadow-2xl hover:border/80 hover:-translate-y-1";
+  const baseStyles = "rounded-card border bg-card shadow-lg transition-all duration-300 hover:shadow-2xl hover:border/80 hover:-translate-y-1";
   
   if (variant === "highlight") {
     return (
