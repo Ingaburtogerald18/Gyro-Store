@@ -106,22 +106,22 @@ function CuadreBanner() {
               className={cn(
                 'rounded-card border p-4 transition-colors',
                 pending
-                  ? 'border-danger/30 bg-danger/10 hover:bg-danger/15'
-                  : 'border-border bg-surface hover:bg-surface-hover',
+                  ? 'border-destructive/30 bg-destructive/10 hover:bg-destructive/15'
+                  : 'border-border bg-card hover:bg-accent',
               )}
             >
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <a.icon className={cn('size-4', pending && 'text-danger')} />
+                  <a.icon className={cn('size-4', pending && 'text-destructive')} />
                   {a.label}
                 </span>
                 {pending ? (
-                  <AlertTriangle className="size-4 text-danger" />
+                  <AlertTriangle className="size-4 text-destructive" />
                 ) : (
                   <CheckCircle2 className="size-4 text-success" />
                 )}
               </div>
-              <p className={cn('nums mt-2 text-2xl font-bold', pending ? 'text-danger' : 'text-foreground')}>
+              <p className={cn('nums mt-2 text-2xl font-bold', pending ? 'text-destructive' : 'text-foreground')}>
                 {a.count}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">{pending ? a.hint : 'Todo al día'}</p>
@@ -130,7 +130,7 @@ function CuadreBanner() {
         })}
 
         {cuadre.saldosCuentas.map((s) => (
-          <div key={s.accountId} className="rounded-card border border-border bg-surface p-4">
+          <div key={s.accountId} className="rounded-card border border-border bg-card p-4">
             <span className="flex items-center gap-2 text-sm text-muted-foreground">
               <Wallet className="size-4" />
               {nombreCuenta(s.accountId)}

@@ -25,7 +25,7 @@ export function QueryState({
   if (loading) return <>{loadingFallback}</>;
   if (error) {
     return (
-      <div className="rounded-lg border border-dashed border-danger/30 bg-destructive/5 py-10 text-center">
+      <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 py-10 text-center">
         <p className="font-medium text-destructive">{errorMessage}</p>
       </div>
     );

@@ -41,8 +41,8 @@ function CartButton() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 520, damping: 20 }}
-            // ring-bg lo separa del header con un halo del color de fondo → "flota".
-            className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold tabular-nums text-bg ring-2 ring-bg shadow-lg"
+            // ring-background lo separa del header con un halo del color de fondo → "flota".
+            className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold tabular-nums text-background ring-2 ring-background shadow-lg"
           >
             {count > 99 ? '99+' : count}
           </motion.span>

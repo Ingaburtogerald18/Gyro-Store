@@ -192,7 +192,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
             <strong className="text-foreground font-semibold">{revertFor?.productName}</strong> (Lote:{" "}
             <span className="text-primary-2 font-mono font-bold">{revertFor?.lot}</span>)?
           </p>
-          <div className="rounded-lg border border-danger/20 bg-destructive/5 p-3.5 text-xs text-destructive leading-normal">
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3.5 text-xs text-destructive leading-normal">
             <strong className="block mb-1 text-destructive font-semibold">⚠️ Advertencia de Inventario:</strong>
             Se restarán <strong className="text-destructive font-bold">{revertFor?.available} unidades</strong> del stock actual en bodega. El lote completo volverá al estado original de <strong className="text-destructive font-semibold">"En tránsito"</strong> en el Registro de Compras.
           </div>

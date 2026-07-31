@@ -107,7 +107,7 @@ export default function AdminCajaRoute() {
       cell: (info: any) => {
         const t = info.getValue();
         return (
-          <span className={`inline-flex items-center gap-1 ${t === 'ingreso' ? 'text-success' : 'text-danger'}`}>
+          <span className={`inline-flex items-center gap-1 ${t === 'ingreso' ? 'text-success' : 'text-destructive'}`}>
             {t === 'ingreso' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
             {t.toUpperCase()}
           </span>

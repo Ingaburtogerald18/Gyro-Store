@@ -464,7 +464,7 @@ export default function AdminVentas() {
                   key={s.id}
                   onClick={() => handleLink(s.id)}
                   disabled={linking}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-left transition-colors hover:bg-surface-hover disabled:opacity-50"
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent disabled:opacity-50"
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-foreground">{s.articulo}</span>

@@ -192,7 +192,7 @@ export default function AdminSalidasRoute() {
             )}
             {salida.estado !== 'devuelta' && salida.estado !== 'facturada' && (
               <Button variant="ghost" size="sm" onClick={() => handleDevolver(salida)}>
-                <XCircle className="h-4 w-4 text-danger" />
+                <XCircle className="h-4 w-4 text-destructive" />
               </Button>
             )}
           </div>

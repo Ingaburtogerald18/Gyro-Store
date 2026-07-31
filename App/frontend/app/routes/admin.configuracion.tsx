@@ -234,7 +234,7 @@ function ImagesConfig() {
         </div>
         
         <div className="flex justify-end pt-2">
-          <Button onClick={() => handleSave()} disabled={saving} className="bg-primary text-bg hover:bg-primary/90">
+          <Button onClick={() => handleSave()} disabled={saving} className="bg-primary text-background hover:bg-primary/90">
             <Save className="mr-2 h-4 w-4" />
             {saving ? 'Guardando...' : 'Guardar Imágenes'}
           </Button>
@@ -602,7 +602,7 @@ function FinanzasConfig() {
         </Section>
 
         <div className="sticky bottom-4 mt-8 flex justify-end">
-          <Button type="submit" disabled={saving} className="bg-primary text-bg shadow-lg hover:bg-primary/90">
+          <Button type="submit" disabled={saving} className="bg-primary text-background shadow-lg hover:bg-primary/90">
             {saving ? 'Guardando...' : 'Guardar Configuración Financiera'}
           </Button>
         </div>

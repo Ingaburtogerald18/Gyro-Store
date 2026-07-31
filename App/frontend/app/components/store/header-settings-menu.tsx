@@ -201,7 +201,7 @@ export function HeaderSettingsMenu() {
               {/* ── VISTA ADMINISTRADOR / COLABORADOR ── */}
               {isAuthed && (
                 <>
-                  <div className="mb-1 flex items-center gap-3 rounded-xl bg-gradient-to-br from-accent/10 to-transparent px-2.5 py-3 border border-primary/10">
+                  <div className="mb-1 flex items-center gap-3 rounded-xl bg-gradient-to-br from-primary/10 to-transparent px-2.5 py-3 border border-primary/10">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/20 text-base font-bold text-primary ring-1 ring-primary/30">
                       {initial}
                     </span>

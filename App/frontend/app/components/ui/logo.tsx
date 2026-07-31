@@ -25,7 +25,7 @@ export function Logo({
       {withText && (
         <span
           className={cn(
-            'bg-gradient-to-r from-accent to-accent-2 bg-clip-text font-extrabold text-transparent',
+            'bg-gradient-to-r from-primary to-primary bg-clip-text font-extrabold text-transparent',
             textClassName
           )}
         >

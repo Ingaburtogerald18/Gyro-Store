@@ -90,7 +90,7 @@ export function ProductCarousel({
       <div className="relative">
         <div
           className={cn(
-            'pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-bg to-transparent transition-opacity',
+            'pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent transition-opacity',
             canNext ? 'opacity-100' : 'opacity-0',
           )}
           aria-hidden

@@ -285,7 +285,7 @@ export default function AdminCatalogo() {
       </div>
 
       {isError ? (
-        <Card className="bg-card border-danger/50">
+        <Card className="bg-card border-destructive/50">
           <CardContent className="flex flex-col items-center justify-center py-12">
              <AlertTriangle className="w-10 h-10 text-destructive mb-4" />
              <p className="text-destructive font-medium">No se pudo cargar el catálogo.</p>
