@@ -1,11 +1,18 @@
 import { useState, useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-// `Card` viene de stat-card (no de ui/card): es el que expone `variant="highlight"`
-// con el spotlight que sigue al cursor. Ver nota de duplicación en stat-card.tsx.
-import { Card, StatCard } from '~/components/ui/stat-card';
+// SpotlightCard es nuestro (resplandor que sigue al cursor), distinto del `Card`
+// de shadcn: por eso lleva nombre propio y no colisiona al importar.
+import { SpotlightCard, StatCard } from '~/components/ui/stat-card';
 import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
 import { QueryState } from '~/components/ui/QueryState';
-import { DollarSign, ShoppingCart, Package, Percent, PlusSquare, Droplets } from 'lucide-react';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '~/components/ui/chart';
+import { Pie, PieChart } from 'recharts';
+import { DollarSign, ShoppingCart, Package, Percent, PlusSquare, Droplets, PieChart as PieIcon } from 'lucide-react';
 import type { MetaFunction } from '@remix-run/node';
 import { useGetKpisQuery } from '~/store/api/reportsApi';
 
@@ -32,6 +39,15 @@ function getDateRange(range: string) {
   return { startDate: start.toISOString(), endDate: end.toISOString() };
 }
 
+// Series del gráfico. Los colores salen de los tokens chart-*, así que siguen
+// el tema (claro/oscuro) sin tocar nada acá.
+const incomeChartConfig = {
+  coste: { label: 'Coste', color: 'var(--color-chart-1)' },
+  comision: { label: 'Comisiones', color: 'var(--color-chart-2)' },
+  salary: { label: 'Salary', color: 'var(--color-chart-3)' },
+  ganancia: { label: 'Ganancia tienda', color: 'var(--color-chart-4)' },
+} satisfies ChartConfig;
+
 export default function AdminDashboard() {
   const [range, setRange] = useState('month');
   
@@ -47,6 +63,21 @@ export default function AdminDashboard() {
     { id: '30d', label: '30 Días' },
     { id: 'month', label: 'Este Mes' },
   ];
+
+  // A dónde va cada córdoba vendido. Se descartan los tramos en cero para que
+  // el donut no dibuje segmentos invisibles.
+  const incomeBreakdown = useMemo(
+    () =>
+      kpis
+        ? [
+            { key: 'coste', label: 'Coste', value: kpis.coste_total, fill: 'var(--color-chart-1)' },
+            { key: 'comision', label: 'Comisiones', value: kpis.comision_total, fill: 'var(--color-chart-2)' },
+            { key: 'salary', label: 'Salary', value: kpis.salary_acumulado, fill: 'var(--color-chart-3)' },
+            { key: 'ganancia', label: 'Ganancia tienda', value: kpis.ganancia_tienda_total, fill: 'var(--color-chart-4)' },
+          ].filter((slice) => slice.value > 0)
+        : [],
+    [kpis],
+  );
 
   return (
     <>
@@ -119,7 +150,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card variant="highlight" className="col-span-7 lg:col-span-4 p-5">
+              <SpotlightCard variant="highlight" className="col-span-7 lg:col-span-4 p-5">
                 <div className="mb-6 flex items-center gap-2 border-b border-border pb-4">
                   <Droplets className="h-5 w-5 text-accent" />
                   <h3 className="font-semibold text-text">Recaudado por Pozo</h3>
@@ -149,11 +180,49 @@ export default function AdminDashboard() {
                     );
                   })}
                 </div>
-              </Card>
+              </SpotlightCard>
               
-              <Card variant="default" className="col-span-7 lg:col-span-3 p-5 min-h-[400px] flex items-center justify-center">
-                <p className="text-muted text-sm">Más reportes (Próximamente)</p>
-              </Card>
+              <SpotlightCard variant="default" className="col-span-7 lg:col-span-3 p-5">
+                <div className="mb-4 flex items-center gap-2 border-b border-border pb-4">
+                  <PieIcon className="h-5 w-5 text-accent" />
+                  <h3 className="font-semibold text-text">Composición del ingreso</h3>
+                </div>
+
+                <ChartContainer
+                  config={incomeChartConfig}
+                  className="mx-auto aspect-square max-h-[240px]"
+                >
+                  <PieChart>
+                    <ChartTooltip
+                      content={<ChartTooltipContent hideLabel nameKey="label" />}
+                    />
+                    <Pie
+                      data={incomeBreakdown}
+                      dataKey="value"
+                      nameKey="label"
+                      innerRadius={55}
+                      strokeWidth={4}
+                    />
+                  </PieChart>
+                </ChartContainer>
+
+                {/* Leyenda propia: más compacta que la de Recharts y con cifras. */}
+                <ul className="mt-4 space-y-2">
+                  {incomeBreakdown.map((slice) => (
+                    <li key={slice.key} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted">
+                        <span
+                          aria-hidden
+                          className="size-2.5 rounded-full"
+                          style={{ backgroundColor: slice.fill }}
+                        />
+                        {slice.label}
+                      </span>
+                      <span className="nums font-medium text-text">{formatMoney(slice.value)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </SpotlightCard>
             </div>
           </div>
         )}

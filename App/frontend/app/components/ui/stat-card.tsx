@@ -4,24 +4,24 @@ import { cn } from "~/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { CountUp } from "./CountUp";
 
-export type CardVariant = "default" | "interactive" | "highlight";
+export type SpotlightCardVariant = "default" | "interactive" | "highlight";
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: CardVariant;
+export interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: SpotlightCardVariant;
   /** Radio del resplandor en px (solo para variant="highlight"). */
   spotlightRadius?: number;
   /** Intensidad del color de acento (0–100) (solo para variant="highlight"). */
   spotlightIntensity?: number;
 }
 
-export function Card({
+export function SpotlightCard({
   variant = "default",
   spotlightRadius = 360,
   spotlightIntensity = 16,
   className,
   children,
   ...props
-}: CardProps) {
+}: SpotlightCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
 
@@ -71,7 +71,7 @@ export function Card({
   );
 }
 
-export function CardHeader({
+export function SectionHeader({
   title,
   subtitle,
   action,
@@ -127,7 +127,7 @@ export function StatCard({
       title={hint}
       className={`stat-card-container rounded-card border transition-colors duration-300 ${theme.card}`}
     >
-      <Card variant="highlight" className="p-4 shadow-none bg-transparent border-none">
+      <SpotlightCard variant="highlight" className="p-4 shadow-none bg-transparent border-none">
         <div className="flex items-center gap-2">
           {Icon && <Icon className={`h-4 w-4 ${theme.icon}`} />}
           <span className={`stat-card-label text-xs uppercase tracking-wide font-medium ${theme.label}`}>{label}</span>
@@ -136,7 +136,7 @@ export function StatCard({
           {countTo !== undefined ? <CountUp value={countTo} format={format} /> : value}
         </p>
         {sub && <p className="nums mt-0.5 text-sm font-medium text-muted">{sub}</p>}
-      </Card>
+      </SpotlightCard>
     </motion.div>
   );
 }
