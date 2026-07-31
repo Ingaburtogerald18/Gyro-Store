@@ -130,11 +130,15 @@
      Orden pensado para lectura: el teal de marca manda, el violeta (segundo color
      de marca) contrasta, y luego los semánticos. Nunca colores crudos de Recharts.
      Al flipar a claro heredan los valores calibrados de [data-theme="light"]. */
-  --color-chart-1: var(--color-accent);
-  --color-chart-2: var(--color-badge);
-  --color-chart-3: var(--color-info);
-  --color-chart-4: var(--color-warning);
-  --color-chart-5: var(--color-danger);
+  /* Chart Color: Neutral (como fija el preset). Escala de grises descendente:
+     las series se distinguen por luminosidad, no por matiz. Antes esto era
+     teal/violeta/sky/amber/rose — herencia del sistema viejo que contradecía
+     el preset. */
+  --color-chart-1: oklch(0.922 0 0);
+  --color-chart-2: oklch(0.708 0 0);
+  --color-chart-3: oklch(0.556 0 0);
+  --color-chart-4: oklch(0.439 0 0);
+  --color-chart-5: oklch(0.371 0 0);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -161,6 +165,14 @@
 
   --color-text: oklch(0.145 0 0);
   --color-muted: oklch(0.556 0 0);
+
+  /* Escala de charts invertida: en claro va de oscuro a claro, o el chart-1
+     casi blanco del modo oscuro sería invisible sobre el fondo. */
+  --color-chart-1: oklch(0.205 0 0);
+  --color-chart-2: oklch(0.371 0 0);
+  --color-chart-3: oklch(0.556 0 0);
+  --color-chart-4: oklch(0.708 0 0);
+  --color-chart-5: oklch(0.837 0 0);
 
   --color-danger: #e11d48;
   --color-warning: #d97706;
@@ -229,11 +241,7 @@
   --color-sidebar-border: oklch(1 0 0 / 10%);
   --color-sidebar-ring: oklch(0.439 0 0);
 
-  --color-chart-1: var(--color-blue-300);
-  --color-chart-2: var(--color-blue-500);
-  --color-chart-3: var(--color-blue-600);
-  --color-chart-4: var(--color-blue-700);
-  --color-chart-5: var(--color-blue-800);
+  /* Los charts ya son neutrales en @theme; el admin no los redefine. */
 
   /* Geometría del preset: tarjetas de 24px y controles de 16px. */
   --radius-card: 24px;
