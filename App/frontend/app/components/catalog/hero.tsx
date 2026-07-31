@@ -143,7 +143,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                       className="group/cta w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
                       <span className="truncate">{activeSlide.buttonText || 'Ver catálogo'}</span>
-                      <HugeiconsIcon icon={ArrowRight02Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1 sm: sm:" />
+                      <HugeiconsIcon icon={ArrowRight02Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1" />
                     </Button>
 
                     <Button
@@ -151,7 +151,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                       onClick={() => window.open(whatsappOrderUrl, '_blank', 'noopener,noreferrer')}
                       className="group/wa w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
-                      <HugeiconsIcon icon={Message01Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/wa:scale-110 sm: sm:" />
+                      <HugeiconsIcon icon={Message01Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/wa:scale-110" />
                       <span className="truncate">WhatsApp</span>
                     </Button>
                   </div>

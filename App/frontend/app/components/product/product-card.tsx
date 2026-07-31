@@ -1,13 +1,11 @@
-// ProductCard — estilo showcase: sin marco ni fondo, la foto es la protagonista
-// en un stage redondeado que se levanta al hover, y debajo van nombre, precio y
-// descripción. Portado de la versión que corre hoy en gyrostorenic.com.
-//
-// PENDIENTE del Hito 1: con >1 combinación de variantes, la tienda actual abre
-// un QuickAddSheet para elegir. Ese componente y la ficha de producto son piezas
-// posteriores; hasta entonces se agrega la variante por defecto (el backend de
-// v2 recalcula por catalogItemId y todavía no maneja variantes en el pedido).
+// ProductCard — estilo panel del V1: la tarjeta es una superficie con marco
+// hairline que se eleva entera al hover (no solo la foto), con la imagen en un
+// stage 4:3 y el CTA anclado al fondo para que toda la fila alinee parejo.
+// Con >1 combinación de variantes, el CTA abre el QuickAddSheet para elegir
+// antes de agregar; con una sola va directo al carrito.
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ImageNotFound01Icon, Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
+import { useState } from 'react';
 import { Link } from '@remix-run/react';
 import { motion, useReducedMotion } from 'framer-motion';
 
@@ -15,6 +13,7 @@ import { toast } from 'sonner';
 import type { CatalogProduct } from '@shared/schemas';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+import { QuickAddSheet } from '~/components/product/quick-add-sheet';
 import { useGetConfigQuery } from '~/store/api/configApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
@@ -34,8 +33,11 @@ export function ProductCard({
   const dispatch = useAppDispatch();
   const { data: config } = useGetConfigQuery();
   const reduce = useReducedMotion();
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const image = product.images[0];
+  // Segunda foto: si existe, hace crossfade al pasar el mouse (patrón del V1).
+  const hoverImage = product.images[1];
   const soldOut = product.stock <= 0;
   const lowStock = !soldOut && product.stock <= 5;
   const compareAt = product.compareAtPrice ?? 0;
@@ -52,6 +54,11 @@ export function ProductCard({
     e.preventDefault();
     e.stopPropagation();
     if (soldOut) return;
+    // Con más de una combinación hay que elegir variante: sheet, no carrito.
+    if (product.variantCount > 1) {
+      setQuickAddOpen(true);
+      return;
+    }
     dispatch(
       addItem({
         catalogId: product.id,
@@ -82,7 +89,8 @@ export function ProductCard({
     );
   }
 
-  // El hover levanta la FOTO, no la tarjeta entera.
+  // La tarjeta entera se eleva al hover (ver `shell` más abajo); acá la foto
+  // solo hace zoom por separado, sin trasladarse.
   const Stage = (
     <Link
       to={productUrl}
@@ -90,8 +98,9 @@ export function ProductCard({
       viewTransition
       aria-label={product.name}
       className={cn(
-        'product-stage ease-expo relative block overflow-hidden rounded-2xl transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_20px_48px_-16px_rgba(0,0,0,0.5)] focus-visible:outline-none',
-        isList ? 'aspect-square h-full w-full shrink-0' : 'aspect-square w-full sm:aspect-[4/3]',
+        // El stage ya no se levanta solo: ahora eleva la tarjeta entera.
+        'product-stage relative block overflow-hidden rounded-xl focus-visible:outline-none',
+        isList ? 'aspect-square h-full w-full shrink-0' : 'aspect-[4/3] w-full',
       )}
     >
       <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5">
@@ -116,6 +125,18 @@ export function ProductCard({
         </Badge>
       )}
 
+      {/* Crossfade a la 2da foto: se monta debajo y sube su opacidad al hover. */}
+      {hoverImage && !soldOut && (
+        <img
+          src={hoverImage}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          decoding="async"
+          className="ease-expo absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-[600ms] group-hover:opacity-100"
+        />
+      )}
+
       {image ? (
         <img
           src={image}
@@ -123,8 +144,9 @@ export function ProductCard({
           loading={index < 4 ? 'eager' : 'lazy'}
           decoding="async"
           className={cn(
-            'ease-expo h-full w-full object-cover transition duration-[600ms] will-change-transform',
+            'ease-expo relative h-full w-full object-cover transition duration-[600ms] will-change-transform',
             'group-hover:scale-[1.06]',
+            hoverImage && !soldOut && 'group-hover:opacity-0',
             soldOut && 'opacity-70 grayscale',
           )}
           style={{ viewTransitionName: `vt-product-${product.id}` } as React.CSSProperties}
@@ -184,7 +206,7 @@ export function ProductCard({
         disabled={soldOut}
         className="h-9 flex-1 text-xs sm:h-11 sm:text-sm"
       >
-        <HugeiconsIcon icon={ShoppingCart02Icon} size={14} strokeWidth={2} aria-hidden className="sm: sm:" />
+        <HugeiconsIcon icon={ShoppingCart02Icon} size={14} strokeWidth={2} aria-hidden />
         {soldOut ? 'Agotado' : 'Agregar'}
       </Button>
       {/* Nunca se deshabilita, ni agotado: "avísame" sigue siendo un lead. */}
@@ -214,27 +236,50 @@ export function ProductCard({
       delay: (index % 4) * 0.06,
       ease: [0.16, 1, 0.3, 1] as const,
     },
+    // La elevación y el tactile push llevan su propio `transition` anidado —
+    // Framer Motion lo respeta por gesto sin pisar el de entrada de arriba.
+    whileHover: reduce
+      ? undefined
+      : { y: -4, transition: { type: 'spring' as const, stiffness: 260, damping: 24 } },
+    whileTap: reduce ? undefined : { scale: 0.985 },
   };
 
-  // Sin fondo ni borde: el contenedor es transparente (estilo showcase).
-  const shell = 'group relative flex w-full transition-colors duration-300';
+  // Panel del V1: superficie con marco hairline que se eleva entera al hover
+  // (whileHover de arriba), no solo la foto. Sin flex-col acá: el variant
+  // `list` necesita fila (imagen al lado del texto), no columna.
+  const shell = cn(
+    'group relative flex w-full rounded-2xl border border-border bg-card p-3',
+    'transition-colors duration-300 hover:border-foreground/20',
+  );
+
+  // El sheet se monta junto a la tarjeta pero renderiza por portal (Radix):
+  // el whileTap/whileHover del article no lo afectan.
+  const quickAdd = product.variantCount > 1 && (
+    <QuickAddSheet product={product} open={quickAddOpen} onOpenChange={setQuickAddOpen} />
+  );
 
   if (isList) {
     return (
-      <motion.article {...motionProps} className={cn(shell, 'gap-3 sm:gap-4')}>
-        <div className="relative w-[40%] max-w-[200px] shrink-0 self-center">{Stage}</div>
-        {Info}
-      </motion.article>
+      <>
+        <motion.article {...motionProps} className={cn(shell, 'gap-3 sm:gap-4')}>
+          <div className="relative w-[40%] max-w-[200px] shrink-0 self-center">{Stage}</div>
+          {Info}
+        </motion.article>
+        {quickAdd}
+      </>
     );
   }
 
   return (
-    <motion.article {...motionProps} className={cn(shell, 'h-full flex-col')}>
-      {Stage}
-      {Info}
-      {/* El CTA vive fuera del <Link> flex-1: así todas las tarjetas de una fila
-          alinean su botón a la misma altura sin importar el largo del nombre. */}
-      <div className="pt-3">{Cta}</div>
-    </motion.article>
+    <>
+      <motion.article {...motionProps} className={cn(shell, 'h-full flex-col')}>
+        {Stage}
+        {Info}
+        {/* El CTA vive fuera del <Link> flex-1: así todas las tarjetas de una fila
+            alinean su botón a la misma altura sin importar el largo del nombre. */}
+        <div className="pt-3">{Cta}</div>
+      </motion.article>
+      {quickAdd}
+    </>
   );
 }
