@@ -32,27 +32,28 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  /* ── Superficies — Midnight (neutros fríos casi-negros, nunca negro puro).
-     Cada nivel sube un peldaño real de luminosidad → profundidad legible. ── */
-  --color-bg: #0a0a0f;
-  --color-surface: #15151e;
-  --color-surface-2: #1e1e2a;
-  --color-surface-hover: #2a2a38;
-  --color-border: rgba(148, 184, 255, 0.09);
+  /* ── Superficies — paleta NEUTRAL oficial de shadcn (preset Rhea).
+     Valores tomados de `apps/v4/app/globals.css` del repo shadcn-ui/ui.
+     Sustituyen a la escala "Midnight" azulada del sistema anterior. ── */
+  --color-bg: oklch(0.145 0 0);
+  --color-surface: oklch(0.205 0 0);
+  --color-surface-2: oklch(0.269 0 0);
+  --color-surface-hover: oklch(0.371 0 0);
+  --color-border: oklch(1 0 0 / 10%);
 
-  /* ── Acento: TEAL de marca (logo #42c5b0). El primario vivo resalta sobre el
-     fondo oscuro; el hover baja al teal profundo. ── */
-  --color-accent: #2dd4bf;
-  --color-accent-2: #5eead4;
-  --color-accent-hover: #14b8a6;
+  /* ── Acento: el "primary" neutro del preset (casi blanco, texto oscuro
+     encima). Reemplaza al teal de marca en toda la app. ── */
+  --color-accent: oklch(0.922 0 0);
+  --color-accent-2: oklch(0.985 0 0);
+  --color-accent-hover: oklch(0.985 0 0);
   /* WhatsApp en su verde canónico: distinto del teal para no confundirse. */
   --color-whatsapp: #25d366;
   --color-grad-from: #14b8a6;
   --color-grad-to: #0d9488;
 
-  /* ── Texto ── */
-  --color-text: #eaf1ff;
-  --color-muted: #8b9bb8;
+  /* ── Texto (neutral del preset) ── */
+  --color-text: oklch(0.985 0 0);
+  --color-muted: oklch(0.708 0 0);
 
   /* ── Estados semánticos ── */
   --color-danger: #f87171;
@@ -144,22 +145,22 @@
 [data-theme="light"] {
   /* "Alabaster / Frosted Pearl": nunca blanco clínico. El fondo es una perla con
      tinte frío y la superficie separa sin necesidad de sombra dura. */
-  --color-bg: #e9edf3;
-  --color-surface: #ffffff;
-  --color-surface-2: #eef2f7;
-  --color-surface-hover: #e3e9f1;
-  --color-border: rgba(15, 40, 70, 0.12);
+  --color-bg: oklch(1 0 0);
+  --color-surface: oklch(1 0 0);
+  --color-surface-2: oklch(0.97 0 0);
+  --color-surface-hover: oklch(0.97 0 0);
+  --color-border: oklch(0.922 0 0);
 
-  /* Teal profundo: legible como texto sobre blanco y mantiene la marca. */
-  --color-accent: #0f766e;
-  --color-accent-2: #115e59;
-  --color-accent-hover: #115e59;
+  /* Neutral claro del preset: el "primary" es casi negro. */
+  --color-accent: oklch(0.205 0 0);
+  --color-accent-2: oklch(0.145 0 0);
+  --color-accent-hover: oklch(0.145 0 0);
   --color-whatsapp: #128c3e;
   --color-grad-from: #0f766e;
   --color-grad-to: #0d9488;
 
-  --color-text: #0f2420;
-  --color-muted: #5c6b66;
+  --color-text: oklch(0.145 0 0);
+  --color-muted: oklch(0.556 0 0);
 
   --color-danger: #e11d48;
   --color-warning: #d97706;
