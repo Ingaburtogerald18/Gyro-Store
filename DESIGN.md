@@ -148,8 +148,6 @@ cambia, solo se repintan con los tokens neutrales):
 
 ## 10. Deuda / pendientes
 
-- **Duplicado de tablas**: conviven `DataTable.tsx` (custom, 6 consumidores) y `data-table.tsx`
-  (TanStack, 1 consumidor: `admin.inventario`). Falta consolidar en una sola.
 - **Nombres propios ya resueltos**: `stat-card.tsx` exporta `SpotlightCard`/`SectionHeader`
   (antes `Card`/`CardHeader`, que chocaban con la primitiva `card.tsx`). Regla: lo nuestro
   lleva nombre propio, nunca el de una primitiva del registry.

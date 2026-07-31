@@ -13,7 +13,7 @@ import { useGetCategoriesQuery } from '~/store/api/catalogAdminApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
-import { DataTable } from '~/components/ui/data-table';
+import { DataTable } from '~/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '~/components/ui/dialog';
 import { Input } from '~/components/ui/input';
