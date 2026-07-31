@@ -28,7 +28,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import { Shield, ShieldAlert, UserCog, UserX, Trash2, UserPlus, RefreshCcw, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { QueryState } from '~/components/ui/QueryState';
-import { BrandLoader } from '~/components/ui/module-loader';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Personal | Gyro Store Admin' }];
@@ -172,7 +171,7 @@ export default function AdminUsuarios() {
         const isProtected = user.email === SUPER_ADMIN_EMAIL;
         return (
           <div className="flex items-center gap-3 py-1 min-w-[200px]">
-            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground border border shrink-0">
+            <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-lg font-bold text-muted border border-border shrink-0">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="avatar" className="w-full h-full rounded-full object-cover" />
               ) : (
@@ -180,7 +179,7 @@ export default function AdminUsuarios() {
               )}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-foreground flex items-center gap-1.5 truncate">
+              <span className="font-bold text-text flex items-center gap-1.5 truncate">
                 {user.name}
                 {isProtected && (
                   <span title="Protegido por el sistema" className="inline-flex shrink-0">
@@ -188,7 +187,7 @@ export default function AdminUsuarios() {
                   </span>
                 )}
               </span>
-              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+              <span className="text-xs text-muted truncate">{user.email}</span>
             </div>
           </div>
         );
@@ -222,17 +221,17 @@ export default function AdminUsuarios() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted hover:text-text">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acciones</div>
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted uppercase tracking-wider">Acciones</div>
               <DropdownMenuItem onClick={() => setSelectedUser(user)} className="cursor-pointer">
                 <UserCog className="mr-2 h-4 w-4" /> Editar Perfil
               </DropdownMenuItem>
               <div className="h-px bg-border my-1" />
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rol</div>
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted uppercase tracking-wider">Rol</div>
               {Object.entries(ROLE_LABELS).map(([roleKey, label]) => (
                 <DropdownMenuItem 
                   key={roleKey} 
@@ -247,7 +246,7 @@ export default function AdminUsuarios() {
                   {!isProtected && (
                     <>
                       <div className="h-px bg-border my-1" />
-                      <DropdownMenuItem onClick={() => handleSuspend(user)} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleSuspend(user)} className="text-danger focus:bg-danger/10 focus:text-danger cursor-pointer">
                         <UserX className="mr-2 h-4 w-4" /> Dar de baja
                       </DropdownMenuItem>
                     </>
@@ -256,11 +255,11 @@ export default function AdminUsuarios() {
               ) : (
                 <>
                   <div className="h-px bg-border my-1" />
-                  <DropdownMenuItem onClick={() => handleRestore(user)} className="text-primary focus:bg-primary/10 focus:text-primary cursor-pointer">
+                  <DropdownMenuItem onClick={() => handleRestore(user)} className="text-accent focus:bg-accent/10 focus:text-accent cursor-pointer">
                     <RefreshCcw className="mr-2 h-4 w-4" /> Restaurar
                   </DropdownMenuItem>
                   {!isProtected && (
-                    <DropdownMenuItem onClick={() => setUserToDelete(user)} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                    <DropdownMenuItem onClick={() => setUserToDelete(user)} className="text-danger focus:bg-danger/10 focus:text-danger cursor-pointer">
                       <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                     </DropdownMenuItem>
                   )}
@@ -282,14 +281,14 @@ export default function AdminUsuarios() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Gestión de Personal</h2>
-          <p className="text-muted-foreground">Administra los roles y el acceso del equipo a Gyro Store.</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-text">Gestión de Personal</h2>
+          <p className="text-muted">Administra los roles y el acceso del equipo a Gyro Store.</p>
         </div>
         
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="default">
+              <Button variant="accent">
                 <UserPlus className="w-4 h-4 mr-2" />
                 Agregar Empleado
               </Button>
@@ -342,7 +341,7 @@ export default function AdminUsuarios() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={isCreating} variant="default">
+                  <Button type="submit" disabled={isCreating} variant="accent">
                     {isCreating ? 'Creando...' : 'Guardar Empleado'}
                   </Button>
                 </DialogFooter>
@@ -360,12 +359,12 @@ export default function AdminUsuarios() {
       />
 
       <Card>
-        <CardHeader className="border-b border pb-4">
+        <CardHeader className="border-b border-border pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
             {currentTab === 'activos' ? (
-              <><Shield className="w-5 h-5 text-primary" /> Cuentas Activas</>
+              <><Shield className="w-5 h-5 text-accent" /> Cuentas Activas</>
             ) : (
-              <><UserX className="w-5 h-5 text-destructive" /> Papelera (30 días)</>
+              <><UserX className="w-5 h-5 text-danger" /> Papelera (30 días)</>
             )}
           </CardTitle>
           <CardDescription>
@@ -379,9 +378,9 @@ export default function AdminUsuarios() {
             loading={isLoading}
             error={isError}
             empty={currentTab === 'activos' ? activeUsers.length === 0 : deletedUsers.length === 0}
-            loadingFallback={<div className="flex p-12 justify-center"><BrandLoader text="Cargando perfiles..." /></div>}
+            loadingFallback={<div className="p-6 text-center text-muted">Cargando perfiles...</div>}
             emptyFallback={
-              <div className="p-12 text-center text-muted-foreground">
+              <div className="p-12 text-center text-muted">
                 <UserCog className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 {currentTab === 'activos' ? 'Sin usuarios registrados' : 'La papelera está vacía'}
               </div>
@@ -403,9 +402,9 @@ export default function AdminUsuarios() {
       {/* Modal de confirmación custom para eliminar usuario permanentemente */}
       {userToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card border border p-6 rounded-card shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-foreground mb-2">Borrar permanentemente</h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+          <div className="bg-surface border border-border p-6 rounded-card shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-text mb-2">Borrar permanentemente</h3>
+            <p className="text-muted mb-6 text-sm">
               ¿Seguro que deseas eliminar por completo a <strong>{userToDelete.name}</strong> y todo su acceso? Esta acción borrará su perfil de la base de datos y no se puede deshacer.
             </p>
             <div className="flex justify-end gap-3">
@@ -430,7 +429,7 @@ export default function AdminUsuarios() {
             <div className="flex flex-col gap-6 py-6 h-full">
               {/* Foto centrada y grande */}
               <div className="flex flex-col items-center gap-3">
-                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center text-4xl font-bold text-muted-foreground border-4 border shadow-xl">
+                <div className="w-24 h-24 rounded-full bg-surface-2 flex items-center justify-center text-4xl font-bold text-muted border-4 border-border shadow-xl">
                   {selectedUser.avatar_url ? (
                     <img src={selectedUser.avatar_url} alt="avatar" className="w-full h-full rounded-full object-cover" />
                   ) : (
@@ -489,9 +488,9 @@ export default function AdminUsuarios() {
                 </div>
               </div>
 
-              <div className="mt-auto pt-6 border-t border flex flex-col gap-3">
+              <div className="mt-auto pt-6 border-t border-border flex flex-col gap-3">
                 <Button 
-                  variant="default"
+                  variant="accent"
                   className="w-full"
                   onClick={handleSaveProfile}
                   disabled={isUpdatingProfile}
@@ -516,7 +515,7 @@ export default function AdminUsuarios() {
                 ) : (
                   <Button 
                     variant="outline"
-                    className="w-full border-primary/50 text-primary hover:bg-primary/10"
+                    className="w-full border-accent/50 text-accent hover:bg-accent/10"
                     onClick={() => {
                       handleRestore(selectedUser);
                       setSelectedUser(null);

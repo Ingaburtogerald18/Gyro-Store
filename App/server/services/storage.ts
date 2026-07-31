@@ -49,7 +49,7 @@ export function getClient(): S3Client {
 export async function optimizeImageBuffer(buffer: Buffer, { maxDim = 1200, quality = 82 } = {}) {
   if (!sharp) return { buffer, contentType: null, ext: null };
   try {
-    const out = await sharp(buffer)
+    const out = await sharp(buffer, { animated: true })
       .rotate()
       .resize(maxDim, maxDim, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality })

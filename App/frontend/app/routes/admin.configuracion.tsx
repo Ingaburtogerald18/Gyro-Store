@@ -4,30 +4,34 @@ import { Card, CardContent } from '~/components/ui/card';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Button } from '~/components/ui/button';
+import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
 import { ImagePlus, X, Save, UploadCloud } from 'lucide-react';
 import type { FinancialConfig, ImageResources } from '@shared/schemas';
+import { BrandLoader } from '~/components/ui/module-loader';
+import { useAppDispatch } from '~/store/hooks';
+import { configApi } from '~/store/api/configApi';
 
 function Section({
   title,
   description,
   children,
+  className
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="grid gap-4 border-t border pt-8 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:gap-8">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {description && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>}
+    <Card className={`flex flex-col bg-card border shadow-sm overflow-hidden ${className || ''}`}>
+      <div className="p-6 pb-4">
+        <h2 className="text-lg font-semibold text-foreground tracking-tight">{title}</h2>
+        {description && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>}
       </div>
-      <Card className="bg-card border overflow-hidden p-5">
-        <CardContent className="p-0">
-          {children}
-        </CardContent>
-      </Card>
-    </section>
+      <CardContent className="flex-1 p-6 pt-0">
+        {children}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -44,6 +48,7 @@ function ImagesConfig() {
   const [successMsg, setSuccessMsg] = useState('');
   // Track images uploaded in this session to clean them up if discarded
   const uploadedInSession = useRef<Set<string>>(new Set());
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -98,6 +103,7 @@ function ImagesConfig() {
       const data = await res.json();
       setConfig(data);
       uploadedInSession.current.clear(); // All saved, nothing to clean up
+      dispatch(configApi.util.invalidateTags(['Config']));
       setSuccessMsg('Recursos guardados correctamente.');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: any) {
@@ -155,6 +161,9 @@ function ImagesConfig() {
   };
 
   const renderUploadBox = (title: string, desc: string, key: keyof ImageResources) => {
+    const isAnimated = key === 'logoAnimated';
+    const acceptAttr = isAnimated ? "image/*,video/*" : "image/*";
+
     return (
       <div className="flex flex-col gap-3 rounded-lg border border bg-muted p-4">
         <div>
@@ -164,7 +173,11 @@ function ImagesConfig() {
         {config[key] ? (
           <div className="relative group rounded-lg border border bg-card p-2">
             <div className="aspect-video w-full flex items-center justify-center overflow-hidden rounded-md bg-black/20">
-              <img src={config[key]} alt={title} className="max-h-32 max-w-full object-contain" />
+              {config[key]?.match(/\.(webm|mp4|mov)$/i) ? (
+                <video src={config[key]} autoPlay loop muted playsInline className="max-h-32 max-w-full object-contain" />
+              ) : (
+                <img src={config[key]} alt={title} className="max-h-32 max-w-full object-contain" />
+              )}
             </div>
             <button
               type="button"
@@ -198,7 +211,7 @@ function ImagesConfig() {
             <input 
               type="file" 
               className="hidden" 
-              accept="image/*"
+              accept={acceptAttr}
               onChange={e => {
                 const file = e.target.files?.[0];
                 if (file) uploadFile(file, key);
@@ -215,7 +228,7 @@ function ImagesConfig() {
     );
   };
 
-  if (loading) return <div className="py-12 text-center text-sm text-muted-foreground">Cargando recursos...</div>;
+  if (loading) return <div className="flex py-12 justify-center"><BrandLoader text="Cargando recursos..." /></div>;
 
   return (
     <Section 
@@ -234,7 +247,7 @@ function ImagesConfig() {
         </div>
         
         <div className="flex justify-end pt-2">
-          <Button onClick={() => handleSave()} disabled={saving} className="bg-primary text-background hover:bg-primary/90">
+          <Button onClick={() => handleSave()} disabled={saving}>
             <Save className="mr-2 h-4 w-4" />
             {saving ? 'Guardando...' : 'Guardar Imágenes'}
           </Button>
@@ -346,7 +359,7 @@ function FinanzasConfig() {
     }
   };
 
-  if (loading) return <div className="flex h-40 items-center justify-center text-muted-foreground">Cargando configuración...</div>;
+  if (loading) return <div className="flex h-40 items-center justify-center"><BrandLoader text="Cargando configuración..." /></div>;
   if (!config) return <div className="p-4 text-destructive">{error}</div>;
 
   return (
@@ -602,7 +615,7 @@ function FinanzasConfig() {
         </Section>
 
         <div className="sticky bottom-4 mt-8 flex justify-end">
-          <Button type="submit" disabled={saving} className="bg-primary text-background shadow-lg hover:bg-primary/90">
+          <Button type="submit" disabled={saving} className="shadow-lg">
             {saving ? 'Guardando...' : 'Guardar Configuración Financiera'}
           </Button>
         </div>
@@ -611,17 +624,72 @@ function FinanzasConfig() {
   );
 }
 
-export default function AdminConfiguracion() {
+function GeneralConfig() {
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 pb-20 pt-4">
+    <div className="space-y-6">
+      <Section title="Información del Negocio" description="Datos generales de contacto y operación de la tienda.">
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Nombre de la Tienda</Label>
+              <Input defaultValue="Gyro Store" />
+            </div>
+            <div className="space-y-2">
+              <Label>Número RUC</Label>
+              <Input placeholder="Opcional" />
+            </div>
+            <div className="space-y-2">
+              <Label>Teléfono Principal (WhatsApp)</Label>
+              <Input defaultValue="+505 " />
+            </div>
+            <div className="space-y-2">
+              <Label>Correo de Contacto</Label>
+              <Input type="email" placeholder="contacto@gyrostore.com" />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Dirección Física</Label>
+              <Input defaultValue="Managua, Nicaragua" />
+            </div>
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button className="shadow-sm">
+              <Save className="mr-2 h-4 w-4" />
+              Guardar General
+            </Button>
+          </div>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+export default function AdminConfiguracion() {
+  const [currentTab, setCurrentTab] = useState('general');
+
+  const tabs = [
+    { id: 'general', label: 'General' },
+    { id: 'variables', label: 'Variables' },
+    { id: 'recursos', label: 'Recursos' },
+  ];
+
+  return (
+    <div className="mx-auto w-full max-w-5xl space-y-6 pb-20 pt-4 animate-in fade-in zoom-in-95 duration-200">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Configuración</h1>
         <p className="mt-1 text-sm text-muted-foreground">Parámetros del negocio editables desde la UI.</p>
       </div>
+
+      <AnimatedTabs
+        items={tabs}
+        value={currentTab}
+        onChange={setCurrentTab}
+        layoutId="config-tabs"
+      />
       
-      <div className="space-y-8">
-        <ImagesConfig />
-        <FinanzasConfig />
+      <div className="mt-6">
+        {currentTab === 'general' && <GeneralConfig />}
+        {currentTab === 'variables' && <FinanzasConfig />}
+        {currentTab === 'recursos' && <ImagesConfig />}
       </div>
     </div>
   );

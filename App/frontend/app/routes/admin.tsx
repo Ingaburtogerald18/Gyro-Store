@@ -52,13 +52,14 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from '~/components/ui/sidebar';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { useGetMeQuery } from '~/store/api/authApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
-import { ModuleLoader, useAnyQueryPending } from '~/components/ui/module-loader';
+import { BrandLoader, ModuleLoader, useAnyQueryPending } from '~/components/ui/module-loader';
 
 interface NavItem {
   name: string;
@@ -127,6 +128,88 @@ async function syncEntraPhoto(accessToken: string, providerToken: string) {
   } catch {
     toast.error('Error de conexión al sincronizar foto.');
   }
+}
+
+function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin: boolean; pathname: string }) {
+  const { setOpen } = useSidebar();
+  
+  return (
+    <Sidebar 
+      collapsible="icon" 
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-16 flex items-center justify-center p-0">
+        
+        {/* Expanded View */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none">
+          <div className="flex flex-col items-center text-center leading-tight">
+            <span className="font-bold text-lg tracking-tight whitespace-nowrap">Gyro Store</span>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap uppercase tracking-wider font-medium">Panel admin</span>
+          </div>
+        </div>
+
+        {/* Collapsed View (Icon) */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
+          <NavLink to="/admin" className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:opacity-90 transition-opacity">
+            <Store className="size-4" />
+          </NavLink>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        {NAV_GROUPS.map((group) => {
+          // Quien no es admin solo ve su operación diaria.
+          const allowedItems = group.items.filter((item) =>
+            isAdmin ? true : item.name === 'Ventas' || item.name === 'Personal',
+          );
+          if (allowedItems.length === 0) return null;
+
+          return (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              <SidebarMenu>
+                {allowedItems.map((item) => {
+                  const isActive = item.end
+                    ? pathname === item.to
+                    : pathname.startsWith(item.to);
+
+                  // Los módulos que aún no existen se muestran, pero apagados:
+                  if (!item.ready) {
+                    return (
+                      <SidebarMenuItem key={item.name}>
+                        <SidebarMenuButton
+                          disabled
+                          tooltip="Próximamente"
+                          className="cursor-not-allowed opacity-40"
+                        >
+                          <item.icon />
+                          <span>{item.name}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  }
+
+                  return (
+                    <SidebarMenuItem key={item.name}>
+                      <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
+                        <NavLink to={item.to} end={item.end} prefetch="intent">
+                          <item.icon />
+                          <span>{item.name}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+          );
+        })}
+      </SidebarContent>
+
+      <SidebarRail />
+    </Sidebar>
+  );
 }
 
 export default function AdminLayout() {
@@ -222,7 +305,7 @@ export default function AdminLayout() {
   if (checking || isLoadingMe || isConfigLoading) {
     return (
       <div className="grid min-h-svh place-items-center bg-background text-sm text-muted-foreground">
-        Cargando interfaz...
+        <BrandLoader text="Cargando interfaz..." />
       </div>
     );
   }
@@ -237,80 +320,9 @@ export default function AdminLayout() {
   return (
     // El estado del sidebar lo persiste SidebarProvider en cookie (mejor que
     // localStorage: no parpadea en el primer render del servidor).
-    <SidebarProvider data-skin="admin">
-      <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <NavLink to="/admin">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <Store className="size-4" />
-                  </div>
-                  <div className="grid flex-1 text-left leading-tight">
-                    <span className="truncate font-semibold">GyroAdmin</span>
-                    <span className="truncate text-xs text-muted-foreground">Panel interno</span>
-                  </div>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-
-        <SidebarContent>
-          {NAV_GROUPS.map((group) => {
-            // Quien no es admin solo ve su operación diaria.
-            const allowedItems = group.items.filter((item) =>
-              isAdmin ? true : item.name === 'Ventas' || item.name === 'Personal',
-            );
-            if (allowedItems.length === 0) return null;
-
-            return (
-              <SidebarGroup key={group.label}>
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                <SidebarMenu>
-                  {allowedItems.map((item) => {
-                    const isActive = item.end
-                      ? location.pathname === item.to
-                      : location.pathname.startsWith(item.to);
-
-                    // Los módulos que aún no existen se muestran, pero apagados:
-                    // dan contexto de lo que viene sin ofrecer un link roto.
-                    if (!item.ready) {
-                      return (
-                        <SidebarMenuItem key={item.name}>
-                          <SidebarMenuButton
-                            disabled
-                            tooltip="Próximamente"
-                            className="cursor-not-allowed opacity-40"
-                          >
-                            <item.icon />
-                            <span>{item.name}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    }
-
-                    return (
-                      <SidebarMenuItem key={item.name}>
-                        <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
-                          <NavLink to={item.to} end={item.end} prefetch="intent">
-                            <item.icon />
-                            <span>{item.name}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroup>
-            );
-          })}
-        </SidebarContent>
-
-        {/* El borde arrastrable para plegar/desplegar. */}
-        <SidebarRail />
-      </Sidebar>
+    // Lo cerramos por defecto ya que queremos que sea hover-based.
+    <SidebarProvider data-skin="admin" defaultOpen={false}>
+      <AdminSidebar user={user} isAdmin={isAdmin} pathname={location.pathname} />
 
       <SidebarInset className="relative">
         <ModuleLoader show={moduleLoading} />
