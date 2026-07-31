@@ -100,10 +100,30 @@ Los forms extienden los schemas base de **`shared/schemas.ts`** (contrato único
 `schemas/expenses.ts`, `schemas/losses.ts`, `schemas/validators.ts`. Regla: nunca re-declarar campos
 comunes; extender la base compartida. Con todo en TS, los tipos de esos schemas fluyen al backend también.
 
-## 7. Theming [se mantiene]
-`useTheme` con toggle en `PublicSidebar`/`UserMenu`. `data-theme` en `<html>`, `data-skin="store"` en
-el wrapper público. Oscuro por defecto; claro "Daylight" calibrado. Todo componente (incluidos los de
-shadcn/ui) consume **tokens** (`bg-bg`, `text-accent`, `border-border`).
+## 7. Theming [actualizado 2026-07-30: dos pieles]
+`useTheme` con toggle en `PublicSidebar`/`UserMenu`. `data-theme` en `<html>`, `data-skin` en el
+wrapper de cada zona. Oscuro por defecto; claro "Daylight" calibrado. Todo componente (incluidos los
+de shadcn/ui) consume **tokens** (`bg-bg`, `text-accent`, `border-border`) — nunca colores crudos.
+
+**Dos pieles sobre los mismos tokens** (`data-skin`, definidas en `app/tailwind.css`):
+
+| Piel | Dónde | Paleta |
+|---|---|---|
+| `store` | `root.tsx` (storefront público) | **Teal de marca** (`#2dd4bf`), identidad Gyro |
+| `admin` | `admin.tsx` (back-office) | **Neutral oficial de shadcn** (preset Rhea), escala de grises |
+
+> **Cambio de regla (2026-07-30).** Antes la regla era "el teal de marca manda en TODA la app". Ahora
+> el **back-office adopta la paleta neutra de shadcn**: se decidió que el panel se vea como el preset
+> oficial (más sobrio, estándar de la industria para herramientas internas), y que **la marca viva en
+> la tienda**, que es la cara al cliente. Los valores neutros se tomaron del repo `shadcn-ui/ui`
+> (`apps/v4/app/globals.css`, base color `neutral`).
+>
+> Cómo está implementado: las rutas del admin **no cambiaron**. Como ya consumían tokens semánticos,
+> basta con redefinir los tokens bajo `[data-skin="admin"]` para repintar las ~3.500 líneas del
+> back-office sin tocar un `.tsx`. Si mañana se quiere volver al teal en el admin, se borra ese bloque.
+>
+> Consecuencia para quien codee el admin: **`text-accent` ya no es teal ahí**, es el "primary" neutro
+> casi blanco. Los CTA planos del admin llevan texto oscuro encima.
 
 ## 8. Accesibilidad y rendimiento [se mantiene]
 Contraste AA, foco visible, `prefers-reduced-motion`, touch ≥44px. shadcn/ui (sobre Radix) me da gran

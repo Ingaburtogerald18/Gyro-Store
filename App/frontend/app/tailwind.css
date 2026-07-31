@@ -96,6 +96,29 @@
   --color-destructive-foreground: var(--color-bg);
   --color-input: var(--color-border);
   --color-ring: var(--color-accent);
+
+  /* ── Sidebar (primitiva `sidebar` de shadcn) ──
+     El shell del admin es una superficie, no el fondo: por eso `sidebar` cae en
+     `surface` y su hover en `surface-hover`. El "primary" del sidebar es el teal
+     de marca, con texto oscuro encima (mismo criterio que el CTA plano). */
+  --color-sidebar: var(--color-surface);
+  --color-sidebar-foreground: var(--color-text);
+  --color-sidebar-primary: var(--color-accent);
+  --color-sidebar-primary-foreground: var(--color-bg);
+  --color-sidebar-accent: var(--color-surface-hover);
+  --color-sidebar-accent-foreground: var(--color-text);
+  --color-sidebar-border: var(--color-border);
+  --color-sidebar-ring: var(--color-accent);
+
+  /* ── Series de gráficos (primitiva `chart`, sobre Recharts) ──
+     Orden pensado para lectura: el teal de marca manda, el violeta (segundo color
+     de marca) contrasta, y luego los semánticos. Nunca colores crudos de Recharts.
+     Al flipar a claro heredan los valores calibrados de [data-theme="light"]. */
+  --color-chart-1: var(--color-accent);
+  --color-chart-2: var(--color-badge);
+  --color-chart-3: var(--color-info);
+  --color-chart-4: var(--color-warning);
+  --color-chart-5: var(--color-danger);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -146,6 +169,80 @@
 [data-theme="light"] .bg-white\/10 { background-color: rgba(15, 23, 42, 0.06); }
 [data-theme="light"] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.05); }
 [data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.07); }
+
+/* ──────────────────────────────────────────────────────────────
+   PIEL DEL ADMIN — "shadcn neutral" (preset Rhea).
+   Decisión del 2026-07-30: el back-office deja de usar el teal de marca y
+   adopta la paleta NEUTRA oficial de shadcn (valores tomados de
+   `apps/v4/app/globals.css` del repo shadcn-ui/ui, base color `neutral`).
+
+   Por qué acá y no en los componentes: las rutas del admin ya consumen tokens
+   semánticos (`bg-surface`, `text-muted`, `text-accent`…), así que redefinir los
+   tokens bajo `[data-skin="admin"]` repinta las ~3.500 líneas del back-office
+   sin tocar un solo archivo .tsx — y sin arrastrar al storefront, que conserva
+   el teal de marca en `data-skin="store"` (root.tsx).
+
+   El gancho `data-skin` ya existía en el layout; hasta ahora ningún CSS lo usaba.
+   ────────────────────────────────────────────────────────────── */
+[data-skin="admin"] {
+  --color-bg: oklch(0.145 0 0);
+  --color-surface: oklch(0.205 0 0);
+  --color-surface-2: oklch(0.269 0 0);
+  --color-surface-hover: oklch(0.371 0 0);
+  --color-border: oklch(1 0 0 / 10%);
+
+  /* En la paleta neutra el "primary" es casi blanco y su texto va oscuro:
+     por eso el CTA plano del admin se ve claro, como en el preset. */
+  --color-accent: oklch(0.922 0 0);
+  --color-accent-2: oklch(0.985 0 0);
+  --color-accent-hover: oklch(0.985 0 0);
+
+  --color-text: oklch(0.985 0 0);
+  --color-muted: oklch(0.708 0 0);
+
+  --color-danger: oklch(0.704 0.191 22.216);
+  --color-ring: oklch(0.556 0 0);
+
+  /* Sidebar y series de gráficos: valores oficiales del preset. */
+  --color-sidebar: oklch(0.205 0 0);
+  --color-sidebar-foreground: oklch(0.985 0 0);
+  --color-sidebar-primary: oklch(0.488 0.243 264.376);
+  --color-sidebar-primary-foreground: oklch(0.985 0 0);
+  --color-sidebar-accent: oklch(0.269 0 0);
+  --color-sidebar-accent-foreground: oklch(0.985 0 0);
+  --color-sidebar-border: oklch(1 0 0 / 10%);
+  --color-sidebar-ring: oklch(0.439 0 0);
+
+  --color-chart-1: var(--color-blue-300);
+  --color-chart-2: var(--color-blue-500);
+  --color-chart-3: var(--color-blue-600);
+  --color-chart-4: var(--color-blue-700);
+  --color-chart-5: var(--color-blue-800);
+
+  /* Geometría del preset: tarjetas de 24px y controles de 16px. */
+  --radius-card: 24px;
+  --radius-input: 16px;
+}
+
+/* Variante clara del admin (misma paleta neutra, valores de `:root`). */
+[data-theme="light"] [data-skin="admin"],
+[data-skin="admin"][data-theme="light"] {
+  --color-bg: oklch(1 0 0);
+  --color-surface: oklch(1 0 0);
+  --color-surface-2: oklch(0.97 0 0);
+  --color-surface-hover: oklch(0.97 0 0);
+  --color-border: oklch(0.922 0 0);
+  --color-accent: oklch(0.205 0 0);
+  --color-accent-2: oklch(0.145 0 0);
+  --color-accent-hover: oklch(0.145 0 0);
+  --color-text: oklch(0.145 0 0);
+  --color-muted: oklch(0.556 0 0);
+  --color-sidebar: oklch(0.985 0 0);
+  --color-sidebar-foreground: oklch(0.145 0 0);
+  --color-sidebar-accent: oklch(0.97 0 0);
+  --color-sidebar-accent-foreground: oklch(0.205 0 0);
+  --color-sidebar-border: oklch(0.922 0 0);
+}
 
 /* Escenario del producto: transparente a propósito — las fotos del catálogo ya
    traen su propio fondo, así que un recuadro extra solo ensuciaría. Se conserva

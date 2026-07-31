@@ -18,7 +18,7 @@
 -- ============================================================================
 
 alter table purchases
-  add column if not exists product_name    text not null,
+  add column if not exists product_name    text not null default 'No Name',
   add column if not exists category        text,
   add column if not exists arrival_date    date,
   add column if not exists suggested_price numeric(12,2),

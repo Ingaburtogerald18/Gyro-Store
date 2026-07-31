@@ -10,6 +10,14 @@ export type LoginInput = z.infer<typeof loginSchema>;
 // ── SCHEMAS DEL DOMINIO: CATÁLOGO ──
 // ============================================================================
 
+export const categorySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1, 'El nombre es obligatorio.').max(80),
+  slug: z.string().max(80),
+});
+
+export type Category = z.infer<typeof categorySchema>;
+
 // Schema base para los templates de productos
 export const templateSchema = z.object({
   id: z.uuid(),
@@ -42,6 +50,7 @@ export const publicCatalogItemSchema = z.object({
   published: z.boolean(),
   is_promo: z.boolean(),
   sort_order: z.number().int(),
+  category_id: z.string().uuid().nullable().optional(),
 
   // Timestamps
   created_at: z.iso.datetime({ offset: true }),
@@ -49,6 +58,10 @@ export const publicCatalogItemSchema = z.object({
 
   // Relación embebida (Join desde el backend)
   template: templateSchema.nullable(),
+  category: z.object({
+    id: z.string(),
+    name: z.string()
+  }).nullable().optional(),
 });
 
 // Vista INTERNA (panel/admin): agrega los precios calculados de la cadena
@@ -78,9 +91,9 @@ export const catalogProductSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   description: z.string().optional(),
-  // Vacío por ahora: la v2 todavía no tiene columna de categoría (ver el
-  // presentador). La card simplemente no pinta el eyebrow cuando viene vacía.
+  // Nombre de la categoría a la que pertenece
   category: z.string(),
+  categoryId: z.string().uuid().nullable().optional(),
   images: z.array(z.string()),
   price: z.number(),
   compareAtPrice: z.number().optional(),
@@ -136,6 +149,7 @@ export const adminProductInputSchema = z.object({
   basePrice: z.number().min(0).max(9_999_999).optional(),
   images: z.array(z.string().max(2048)).max(8, 'Máximo 8 imágenes por producto.'),
   specs: z.array(specRowSchema).max(30),
+  categoryId: z.string().uuid().nullable().optional(),
   published: z.boolean(),
   isPromo: z.boolean(),
   sortOrder: z.number().int().min(0).max(9999),
@@ -155,6 +169,7 @@ export const adminProductSchema = z.object({
   precioTentativo: z.number().nullable(),
   images: z.array(z.string()),
   specs: z.array(specRowSchema),
+  categoryId: z.string().uuid().nullable(),
   published: z.boolean(),
   isPromo: z.boolean(),
   sortOrder: z.number().int(),
@@ -348,7 +363,7 @@ export type FinancialConfig = z.infer<typeof financialConfigSchema>;
 export const newPurchaseInputSchema = z.object({
   purchaseDate: z.iso.date(),
   lot: z.string().min(1, 'El lote es obligatorio.').max(40),
-  code: z.string().min(1, 'El código es obligatorio.').max(40),
+  code: z.string().max(40).optional(),
   productName: z.string().min(1, 'El nombre del producto es obligatorio.').max(160),
   // >0: una compra de 0 unidades no tiene sentido y dividiría por cero en
   // finance.ts al recibirla (doc 11 §1: costo unitario origen = total/cantidad).

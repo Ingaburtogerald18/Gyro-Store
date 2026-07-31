@@ -352,10 +352,33 @@ export async function getInventoryKpis(period?: string): Promise<InventoryKpis> 
 // ============================================================================
 
 export async function createPurchase(input: NewPurchaseInput): Promise<Purchase> {
+  // Generar código GS-IN-XX automático usando el primer hueco disponible
+  const { data: codes, error: codeErr } = await db
+    .from('purchases')
+    .select('code')
+    .like('code', 'GS-IN-%');
+
+  if (codeErr) throw codeErr;
+
+  const usedNumbers = (codes || [])
+    .map(r => parseInt(r.code.replace('GS-IN-', ''), 10))
+    .filter(n => !isNaN(n))
+    .sort((a, b) => a - b);
+
+  let nextId = 1;
+  for (const n of usedNumbers) {
+    if (n === nextId) {
+      nextId++;
+    } else if (n > nextId) {
+      break;
+    }
+  }
+  const generatedCode = `GS-IN-${nextId}`;
+
   const { data, error } = await db
     .from('purchases')
     .insert({
-      code: input.code,
+      code: generatedCode,
       lot: input.lot,
       product_name: input.productName,
       purchase_date: input.purchaseDate,
@@ -514,10 +537,10 @@ export async function revertPurchase(id: string): Promise<boolean> {
   return true;
 }
 
-export async function deletePurchase(id: string): Promise<boolean> {
+export async function deletePurchase(id: string, authorUid: string): Promise<boolean> {
   const { data: existing, error: fetchError } = await db
     .from('purchases')
-    .select('quantity_sold, quantity_reserved')
+    .select('*')
     .eq('id', id)
     .maybeSingle();
   if (fetchError) throw fetchError;
@@ -529,6 +552,17 @@ export async function deletePurchase(id: string): Promise<boolean> {
 
   const { error } = await db.from('purchases').delete().eq('id', id);
   if (error) throw error;
+
+  await db.from('audit_logs').insert({
+    entity: 'purchases',
+    entity_id: id,
+    action: 'delete',
+    reason: 'Eliminación manual desde panel',
+    author_uid: authorUid,
+    before: existing,
+    after: null,
+  });
+
   return true;
 }
 

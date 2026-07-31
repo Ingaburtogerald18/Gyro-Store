@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { MetaFunction } from '@remix-run/node';
+import type { ColumnDef } from '@tanstack/react-table';
 import { 
   useGetUsersQuery, 
   useUpdateUserRolesMutation, 
@@ -14,51 +15,53 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
+import { DataTable } from '~/components/ui/DataTable';
+import { StatusBadge } from '~/components/ui/StatusBadge';
+import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from '~/components/ui/sheet';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
-import { Shield, ShieldAlert, UserCog, UserX, Trash2, UserPlus, MailPlus, AlertTriangle, CheckCircle2, ChevronDown, RefreshCcw } from 'lucide-react';
+import { Shield, ShieldAlert, UserCog, UserX, Trash2, UserPlus, RefreshCcw, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
+import { QueryState } from '~/components/ui/QueryState';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Personal | Gyro Store Admin' }];
 };
 
-// Mapa de roles para renderizarlos bonitos
-const ROLE_BADGES: Record<AppRole, { label: string; colorClass: string }> = {
-  global_admin: { label: 'Global Admin', colorClass: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-  admin: { label: 'Admin', colorClass: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-  seller: { label: 'Vendedor', colorClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  cashier: { label: 'Cajero', colorClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  logistics_admin: { label: 'Logística (Admin)', colorClass: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  logistics_customer: { label: 'Logística (Lectura)', colorClass: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+const ROLE_LABELS: Record<AppRole, string> = {
+  global_admin: 'Global Admin',
+  admin: 'Admin',
+  seller: 'Vendedor',
+  cashier: 'Cajero',
+  logistics_admin: 'Logística (Admin)',
+  logistics_customer: 'Logística (Lectura)',
 };
 
 const SUPER_ADMIN_EMAIL = 'gerald.aburto@gyrostorenic.com';
 
 export default function AdminUsuarios() {
-  const { data: users = [], isLoading, isError, refetch } = useGetUsersQuery();
+  const { data: users = [], isLoading, isError } = useGetUsersQuery();
   const [updateRoles] = useUpdateUserRolesMutation();
   const [suspendUser] = useSuspendUserMutation();
   const [restoreUser] = useRestoreUserMutation();
   const [deleteUser] = useDeleteUserMutation();
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateUserProfileMutation();
-  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
+  
   const isAdmin = useAppSelector(selectIsAdmin);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<AppRole>('seller');
+  const [currentTab, setCurrentTab] = useState('activos');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +69,6 @@ export default function AdminUsuarios() {
       toast.error('El correo debe pertenecer al dominio @gyrostorenic.com');
       return;
     }
-    
     try {
       await createUser({ email: newEmail, name: newName, roles: [newRole] }).unwrap();
       toast.success(`Usuario ${newName} pre-creado exitosamente.`);
@@ -86,7 +88,7 @@ export default function AdminUsuarios() {
     }
     try {
       await updateRoles({ email: user.email, roles: [newRole] }).unwrap();
-      toast.success(`Rol de ${user.name} actualizado a ${ROLE_BADGES[newRole].label}`);
+      toast.success(`Rol actualizado a ${ROLE_LABELS[newRole]}`);
     } catch (error: any) {
       toast.error(error?.data?.error || `Error al actualizar el rol de ${user.name}`);
     }
@@ -99,7 +101,7 @@ export default function AdminUsuarios() {
     }
     try {
       await suspendUser(user.id).unwrap();
-      toast.success(`${user.name} ha sido dado de baja (movido a Papelera).`);
+      toast.success(`${user.name} ha sido dado de baja.`);
     } catch (error: any) {
       toast.error(error?.data?.error || `Error al dar de baja a ${user.name}`);
     }
@@ -117,13 +119,11 @@ export default function AdminUsuarios() {
   const handleDeleteConfirm = async () => {
     if (!userToDelete) return;
     const user = userToDelete;
-    
     if (user.email === SUPER_ADMIN_EMAIL) {
       toast.error('Operación denegada: Este usuario está protegido por el sistema.');
       setUserToDelete(null);
       return;
     }
-    
     try {
       await deleteUser(user.id).unwrap();
       toast.success(`${user.name} ha sido borrado de la base de datos.`);
@@ -136,60 +136,168 @@ export default function AdminUsuarios() {
 
   const handleSaveProfile = async () => {
     if (!selectedUser) return;
-    
     const nameInput = document.getElementById('display-name') as HTMLInputElement;
     const phoneInput = document.getElementById('numero') as HTMLInputElement;
     const personalEmailInput = document.getElementById('correo-personal') as HTMLInputElement;
     const bankAccountInput = document.getElementById('cuenta-bancaria') as HTMLInputElement;
     
-    const newName = nameInput?.value?.trim();
-    
-    if (!newName) {
+    const nameVal = nameInput?.value?.trim();
+    if (!nameVal) {
       toast.error('El nombre no puede estar vacío');
       return;
     }
-
     try {
-      await updateProfile({ id: selectedUser.id, name: newName }).unwrap();
-      
-      // Mostrar info sobre los otros campos
+      await updateProfile({ id: selectedUser.id, name: nameVal }).unwrap();
       if (phoneInput?.value || personalEmailInput?.value || bankAccountInput?.value) {
-        toast.success(`Nombre actualizado. (Teléfono, Correo Personal y Cuenta Bancaria pendientes de base de datos)`);
+        toast.success(`Nombre actualizado. (Otros campos pendientes de base de datos)`);
       } else {
         toast.success('Perfil actualizado correctamente');
       }
-      
       setSelectedUser(null);
     } catch (error: any) {
       toast.error(error?.data?.error || 'Error al actualizar el perfil');
     }
   };
 
-  // Filtrar activos e inactivos (soft deleted)
-  const activeUsers = users.filter(u => !u.deleted_at);
-  const deletedUsers = users.filter(u => u.deleted_at);
+  const activeUsers = useMemo(() => users.filter(u => !u.deleted_at), [users]);
+  const deletedUsers = useMemo(() => users.filter(u => u.deleted_at), [users]);
+
+  const columns = useMemo<ColumnDef<UserProfile>[]>(() => [
+    {
+      accessorKey: "name",
+      header: "Empleado",
+      cell: ({ row }) => {
+        const user = row.original;
+        const isProtected = user.email === SUPER_ADMIN_EMAIL;
+        return (
+          <div className="flex items-center gap-3 py-1 min-w-[200px]">
+            <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-lg font-bold text-muted border border-border shrink-0">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="avatar" className="w-full h-full rounded-full object-cover" />
+              ) : (
+                user.name.charAt(0).toUpperCase()
+              )}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-text flex items-center gap-1.5 truncate">
+                {user.name}
+                {isProtected && (
+                  <span title="Protegido por el sistema" className="inline-flex shrink-0">
+                    <Shield aria-label="Protegido por el sistema" className="w-3.5 h-3.5 text-warning" />
+                  </span>
+                )}
+              </span>
+              <span className="text-xs text-muted truncate">{user.email}</span>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      accessorKey: "roles",
+      header: "Rol Principal",
+      cell: ({ row }) => {
+        const role = row.original.roles[0] || 'seller';
+        return <Badge variant="outline">{ROLE_LABELS[role as AppRole] || role}</Badge>;
+      }
+    },
+    {
+      id: "status",
+      header: "Estado",
+      cell: ({ row }) => {
+        const deleted = !!row.original.deleted_at;
+        if (deleted) return <StatusBadge status="error" label="De Baja" />;
+        return <StatusBadge status="success" label="Activo" pulse />;
+      }
+    },
+    {
+      id: "actions",
+      meta: { align: "right" },
+      cell: ({ row }) => {
+        const user = row.original;
+        const isProtected = user.email === SUPER_ADMIN_EMAIL;
+        if (!isAdmin) return null;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted hover:text-text">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted uppercase tracking-wider">Acciones</div>
+              <DropdownMenuItem onClick={() => setSelectedUser(user)} className="cursor-pointer">
+                <UserCog className="mr-2 h-4 w-4" /> Editar Perfil
+              </DropdownMenuItem>
+              <div className="h-px bg-border my-1" />
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted uppercase tracking-wider">Rol</div>
+              {Object.entries(ROLE_LABELS).map(([roleKey, label]) => (
+                <DropdownMenuItem 
+                  key={roleKey} 
+                  onClick={() => handleChangeRole(user, roleKey as AppRole)}
+                  className="cursor-pointer"
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+              {!user.deleted_at ? (
+                <>
+                  {!isProtected && (
+                    <>
+                      <div className="h-px bg-border my-1" />
+                      <DropdownMenuItem onClick={() => handleSuspend(user)} className="text-danger focus:bg-danger/10 focus:text-danger cursor-pointer">
+                        <UserX className="mr-2 h-4 w-4" /> Dar de baja
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="h-px bg-border my-1" />
+                  <DropdownMenuItem onClick={() => handleRestore(user)} className="text-accent focus:bg-accent/10 focus:text-accent cursor-pointer">
+                    <RefreshCcw className="mr-2 h-4 w-4" /> Restaurar
+                  </DropdownMenuItem>
+                  {!isProtected && (
+                    <DropdownMenuItem onClick={() => setUserToDelete(user)} className="text-danger focus:bg-danger/10 focus:text-danger cursor-pointer">
+                      <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      }
+    }
+  ], [isAdmin]);
+
+  const tabs = [
+    { id: 'activos', label: 'Personal Activo' },
+    { id: 'inactivos', label: 'Papelera (Inactivos)' },
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-50">Gestión de Personal</h2>
-          <p className="text-slate-400">Administra los roles y el acceso del equipo a Gyro Store.</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-text">Gestión de Personal</h2>
+          <p className="text-muted">Administra los roles y el acceso del equipo a Gyro Store.</p>
         </div>
         
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-10">
+              <Button variant="accent">
                 <UserPlus className="w-4 h-4 mr-2" />
                 Agregar Empleado
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-800 text-slate-50">
+            <DialogContent className="sm:max-w-[425px]">
               <form onSubmit={handleCreate}>
                 <DialogHeader>
                   <DialogTitle>Pre-crear Empleado</DialogTitle>
-                  <DialogDescription className="text-slate-400">
+                  <DialogDescription>
                     Registra al empleado y asigna su rol. Podrá iniciar sesión con Microsoft Entra ID y el sistema lo enlazará automáticamente.
                   </DialogDescription>
                 </DialogHeader>
@@ -200,7 +308,7 @@ export default function AdminUsuarios() {
                       id="name" 
                       value={newName} 
                       onChange={e => setNewName(e.target.value)} 
-                      className="col-span-3 bg-slate-800 border-slate-700" 
+                      className="col-span-3" 
                       required 
                     />
                   </div>
@@ -212,20 +320,20 @@ export default function AdminUsuarios() {
                       value={newEmail} 
                       onChange={e => setNewEmail(e.target.value)} 
                       placeholder="usuario@gyrostorenic.com"
-                      className="col-span-3 bg-slate-800 border-slate-700" 
+                      className="col-span-3" 
                       required 
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label className="text-right">Rol Inicial</Label>
                     <Select value={newRole} onValueChange={(v) => setNewRole(v as AppRole)}>
-                      <SelectTrigger className="col-span-3 bg-slate-800 border-slate-700">
+                      <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Selecciona un rol" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">
-                        {Object.entries(ROLE_BADGES).map(([key, config]) => (
-                          <SelectItem key={key} value={key} className="hover:bg-slate-700 focus:bg-slate-700">
-                            {config.label}
+                      <SelectContent>
+                        {Object.entries(ROLE_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -233,7 +341,7 @@ export default function AdminUsuarios() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={isCreating} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button type="submit" disabled={isCreating} variant="accent">
                     {isCreating ? 'Creando...' : 'Guardar Empleado'}
                   </Button>
                 </DialogFooter>
@@ -243,197 +351,60 @@ export default function AdminUsuarios() {
         )}
       </div>
 
-      <Tabs defaultValue="activos" className="w-full">
-        <TabsList className="mb-4 bg-slate-900 border border-slate-800 h-11 p-1">
-          <TabsTrigger value="activos" className="data-[state=active]:bg-slate-800 data-[state=active]:text-blue-400">Personal Activo</TabsTrigger>
-          <TabsTrigger value="inactivos" className="data-[state=active]:bg-slate-800 data-[state=active]:text-rose-400">Papelera (Inactivos)</TabsTrigger>
-        </TabsList>
+      <AnimatedTabs
+        items={tabs}
+        value={currentTab}
+        onChange={setCurrentTab}
+        layoutId="users-tabs"
+      />
 
-        <TabsContent value="activos" className="mt-0">
-          <Card className="bg-slate-900 border-slate-800">
-        <CardHeader className="border-b border-slate-800/50 pb-4">
-          <CardTitle className="text-lg text-slate-50 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-blue-400" />
-            Cuentas Activas
+      <Card>
+        <CardHeader className="border-b border-border pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            {currentTab === 'activos' ? (
+              <><Shield className="w-5 h-5 text-accent" /> Cuentas Activas</>
+            ) : (
+              <><UserX className="w-5 h-5 text-danger" /> Papelera (30 días)</>
+            )}
           </CardTitle>
-          <CardDescription className="text-slate-400">
-            Personal con acceso al sistema mediante Microsoft Entra ID.
+          <CardDescription>
+            {currentTab === 'activos' 
+              ? 'Personal con acceso al sistema mediante Microsoft Entra ID.' 
+              : 'Usuarios dados de baja. Serán eliminados permanentemente después de 30 días.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {isError ? (
-            <div className="text-center py-12">
-              <ShieldAlert className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-              <p className="text-rose-400 font-medium">Error al cargar usuarios.</p>
-              <p className="text-slate-500 text-sm mt-1">El backend (Postgres) aún no está conectado.</p>
+          <QueryState
+            loading={isLoading}
+            error={isError}
+            empty={currentTab === 'activos' ? activeUsers.length === 0 : deletedUsers.length === 0}
+            loadingFallback={<div className="p-6 text-center text-muted">Cargando perfiles...</div>}
+            emptyFallback={
+              <div className="p-12 text-center text-muted">
+                <UserCog className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                {currentTab === 'activos' ? 'Sin usuarios registrados' : 'La papelera está vacía'}
+              </div>
+            }
+          >
+            <div className="p-4 sm:p-6">
+              <DataTable
+                columns={columns}
+                data={currentTab === 'activos' ? activeUsers : deletedUsers}
+                searchPlaceholder="Buscar usuario por nombre o correo..."
+                paginated
+                pageSize={10}
+              />
             </div>
-          ) : (
-            <div className="p-6">
-              {isLoading ? (
-                <div className="text-center py-12 text-slate-500">Cargando perfiles...</div>
-              ) : activeUsers.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                  <UserCog className="w-8 h-8 text-slate-700 mx-auto mb-2" />
-                  Sin usuarios registrados
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {activeUsers.map((user) => {
-                    const isProtected = user.email === SUPER_ADMIN_EMAIL;
-                    const primaryRole = user.roles[0] || 'seller';
-                    const badge = ROLE_BADGES[primaryRole];
-
-                    return (
-                      <div 
-                        key={user.id} 
-                        onClick={() => setSelectedUser(user)}
-                        className="group relative flex flex-col items-center p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-slate-700 hover:bg-slate-800/30 transition-all shadow-sm cursor-pointer"
-                      >
-                        {isProtected && (
-                          <div className="absolute top-4 left-4 text-amber-500" title="Protegido por el sistema">
-                            <Shield className="w-4 h-4" />
-                          </div>
-                        )}
-                        {isAdmin && (
-                          <div className="absolute top-3 right-3">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild disabled={isProtected}>
-                                <Button variant="ghost" size="icon" className={`h-8 w-8 text-slate-500 hover:text-slate-300 ${isProtected ? 'hidden' : ''}`}>
-                                  <UserCog className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                                <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cambiar rol</div>
-                                {Object.entries(ROLE_BADGES).map(([roleKey, roleConfig]) => (
-                                  <DropdownMenuItem 
-                                    key={roleKey} 
-                                    onClick={() => handleChangeRole(user, roleKey as AppRole)}
-                                    className="hover:bg-slate-800 cursor-pointer"
-                                  >
-                                    {roleConfig.label}
-                                  </DropdownMenuItem>
-                                ))}
-                                <div className="h-px bg-slate-800 my-1" />
-                                <DropdownMenuItem 
-                                  onSelect={(e) => {
-                                    handleSuspend(user);
-                                  }}
-                                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer"
-                                >
-                                  <UserX className="w-4 h-4 mr-2" />
-                                  Dar de baja
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        )}
-
-                        <div className="mt-2 mb-4">
-                          {user.avatar_url ? (
-                            <img src={user.avatar_url} alt={user.name} className="w-20 h-20 rounded-full border-4 border-slate-800 object-cover bg-slate-900" />
-                          ) : (
-                            <div className="grid w-20 h-20 place-items-center rounded-full bg-slate-800 border-4 border-slate-900 text-2xl font-bold text-slate-300">
-                              {user.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-
-                        <h3 className="text-lg font-bold text-slate-200 text-center line-clamp-1">{user.name}</h3>
-                        <p className="text-sm text-slate-500 text-center mb-5 truncate w-full" title={user.email}>{user.email}</p>
-
-                        <div className="mt-auto">
-                          <Badge variant="outline" className={badge.colorClass}>
-                            {badge.label}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="inactivos" className="mt-0">
-          <Card className="bg-slate-900 border-slate-800">
-            <CardHeader className="border-b border-slate-800/50 pb-4">
-              <CardTitle className="text-lg text-slate-50 flex items-center gap-2">
-                <UserX className="w-5 h-5 text-rose-400" />
-                Papelera (30 días)
-              </CardTitle>
-              <CardDescription className="text-slate-400">
-                Usuarios dados de baja. Serán eliminados permanentemente después de 30 días.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {!isLoading && !isError && (
-                <div className="p-6">
-                  {deletedUsers.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-8 rounded-lg border border-slate-800/50 bg-slate-900/30 text-center">
-                      <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3 text-slate-600">
-                        <UserX className="w-6 h-6" />
-                      </div>
-                      <p className="text-sm text-slate-400 font-medium">La papelera está vacía</p>
-                      <p className="text-xs text-slate-500 mt-1">Los usuarios dados de baja aparecerán aquí por 30 días.</p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-2">
-                      {deletedUsers.map(u => (
-                        <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-800/50 bg-slate-900/30">
-                          <div className="flex items-center gap-3">
-                            <div className="grid h-8 w-8 place-items-center rounded-full bg-slate-800/50 text-xs font-bold text-slate-600">
-                              {u.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-400 line-through">{u.name}</p>
-                              <p className="text-xs text-slate-500">{u.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="border-slate-700 text-slate-500 bg-slate-800/50">Dado de baja</Badge>
-                            {isAdmin && (
-                              <div className="flex items-center">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
-                                  onClick={() => handleRestore(u)}
-                                  title="Restaurar usuario"
-                                >
-                                  <RefreshCcw className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
-                                  onClick={() => setUserToDelete(u)}
-                                  title="Borrar permanentemente"
-                                >
-                                  <UserX className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          </QueryState>
+        </CardContent>
+      </Card>
 
       {/* Modal de confirmación custom para eliminar usuario permanentemente */}
       {userToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-surface border border-border p-6 rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-slate-100 mb-2">Borrar permanentemente</h3>
-            <p className="text-slate-400 mb-6 text-sm">
+          <div className="bg-surface border border-border p-6 rounded-card shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-text mb-2">Borrar permanentemente</h3>
+            <p className="text-muted mb-6 text-sm">
               ¿Seguro que deseas eliminar por completo a <strong>{userToDelete.name}</strong> y todo su acceso? Esta acción borrará su perfil de la base de datos y no se puede deshacer.
             </p>
             <div className="flex justify-end gap-3">
@@ -446,10 +417,10 @@ export default function AdminUsuarios() {
 
       {/* Modal con detalles del usuario */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-50 sm:max-w-md w-full">
+        <DialogContent className="sm:max-w-md w-full">
           <DialogHeader>
-            <DialogTitle className="text-slate-100">Información del Empleado</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogTitle>Información del Empleado</DialogTitle>
+            <DialogDescription>
               Modifica los datos del usuario o archívalo si ya no forma parte del equipo.
             </DialogDescription>
           </DialogHeader>
@@ -458,7 +429,7 @@ export default function AdminUsuarios() {
             <div className="flex flex-col gap-6 py-6 h-full">
               {/* Foto centrada y grande */}
               <div className="flex flex-col items-center gap-3">
-                <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center text-4xl font-bold text-slate-300 border-4 border-slate-700 shadow-xl">
+                <div className="w-24 h-24 rounded-full bg-surface-2 flex items-center justify-center text-4xl font-bold text-muted border-4 border-border shadow-xl">
                   {selectedUser.avatar_url ? (
                     <img src={selectedUser.avatar_url} alt="avatar" className="w-full h-full rounded-full object-cover" />
                   ) : (
@@ -470,62 +441,57 @@ export default function AdminUsuarios() {
               {/* Campos de Información */}
               <div className="grid gap-4 flex-1 mt-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="display-name" className="text-slate-400">Display Name</Label>
+                  <Label htmlFor="display-name">Display Name</Label>
                   <Input 
                     id="display-name" 
                     defaultValue={selectedUser.name} 
-                    className="bg-slate-800/50 border-slate-700 text-slate-200" 
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="correo" className="text-slate-400">Correo Corporativo</Label>
+                  <Label htmlFor="correo">Correo Corporativo</Label>
                   <Input 
                     id="correo" 
                     type="email" 
                     defaultValue={selectedUser.email} 
-                    className="bg-slate-800/50 border-slate-700 text-slate-400" 
                     disabled 
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="correo-personal" className="text-slate-400">Correo Personal</Label>
+                  <Label htmlFor="correo-personal">Correo Personal</Label>
                   <Input 
                     id="correo-personal" 
                     type="email" 
                     placeholder="usuario@gmail.com"
-                    className="bg-slate-800/50 border-slate-700 text-slate-200" 
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="role" className="text-slate-400">Role Principal</Label>
+                  <Label htmlFor="role">Role Principal</Label>
                   <Input 
                     id="role" 
-                    defaultValue={ROLE_BADGES[selectedUser.roles[0] || 'seller'].label} 
-                    className="bg-slate-800/50 border-slate-700 text-slate-400" 
+                    defaultValue={ROLE_LABELS[selectedUser.roles[0] || 'seller']} 
                     disabled 
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="numero" className="text-slate-400">Número de Teléfono</Label>
+                  <Label htmlFor="numero">Número de Teléfono</Label>
                   <Input 
                     id="numero" 
                     placeholder="+505 0000 0000" 
-                    className="bg-slate-800/50 border-slate-700 text-slate-200" 
                   />
                 </div>
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="cuenta-bancaria" className="text-slate-400">Cuenta Bancaria (Pagos)</Label>
+                  <Label htmlFor="cuenta-bancaria">Cuenta Bancaria (Pagos)</Label>
                   <Input 
                     id="cuenta-bancaria" 
                     placeholder="Ej. BAC 123456789 - Cuenta en Córdobas" 
-                    className="bg-slate-800/50 border-slate-700 text-slate-200" 
                   />
                 </div>
               </div>
 
-              <div className="mt-auto pt-6 border-t border-slate-800 flex flex-col gap-3">
+              <div className="mt-auto pt-6 border-t border-border flex flex-col gap-3">
                 <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  variant="accent"
+                  className="w-full"
                   onClick={handleSaveProfile}
                   disabled={isUpdatingProfile}
                 >
@@ -549,7 +515,7 @@ export default function AdminUsuarios() {
                 ) : (
                   <Button 
                     variant="outline"
-                    className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                    className="w-full border-accent/50 text-accent hover:bg-accent/10"
                     onClick={() => {
                       handleRestore(selectedUser);
                       setSelectedUser(null);

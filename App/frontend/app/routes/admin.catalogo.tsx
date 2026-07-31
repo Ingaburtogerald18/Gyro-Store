@@ -6,8 +6,12 @@ import {
   useUpdateAdminProductMutation, 
   useDeleteAdminProductMutation,
   useReorderAdminCatalogMutation,
+  useGetCategoriesQuery,
+  useCreateCategoryMutation,
+  useUpdateCategoryMutation,
+  useDeleteCategoryMutation,
 } from '~/store/api/catalogAdminApi';
-import type { AdminProductInput, AdminProduct } from '@shared/schemas';
+import type { AdminProductInput, AdminProduct, Category } from '@shared/schemas';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
@@ -16,7 +20,8 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Switch } from '~/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { Plus, Search, AlertTriangle, Tag, LayoutTemplate, BoxSelect, Package } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
+import { Plus, Search, AlertTriangle, Tag, LayoutTemplate, BoxSelect, Package, Trash2, Edit } from 'lucide-react';
 import { SortableCatalogGrid } from '~/components/catalog/SortableCatalogGrid';
 import { toast } from 'sonner';
 
@@ -30,6 +35,11 @@ export default function AdminCatalogo() {
   const [updateProduct, { isLoading: isUpdating }] = useUpdateAdminProductMutation();
   const [deleteProduct] = useDeleteAdminProductMutation();
   const [reorderCatalog] = useReorderAdminCatalogMutation();
+  
+  const { data: categories = [] } = useGetCategoriesQuery();
+  const [createCategory] = useCreateCategoryMutation();
+  const [updateCategory] = useUpdateCategoryMutation();
+  const [deleteCategory] = useDeleteCategoryMutation();
   
   const [activeTab, setActiveTab] = useState("catalog");
 
@@ -45,7 +55,11 @@ export default function AdminCatalogo() {
     published: false,
     isPromo: false,
     sortOrder: 0,
+    categoryId: null,
   });
+
+  const [categoryFormData, setCategoryFormData] = useState({ name: '', slug: '' });
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   const handleOpenCreate = () => {
     setEditingProduct(null);
@@ -66,6 +80,7 @@ export default function AdminCatalogo() {
       published: product.published,
       isPromo: product.isPromo,
       sortOrder: product.sortOrder,
+      categoryId: product.categoryId ?? null,
     });
     setIsDialogOpen(true);
   };
@@ -111,6 +126,34 @@ export default function AdminCatalogo() {
     }
   };
 
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingCategoryId) {
+        await updateCategory({ id: editingCategoryId, ...categoryFormData }).unwrap();
+        toast.success('Categoría actualizada.');
+      } else {
+        await createCategory(categoryFormData).unwrap();
+        toast.success('Categoría creada.');
+      }
+      setCategoryFormData({ name: '', slug: '' });
+      setEditingCategoryId(null);
+    } catch (error) {
+      toast.error('Error al guardar la categoría.');
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (confirm('¿Seguro que deseas eliminar esta categoría?')) {
+      try {
+        await deleteCategory(id).unwrap();
+        toast.success('Categoría eliminada.');
+      } catch (error) {
+        toast.error('Error al eliminar.');
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -122,6 +165,7 @@ export default function AdminCatalogo() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList className="bg-surface border border-border">
             <TabsTrigger value="catalog" className="data-[state=active]:bg-slate-800"><Package className="w-4 h-4 mr-2" /> Artículos</TabsTrigger>
+            <TabsTrigger value="categories" className="data-[state=active]:bg-slate-800"><Tag className="w-4 h-4 mr-2" /> Categorías</TabsTrigger>
             <TabsTrigger value="templates" className="data-[state=active]:bg-slate-800"><LayoutTemplate className="w-4 h-4 mr-2" /> Templates</TabsTrigger>
             <TabsTrigger value="combos" className="data-[state=active]:bg-slate-800"><BoxSelect className="w-4 h-4 mr-2" /> Combos</TabsTrigger>
           </TabsList>
@@ -165,6 +209,24 @@ export default function AdminCatalogo() {
                     className="bg-slate-900 border-slate-800 focus-visible:ring-indigo-500" 
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Categoría</Label>
+                  <Select 
+                    value={formData.categoryId || ''} 
+                    onValueChange={v => setFormData({ ...formData, categoryId: v || null })}
+                  >
+                    <SelectTrigger className="bg-slate-900 border-slate-800">
+                      <SelectValue placeholder="Sin categoría" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800">
+                      <SelectItem value="">Sin categoría</SelectItem>
+                      {categories.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -255,9 +317,80 @@ export default function AdminCatalogo() {
           onDelete={handleDelete}
         />
       )}
-      </TabsContent>
+        </TabsContent>
 
-      <TabsContent value="templates" className="outline-none">
+        <TabsContent value="categories" className="space-y-6 outline-none">
+          <Card className="bg-surface border-border">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-text">Administrar Categorías</CardTitle>
+              <CardDescription className="text-muted">Crea o edita las categorías del catálogo público.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveCategory} className="flex flex-col sm:flex-row gap-4 items-end mb-8">
+                <div className="space-y-2 flex-1">
+                  <Label htmlFor="catName" className="text-slate-300">Nombre</Label>
+                  <Input 
+                    id="catName" 
+                    value={categoryFormData.name}
+                    onChange={e => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                    className="bg-slate-900 border-slate-800" 
+                    required
+                  />
+                </div>
+                <div className="space-y-2 flex-1">
+                  <Label htmlFor="catSlug" className="text-slate-300">Slug (URL)</Label>
+                  <Input 
+                    id="catSlug" 
+                    value={categoryFormData.slug}
+                    onChange={e => setCategoryFormData({ ...categoryFormData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                    className="bg-slate-900 border-slate-800" 
+                    required
+                  />
+                </div>
+                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 h-10 w-full sm:w-auto">
+                  {editingCategoryId ? 'Actualizar' : 'Agregar'}
+                </Button>
+                {editingCategoryId && (
+                  <Button type="button" variant="outline" onClick={() => { setEditingCategoryId(null); setCategoryFormData({name: '', slug: ''})}} className="h-10">Cancelar</Button>
+                )}
+              </form>
+
+              <div className="space-y-3">
+                {categories.length === 0 ? (
+                  <p className="text-slate-500 text-center py-4">No hay categorías registradas.</p>
+                ) : (
+                  categories.map(c => (
+                    <div key={c.id} className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
+                      <div>
+                        <h4 className="font-medium text-text">{c.name}</h4>
+                        <p className="text-sm text-slate-500">/{c.slug}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => { setEditingCategoryId(c.id); setCategoryFormData({ name: c.name, slug: c.slug }); }}
+                        >
+                          <Edit className="w-4 h-4 text-slate-400" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="hover:bg-rose-900/20 hover:text-rose-500"
+                          onClick={() => handleDeleteCategory(c.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-4 outline-none">
         <Card className="bg-surface border-border border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <LayoutTemplate className="w-12 h-12 text-slate-600 mb-4" />

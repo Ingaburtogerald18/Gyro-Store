@@ -135,7 +135,7 @@ router.delete(
   '/purchases/:id',
   asyncHandler(async (req, res) => {
     const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
-    const ok = await deletePurchase(id);
+    const ok = await deletePurchase(id, req.user!.uid);
     if (!ok) {
       res.status(404).json({ error: 'Compra no encontrada.' });
       return;

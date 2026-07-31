@@ -91,7 +91,7 @@ function Button({
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" />
         </svg>
       )}
-      {children}
+      <Slot.Slottable>{children}</Slot.Slottable>
     </Comp>
   )
 }

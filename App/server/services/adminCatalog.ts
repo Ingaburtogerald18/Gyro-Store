@@ -23,6 +23,7 @@ const ADMIN_COLUMNS = [
   'is_promo',
   'sort_order',
   'updated_at',
+  'category_id',
   'template:templates(id, name, specs)',
 ].join(', ');
 
@@ -38,6 +39,7 @@ interface AdminRow {
   is_promo: boolean;
   sort_order: number;
   updated_at: string;
+  category_id: string | null;
   template: { id: string; name: string | null; specs: unknown } | { id: string; name: string | null; specs: unknown }[] | null;
 }
 
@@ -76,6 +78,7 @@ function toAdminProduct(row: AdminRow): AdminProduct {
     precioTentativo: row.precio_tentativo,
     images: toStringArray(row.images),
     specs: toSpecs(template?.specs),
+    categoryId: row.category_id,
     published: row.published,
     isPromo: row.is_promo,
     sortOrder: row.sort_order,
@@ -125,6 +128,7 @@ export async function createAdminProduct(input: AdminProductInput): Promise<Admi
       published: input.published,
       is_promo: input.isPromo,
       sort_order: input.sortOrder,
+      category_id: input.categoryId ?? null,
     })
     .select('id')
     .single();
@@ -155,6 +159,7 @@ export async function updateAdminProduct(
       published: input.published,
       is_promo: input.isPromo,
       sort_order: input.sortOrder,
+      category_id: input.categoryId ?? null,
     })
     .eq('id', id);
 

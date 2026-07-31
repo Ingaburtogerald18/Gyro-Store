@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { AdminProduct, AdminProductInput } from '../../../../shared/schemas';
+import type { AdminProduct, AdminProductInput, Category } from '../../../../shared/schemas';
 
 export const catalogAdminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -47,6 +47,33 @@ export const catalogAdminApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['AdminCatalog', 'Catalog'],
     }),
+    getCategories: builder.query<Category[], void>({
+      query: () => '/admin/catalog/categories',
+      providesTags: ['Categories'],
+    }),
+    createCategory: builder.mutation<Category, { name: string; slug: string }>({
+      query: (body) => ({
+        url: '/admin/catalog/categories',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Categories'],
+    }),
+    updateCategory: builder.mutation<Category, { id: string; name: string; slug: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/admin/catalog/categories/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Categories'],
+    }),
+    deleteCategory: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/admin/catalog/categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Categories'],
+    }),
   }),
 });
 
@@ -57,4 +84,8 @@ export const {
   useUpdateAdminProductMutation,
   useDeleteAdminProductMutation,
   useReorderAdminCatalogMutation,
+  useGetCategoriesQuery,
+  useCreateCategoryMutation,
+  useUpdateCategoryMutation,
+  useDeleteCategoryMutation,
 } = catalogAdminApi;

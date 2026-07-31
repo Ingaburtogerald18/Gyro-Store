@@ -152,10 +152,9 @@ export function toCatalogProduct(item: PublicCatalogItem): CatalogProduct {
   return {
     id: item.id,
     name: item.template?.name ?? 'Producto',
-    // La v2 todavía no tiene columna de categoría en `catalog_items` ni en
-    // `templates` (la v1 sí la tenía). Hasta que el Hito 2 la agregue, va vacía
-    // y la tarjeta omite el eyebrow. Ver nota en shared/schemas.ts.
-    category: '',
+    // Ahora resolvemos la categoría desde el join embebido
+    category: item.category?.name ?? '',
+    categoryId: item.category_id,
     images,
     price,
     compareAtPrice,

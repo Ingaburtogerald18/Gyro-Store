@@ -21,7 +21,9 @@ const PUBLIC_CATALOG_COLUMNS = [
   'sort_order',
   'created_at',
   'updated_at',
+  'category_id',
   'template:templates(id, name, axes, options, specs)',
+  'category:categories(id, name)',
 ].join(', ');
 
 // Obtiene los ítems del catálogo publicados junto con su template embebido.

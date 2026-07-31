@@ -1,107 +1,308 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { MetaFunction } from '@remix-run/node';
-import { useGetInventoryQuery, useRegisterPurchaseMutation } from '~/store/api/inventoryApi';
+import { 
+  useGetPurchasesQuery, 
+  useGetInventoryKpisQuery,
+  useGetCurrentInventoryQuery, 
+  useCreatePurchaseMutation,
+  useDeletePurchaseMutation,
+  useReportArrivalMutation,
+  type Purchase
+} from '~/store/api/inventoryV1Api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
 import { DataTable } from '~/components/ui/data-table';
 import { ColumnDef } from '@tanstack/react-table';
-import type { InventoryItem } from '~/store/api/inventoryApi';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '~/components/ui/dialog';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
-import { PackagePlus, RefreshCcw, AlertTriangle, CheckCircle2, CalendarRange, Boxes, Archive, FileText } from 'lucide-react';
+import { PackagePlus, RefreshCcw, AlertTriangle, Boxes, Archive, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { getSupabaseClient } from '~/lib/supabase.client';
+
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Inventario | Gyro Store Admin' }];
 };
 
-const inventoryColumns: ColumnDef<InventoryItem>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Producto',
-    cell: ({ row }) => <span className="font-medium text-slate-200">{row.original.name}</span>,
-  },
-  {
-    accessorKey: 'stock',
-    header: () => <div className="text-right">Stock</div>,
-    cell: ({ row }) => <div className="text-right tabular-nums text-slate-300">{row.original.stock}</div>,
-  },
-  {
-    accessorKey: 'cost',
-    header: () => <div className="text-right">Costo Prom.</div>,
-    cell: ({ row }) => <div className="text-right tabular-nums text-slate-400">C$ {row.original.cost.toLocaleString('es-NI', { minimumFractionDigits: 2 })}</div>,
-  },
-  {
-    id: 'totalValue',
-    header: () => <div className="text-right">Valor Total</div>,
-    cell: ({ row }) => {
-      const total = row.original.stock * row.original.cost;
-      return <div className="text-right tabular-nums font-medium text-emerald-400">C$ {total.toLocaleString('es-NI', { minimumFractionDigits: 2 })}</div>;
-    },
-  },
-  {
-    id: 'status',
-    header: () => <div className="text-center">Estado</div>,
-    cell: ({ row }) => {
-      const stock = row.original.stock;
-      return (
-        <div className="text-center">
-          {stock === 0 ? (
-            <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10">Agotado</Badge>
-          ) : stock <= 3 ? (
-            <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10">Bajo Stock</Badge>
-          ) : (
-            <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> OK
-            </Badge>
-          )}
-        </div>
-      );
-    },
-  },
-];
+// Helper: Calcular Fecha de Salida
+function getDepartureDate(purchaseDate: string): string {
+  if (!purchaseDate) return '';
+  const [yearStr, monthStr, dayStr] = purchaseDate.split('-');
+  if (!yearStr || !monthStr || !dayStr) return '';
+  
+  const day = parseInt(dayStr, 10);
+  const month = parseInt(monthStr, 10) - 1;
+  const year = parseInt(yearStr, 10);
+
+  if (day >= 1 && day <= 10) {
+    return new Date(Date.UTC(year, month, 15)).toISOString().split('T')[0];
+  } else if (day >= 11 && day <= 25) {
+    return new Date(Date.UTC(year, month, 30)).toISOString().split('T')[0];
+  } else {
+    return new Date(Date.UTC(year, month + 1, 15)).toISOString().split('T')[0];
+  }
+}
 
 export default function AdminInventario() {
-  const { data: inventory = [], isLoading, isError, refetch } = useGetInventoryQuery();
-  const [registerPurchase, { isLoading: isRegistering }] = useRegisterPurchaseMutation();
+  const { data: inventory = [], isLoading, isError, refetch } = useGetCurrentInventoryQuery();
+  const { data: purchases = [], isLoading: isLoadingPurchases } = useGetPurchasesQuery();
+  const { data: kpis } = useGetInventoryKpisQuery();
+  const [createPurchase, { isLoading: isRegistering }] = useCreatePurchaseMutation();
+  const [deletePurchase, { isLoading: isDeleting }] = useDeletePurchaseMutation();
+  const [reportArrival, { isLoading: isReceiving }] = useReportArrivalMutation();
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("purchases");
+  
+  const [receiveItem, setReceiveItem] = useState<any>(null);
+  const [receiveData, setReceiveData] = useState({
+    arrivalDate: '',
+    shippingUnit: '',
+    category: ''
+  });
   const [inventoryType, setInventoryType] = useState("current");
+
+  // Confirm delete
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deletePin, setDeletePin] = useState("");
+
+  const handleReceive = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receiveItem) return;
+    try {
+      await reportArrival({
+        id: receiveItem.id,
+        body: {
+          arrivalDate: receiveData.arrivalDate,
+          shippingUnit: Number(receiveData.shippingUnit),
+          category: receiveData.category
+        }
+      }).unwrap();
+      setReceiveItem(null);
+      setReceiveData({ arrivalDate: '', shippingUnit: '', category: '' });
+      toast.success('Compra recibida correctamente');
+    } catch (err: any) {
+      toast.error(err?.data?.error || 'Error al recibir la compra');
+    }
+  };
 
   // Estado del formulario
   const [formData, setFormData] = useState({
-    catalogItemId: '',
-    quantity: 1,
-    unitCost: 0,
-    supplier: '',
-    notes: '',
+    productName: '',
+    quantity: '' as number | string,
+    unitCost: '' as number | string,
+    taxUnit: '' as number | string,
+    lot: '',
+    purchaseDate: '',
   });
 
   const handleRegisterPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await registerPurchase(formData).unwrap();
-      toast.success('Entrada de inventario registrada con éxito.');
+      await createPurchase({
+        productName: formData.productName,
+        quantity: Number(formData.quantity) || 1,
+        costUnit: Number(formData.unitCost) || 0,
+        taxUnit: Number(formData.taxUnit) || 0,
+        lot: formData.lot,
+        purchaseDate: formData.purchaseDate,
+        code: '' // Generado por backend
+      }).unwrap();
+      toast.success('Compra registrada. Código auto-asignado.');
       setIsDialogOpen(false);
-      setFormData({ catalogItemId: '', quantity: 1, unitCost: 0, supplier: '', notes: '' });
-    } catch (error) {
-      // Como el backend aún no está listo, mostraremos un toast de éxito simulado por ahora
-      toast.success('Entrada simulada con éxito (Backend pendiente).');
-      setIsDialogOpen(false);
+      setFormData({ productName: '', quantity: '', unitCost: '', taxUnit: '', lot: '', purchaseDate: '' });
+    } catch (error: any) {
+      toast.error(error?.data?.error || 'Error al registrar la compra.');
     }
   };
 
-  // Cálculos rápidos para KPIs
-  const totalStock = inventory.reduce((acc, item) => acc + item.stock, 0);
-  const totalValue = inventory.reduce((acc, item) => acc + (item.stock * item.cost), 0);
-  const lowStockItems = inventory.filter(item => item.stock > 0 && item.stock <= 3).length;
+  // Auto-execute pending delete after redirect
+  useEffect(() => {
+    const pendingDelete = sessionStorage.getItem('pending_delete_purchase');
+    if (pendingDelete) {
+      sessionStorage.removeItem('pending_delete_purchase');
+      const id = pendingDelete;
+      const tId = toast.loading('Eliminando compra post-autenticación...');
+      deletePurchase(id).unwrap().then(() => {
+        toast.success('Compra eliminada correctamente', { id: tId });
+      }).catch((err: any) => {
+        toast.error(err?.data?.error || 'Error al eliminar', { id: tId });
+      });
+    }
+  }, [deletePurchase]);
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    sessionStorage.setItem('pending_delete_purchase', deleteId);
+    
+    toast.loading('Redirigiendo a Microsoft Entra ID para confirmar identidad...');
+    const supabase = getSupabaseClient();
+    
+    // Iniciar OAuth para reautenticar
+    await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        scopes: 'email openid profile User.Read',
+        queryParams: { prompt: 'login' },
+        redirectTo: window.location.href,
+      },
+    });
+  };
+
+  const purchaseColumns: ColumnDef<Purchase>[] = [
+    {
+      accessorKey: 'code',
+      header: 'Código',
+      cell: ({ row }) => <span className="font-medium text-emerald-400">{row.original.code}</span>,
+    },
+    {
+      accessorKey: 'lot',
+      header: 'Lote',
+      cell: ({ row }) => <span className="text-slate-400">{row.original.lot || '-'}</span>,
+    },
+    {
+      accessorKey: 'productName',
+      header: 'Producto',
+      cell: ({ row }) => <span className="text-slate-200">{row.original.productName}</span>,
+    },
+    {
+      id: 'departureDate',
+      header: 'Salida Estimada',
+      cell: ({ row }) => {
+        const departure = getDepartureDate(row.original.purchaseDate);
+        return <span className="text-amber-400 font-medium">{departure}</span>;
+      },
+    },
+    {
+      accessorKey: 'quantity',
+      header: () => <div className="text-right">Cant.</div>,
+      cell: ({ row }) => <div className="text-right tabular-nums text-slate-300">{row.original.quantity}</div>,
+    },
+    {
+      id: 'finalUnitCost',
+      header: () => <div className="text-right">Costo U.</div>,
+      cell: ({ row }) => {
+        const cost = (row.original.costUnit || 0) + (row.original.taxUnit || 0);
+        return <div className="text-right tabular-nums text-slate-300">${cost.toFixed(2)}</div>;
+      },
+    },
+    {
+      id: 'totalCost',
+      header: () => <div className="text-right">Total</div>,
+      cell: ({ row }) => {
+        const cost = (row.original.costUnit || 0) + (row.original.taxUnit || 0);
+        const total = cost * (row.original.quantity || 0);
+        return <div className="text-right tabular-nums text-emerald-400 font-medium">${total.toFixed(2)}</div>;
+      },
+    },
+    {
+      id: 'transitDays',
+      header: () => <div className="text-center">Días en Tránsito</div>,
+      cell: ({ row }) => {
+        if (row.original.status !== 'received' || !row.original.arrivalDate) return <div className="text-center text-slate-500">-</div>;
+        const departure = getDepartureDate(row.original.purchaseDate);
+        const depDate = new Date(departure);
+        const arrDate = new Date(row.original.arrivalDate);
+        const diffMs = arrDate.getTime() - depDate.getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        const color = diffDays > 0 ? "text-amber-400" : (diffDays < 0 ? "text-emerald-400" : "text-slate-300");
+        const prefix = diffDays > 0 ? "+" : "";
+        return <div className={`text-center font-medium ${color}`}>{prefix}{diffDays} días</div>;
+      }
+    },
+    {
+      accessorKey: 'status',
+      header: () => <div className="text-center">Estado</div>,
+      cell: ({ row }) => {
+        const s = row.original.status;
+        
+        // "transit" no es un estado persistido (PurchaseStatus = china|received):
+        // se deriva en la UI cuando ya pasó la fecha de salida del lote.
+        let dynamicStatus: 'china' | 'received' | 'transit' = s;
+        if (s === 'china') {
+          const departure = getDepartureDate(row.original.purchaseDate);
+          const today = new Date().toISOString().split('T')[0];
+          if (departure <= today) {
+            dynamicStatus = 'transit';
+          }
+        }
+
+        return (
+          <div className="text-center">
+            {dynamicStatus === 'transit' ? (
+              <Badge variant="outline" className="text-sky-400 border-sky-500/30 bg-sky-500/10">En Tránsito</Badge>
+            ) : dynamicStatus === 'china' ? (
+              <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10">En China</Badge>
+            ) : s === 'received' ? (
+              <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10">Recibido</Badge>
+            ) : (
+              <Badge variant="outline" className="text-slate-400 border-slate-500/30 bg-slate-500/10">{s}</Badge>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => {
+        if (row.original.status !== 'china') return null;
+        return (
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => {
+                setReceiveItem(row.original);
+                setReceiveData({
+                  arrivalDate: new Date().toISOString().split('T')[0],
+                  shippingUnit: '',
+                  category: row.original.category || ''
+                });
+              }}
+              className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 h-8"
+            >
+              Recibir
+            </Button>
+            <Button
+              variant="ghost" size="icon"
+              onClick={() => setDeleteId(row.original.id)}
+              className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-8 w-8"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        );
+      }
+    }
+  ];
+
+  const hasReceivedItems = purchases.some(p => p.status === 'received');
+  const finalPurchaseColumns = hasReceivedItems 
+    ? purchaseColumns 
+    : purchaseColumns.filter(c => c.id !== 'transitDays');
+
+  const inventoryColumns: ColumnDef<any>[] = [
+    {
+      accessorKey: 'productName',
+      header: 'Producto',
+      cell: ({ row }) => <span className="font-medium text-slate-200">{row.original.productName}</span>,
+    },
+    {
+      accessorKey: 'available',
+      header: () => <div className="text-right">Stock Disponible</div>,
+      cell: ({ row }) => <div className="text-right tabular-nums text-slate-300">{row.original.available}</div>,
+    },
+    {
+      accessorKey: 'priceUnitFinalUsd',
+      header: () => <div className="text-right">Costo Final (USD)</div>,
+      cell: ({ row }) => <div className="text-right tabular-nums text-slate-400">${row.original.priceUnitFinalUsd?.toFixed(2)}</div>,
+    }
+  ];
 
   return (
     <div className="space-y-6">
-      {/* 1. Cabecera */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-text">Control de Inventario</h2>
@@ -122,33 +323,30 @@ export default function AdminInventario() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         
-        {/* Contenido: Registro de Compras */}
         <TabsContent value="purchases" className="space-y-6 outline-none">
-          {/* Tarjetas de KPIs - Compras */}
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="bg-surface border-border shadow-sm">
               <CardHeader className="pb-2">
-                <CardDescription className="text-muted font-medium">Compras Registradas (Mes)</CardDescription>
-                <CardTitle className="text-3xl text-text">0</CardTitle>
+                <CardDescription className="text-muted font-medium">Compras Registradas</CardDescription>
+                <CardTitle className="text-3xl text-text">{kpis?.totalPurchases || 0}</CardTitle>
               </CardHeader>
             </Card>
             <Card className="bg-surface border-border shadow-sm">
               <CardHeader className="pb-2">
-                <CardDescription className="text-muted font-medium">Inversión Estimada</CardDescription>
-                <CardTitle className="text-3xl text-emerald-400">C$ 0.00</CardTitle>
+                <CardDescription className="text-muted font-medium">Inversión Estimada (USD)</CardDescription>
+                <CardTitle className="text-3xl text-emerald-400">${kpis?.totalInversionConImpuestosUsd?.toFixed(2) || '0.00'}</CardTitle>
               </CardHeader>
             </Card>
             <Card className="bg-surface border-border shadow-sm">
               <CardHeader className="pb-2">
                 <CardDescription className="text-muted font-medium">En Tránsito</CardDescription>
                 <CardTitle className="text-3xl text-amber-500 flex items-center gap-2">
-                  0 <AlertTriangle className="w-5 h-5" />
+                  {kpis?.inTransit || 0} <AlertTriangle className="w-5 h-5" />
                 </CardTitle>
               </CardHeader>
             </Card>
           </div>
 
-          {/* Tabla simulada de compras */}
           <Card className="bg-surface border-border shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -163,93 +361,118 @@ export default function AdminInventario() {
                     Registrar Entrada
                   </Button>
                 </DialogTrigger>
-          <DialogContent className="bg-surface border-border text-text w-full sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-emerald-400 font-bold text-xl">Registrar Compra / Entrada</DialogTitle>
-              <DialogDescription className="text-muted">
-                Añade nuevo stock a la bodega. Esto actualizará el costo promedio ponderado y la cola FIFO.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleRegisterPurchase} className="space-y-5 mt-6">
-              <div className="space-y-2">
-                <Label htmlFor="catalogItemId" className="text-slate-300">ID del Producto (SKU)</Label>
-                <Input 
-                  id="catalogItemId" 
-                  value={formData.catalogItemId}
-                  onChange={e => setFormData({ ...formData, catalogItemId: e.target.value })}
-                  placeholder="Ej. prod_12345" 
-                  className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quantity" className="text-slate-300">Cantidad</Label>
-                  <Input 
-                    id="quantity" 
-                    type="number" 
-                    min="1"
-                    value={formData.quantity}
-                    onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                    className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unitCost" className="text-slate-300">Costo Unitario (C$)</Label>
-                  <Input 
-                    id="unitCost" 
-                    type="number" 
-                    min="0" step="0.01"
-                    value={formData.unitCost}
-                    onChange={e => setFormData({ ...formData, unitCost: parseFloat(e.target.value) || 0 })}
-                    className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="supplier" className="text-slate-300">Proveedor (Opcional)</Label>
-                <Input 
-                  id="supplier" 
-                  value={formData.supplier}
-                  onChange={e => setFormData({ ...formData, supplier: e.target.value })}
-                  placeholder="Nombre de tienda o importador" 
-                  className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes" className="text-slate-300">Notas / Referencia</Label>
-                <Input 
-                  id="notes" 
-                  value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Ej. Factura #4562, Lote dañado..." 
-                  className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
-                />
-              </div>
-                <Button type="submit" disabled={isRegistering} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold mt-4">
-                  {isRegistering ? 'Registrando...' : 'Confirmar Entrada'}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+                <DialogContent className="bg-surface border-border text-text w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-emerald-400 font-bold text-xl">Registrar Compra en China</DialogTitle>
+                    <DialogDescription className="text-muted">
+                      El código GS-IN-XX será asignado automáticamente y se calculará la fecha de salida.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleRegisterPurchase} className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="productName" className="text-slate-300">Nombre del Producto</Label>
+                      <Input 
+                        id="productName" 
+                        value={formData.productName}
+                        onChange={e => setFormData({ ...formData, productName: e.target.value })}
+                        placeholder="Ej. iPhone 13 Pro Max" 
+                        className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="purchaseDate" className="text-slate-300">Fecha de Compra</Label>
+                      <Input 
+                        id="purchaseDate" 
+                        type="date"
+                        value={formData.purchaseDate}
+                        onChange={e => setFormData({ ...formData, purchaseDate: e.target.value })}
+                        className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="quantity" className="text-slate-300">Cantidad</Label>
+                        <Input 
+                          id="quantity" 
+                          type="number" 
+                          min="1"
+                          value={formData.quantity}
+                          onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+                          className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lot" className="text-slate-300">Nº Seguimiento / Lote</Label>
+                        <Input 
+                          id="lot" 
+                          value={formData.lot}
+                          onChange={e => setFormData({ ...formData, lot: e.target.value })}
+                          placeholder="Tracking" 
+                          className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="unitCost" className="text-slate-300">Costo Unit (USD)</Label>
+                        <Input 
+                          id="unitCost" 
+                          type="number" 
+                          min="0" step="0.01"
+                          value={formData.unitCost}
+                          onChange={e => setFormData({ ...formData, unitCost: e.target.value })}
+                          className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="taxUnit" className="text-slate-300">Impuesto Unit (USD)</Label>
+                        <Input 
+                          id="taxUnit" 
+                          type="number" 
+                          min="0" step="0.01"
+                          value={formData.taxUnit}
+                          onChange={e => setFormData({ ...formData, taxUnit: e.target.value })}
+                          className="bg-slate-900 border-slate-800 focus-visible:ring-emerald-500" 
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <Button type="submit" disabled={isRegistering} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold mt-2">
+                      {isRegistering ? 'Registrando...' : 'Confirmar Compra'}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
 
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 border border-dashed border-border rounded-lg bg-surface-2/50">
-                <FileText className="w-10 h-10 text-muted mx-auto mb-3 opacity-50" />
-                <p className="text-text font-medium">No hay compras recientes</p>
-                <p className="text-muted text-sm mt-1">El historial aparecerá aquí cuando registres entradas.</p>
-              </div>
+              {!purchases.length && !isLoadingPurchases ? (
+                <div className="text-center py-12 border border-dashed border-border rounded-lg bg-surface-2/50">
+                  <FileText className="w-10 h-10 text-muted mx-auto mb-3 opacity-50" />
+                  <p className="text-text font-medium">No hay compras recientes</p>
+                  <p className="text-muted text-sm mt-1">El historial aparecerá aquí cuando registres entradas.</p>
+                </div>
+              ) : (
+                <DataTable 
+                  columns={finalPurchaseColumns} 
+                  data={purchases} 
+                  searchPlaceholder="Buscar por código o producto..."
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Contenido: Inventario */}
         <TabsContent value="inventory" className="space-y-6 outline-none">
-          
-          {/* Sub-navegación: Actual vs Migrado */}
           <div className="flex justify-end">
             <Tabs value={inventoryType} onValueChange={setInventoryType} className="w-full sm:w-auto">
               <TabsList className="bg-surface-2 border border-border">
@@ -263,81 +486,103 @@ export default function AdminInventario() {
             </Tabs>
           </div>
 
-          {/* Tarjetas de KPIs - Inventario */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="bg-surface border-border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-muted font-medium">Unidades en Bodega</CardDescription>
-                <CardTitle className="text-3xl text-text">{isLoading ? '-' : totalStock}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="bg-surface border-border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-muted font-medium">Valor Total Inventario</CardDescription>
-                <CardTitle className="text-3xl text-emerald-400">C$ {isLoading ? '-' : totalValue.toLocaleString('es-NI', { minimumFractionDigits: 2 })}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="bg-surface border-border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-muted font-medium">Alertas Stock Bajo</CardDescription>
-                <CardTitle className="text-3xl text-amber-500 flex items-center gap-2">
-                  {isLoading ? '-' : lowStockItems} 
-                  {lowStockItems > 0 && <AlertTriangle className="w-5 h-5" />}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-
           <Tabs value={inventoryType} className="outline-none">
             <TabsContent value="current" className="outline-none m-0">
               <Card className="bg-surface border-border shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="text-lg text-text">Existencias Actuales</CardTitle>
-                    <CardDescription className="text-muted">Listado consolidado de productos.</CardDescription>
+                    <CardDescription className="text-muted">Stock recibido (listo para venta).</CardDescription>
                   </div>
                   <Button variant="outline" size="icon" onClick={refetch} disabled={isLoading} className="border-border bg-transparent text-muted hover:text-text hover:bg-surface-2">
                     <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  {isError ? (
-                    <div className="text-center py-8">
-                      <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
-                      <p className="text-rose-400 font-medium">Error al cargar inventario.</p>
-                      <p className="text-muted text-sm mt-1">Esperando que el backend esté listo.</p>
-                    </div>
-                  ) : inventory.length === 0 && !isLoading ? (
+                  {!inventory.length && !isLoading ? (
                     <div className="text-center py-12 border border-dashed border-border rounded-lg bg-surface-2/50">
                       <PackagePlus className="w-10 h-10 text-muted mx-auto mb-3 opacity-50" />
                       <p className="text-text font-medium">Bodega vacía</p>
-                      <p className="text-muted text-sm mt-1">Registra tu primera compra para ver el stock aquí.</p>
                     </div>
                   ) : (
-                    <div className="mt-4">
-                      <DataTable 
-                        columns={inventoryColumns} 
-                        data={inventory} 
-                        searchPlaceholder="Buscar producto por nombre..."
-                      />
-                    </div>
+                    <DataTable 
+                      columns={inventoryColumns} 
+                      data={inventory} 
+                      searchPlaceholder="Buscar producto..."
+                    />
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="migrated" className="outline-none m-0">
-              <Card className="bg-surface border-border shadow-sm border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <Archive className="w-12 h-12 text-muted mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium text-text">Inventario Migrado</h3>
-                  <p className="text-muted text-sm mt-1 text-center max-w-sm">Aquí aparecerán los registros migrados de versiones anteriores.</p>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
         </TabsContent>
       </Tabs>
+      
+      {/* Eliminar Dialog */}
+      <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-rose-400 font-bold text-xl">¿Re-autenticar para eliminar?</DialogTitle>
+            <DialogDescription className="text-slate-300 mt-2">
+              Vas a ser redirigido a Microsoft para confirmar tu identidad. Tras iniciar sesión nuevamente, la compra será eliminada y el código reciclado.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="ghost" onClick={() => setDeleteId(null)} className="text-slate-300 hover:bg-slate-800">
+              Cancelar
+            </Button>
+            <Button onClick={confirmDelete} className="bg-rose-600 text-white hover:bg-rose-700">
+              Continuar a Microsoft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recibir Compra Modal */}
+      <Dialog open={!!receiveItem} onOpenChange={(o) => !o && setReceiveItem(null)}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Recibir Lote en Nicaragua</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Llegada de <span className="font-medium text-emerald-400">{receiveItem?.code}</span> - {receiveItem?.productName}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleReceive} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Fecha de Llegada</Label>
+              <Input type="date" required 
+                value={receiveData.arrivalDate} 
+                onChange={e => setReceiveData({...receiveData, arrivalDate: e.target.value})}
+                className="bg-slate-950 border-slate-800 focus-visible:ring-emerald-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">Costo Envío Unitario (USD)</Label>
+              <Input type="number" step="0.01" min="0" required 
+                value={receiveData.shippingUnit} 
+                onChange={e => setReceiveData({...receiveData, shippingUnit: e.target.value})}
+                className="bg-slate-950 border-slate-800 focus-visible:ring-emerald-500"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">Categoría</Label>
+              <Input required 
+                value={receiveData.category} 
+                onChange={e => setReceiveData({...receiveData, category: e.target.value})}
+                className="bg-slate-950 border-slate-800 focus-visible:ring-emerald-500"
+                placeholder="Ej. Audífonos"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" onClick={() => setReceiveItem(null)} className="hover:bg-slate-800 text-slate-300">Cancelar</Button>
+              <Button type="submit" disabled={isReceiving} className="bg-emerald-600 hover:bg-emerald-700 font-medium">
+                {isReceiving ? 'Confirmando...' : 'Confirmar Llegada'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
