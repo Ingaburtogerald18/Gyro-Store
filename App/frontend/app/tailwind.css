@@ -69,6 +69,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* ── Extras de Gyro (shadcn no los trae) ── */
+  --color-primary-2: var(--primary-2);
   --color-whatsapp: var(--whatsapp);
   --color-promo: var(--promo);
   --color-success: var(--success);
@@ -172,6 +173,10 @@ body {
   --sidebar-border: oklch(0.925 0.005 214.3);
   --sidebar-ring: oklch(0.723 0.014 214.4);
   /* Extras Gyro. */
+  /* Acento secundario: esmeralda más profunda para textos y hovers sobre fondo
+     claro. La usan nombre de producto en hover, precios y eyebrows (41 sitios),
+     que hasta ahora quedaban sin color porque el token no existía. */
+  --primary-2: oklch(0.432 0.095 166.913);
   --whatsapp: #128c3e;
   --promo: oklch(0.585 0.233 292.5);
   --success: oklch(0.63 0.15 150);
@@ -220,6 +225,9 @@ body {
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0.021 213.5);
   /* Extras Gyro (tono para fondo oscuro). */
+  /* Sobre oscuro el acento secundario va al revés: más claro que --primary,
+     para que resalte como highlight (mismo rol que el teal del V1). */
+  --primary-2: oklch(0.696 0.17 162.48);
   --whatsapp: #25d366;
   --promo: oklch(0.585 0.233 292.5);
   --success: oklch(0.72 0.16 150);

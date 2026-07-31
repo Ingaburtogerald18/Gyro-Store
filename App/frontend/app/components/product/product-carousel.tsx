@@ -79,7 +79,7 @@ export function ProductCarousel({
                 className={cn(
                   'ease-expo h-8 w-8 rounded-full active:scale-95 sm:h-10 sm:w-10',
                   'disabled:opacity-30',
-                  !showcase && 'bg-card text-muted-foreground hover:border-white/25 hover:text-foreground',
+                  !showcase && 'bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
                 )}
               >
                 <HugeiconsIcon icon={Icon} size={16} strokeWidth={2} aria-hidden className="sm:size-5" />
