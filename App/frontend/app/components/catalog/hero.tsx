@@ -19,7 +19,8 @@ import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
 import { useGetConfigQuery } from '~/store/api/configApi';
 import { useGetLandingConfigQuery } from '~/store/api/landingApi';
-import { buildWhatsappUrl, cn } from '~/lib/utils';
+import { cn } from "~/lib/utils"
+import { buildWhatsappUrl } from "~/lib/formatters";
 
 const SLIDE_MS = 8000;
 const EMPTY_LANDING: LandingConfig = { headerCategories: [], heroSlides: [] };
@@ -84,10 +85,10 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
 
   return (
     <section className="mx-auto w-full max-w-[1400px] px-4 pt-3 pb-6 sm:pt-6 sm:pb-12">
-      <div className="group relative w-full overflow-hidden rounded-[2.5rem] border border-border/40 bg-surface shadow-2xl">
+      <div className="group relative w-full overflow-hidden rounded-[2.5rem] border border/40 bg-card shadow-2xl">
         <div className="flex min-h-[380px] flex-col items-stretch md:h-[620px] md:flex-row">
           {/* ── Media ── */}
-          <div className="relative flex h-[190px] w-full items-center justify-center overflow-hidden border-b border-border/30 bg-surface sm:h-[260px] md:h-auto md:w-1/2 md:border-r md:border-b-0">
+          <div className="relative flex h-[190px] w-full items-center justify-center overflow-hidden border-b border/30 bg-card sm:h-[260px] md:h-auto md:w-1/2 md:border-r md:border-b-0">
             {/* Glow radial muy tenue: da profundidad al vacío sin leerse como halo. */}
             <div
               aria-hidden
@@ -115,17 +116,17 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                 transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                 className="space-y-2.5 sm:space-y-6"
               >
-                <span className="inline-block text-[10px] font-black tracking-[0.2em] text-accent-2 uppercase sm:text-xs">
+                <span className="inline-block text-[10px] font-black tracking-[0.2em] text-primary-2 uppercase sm:text-xs">
                   {activeSlide.eyebrow}
                 </span>
 
-                <h1 className="text-[20px] leading-[0.95] font-black tracking-tight text-balance text-text sm:text-4xl md:text-6xl">
+                <h1 className="text-[20px] leading-[0.95] font-black tracking-tight text-balance text-foreground sm:text-4xl md:text-6xl">
                   {activeSlide.title}
                 </h1>
 
                 {/* Recortada en móvil: el CTA no puede depender de qué tan larga
                     sea la descripción de cada slide. */}
-                <p className="line-clamp-2 max-w-lg text-[12px] leading-relaxed font-medium text-muted sm:line-clamp-none sm:text-base">
+                <p className="line-clamp-2 max-w-lg text-[12px] leading-relaxed font-medium text-muted-foreground sm:line-clamp-none sm:text-base">
                   {activeSlide.description}
                 </p>
 
@@ -135,7 +136,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                 <div className="pt-2.5 sm:pt-4">
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:gap-3">
                     <Button
-                      variant="accent"
+                      variant="default"
                       onClick={handlePrimaryAction}
                       className="group/cta w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
@@ -147,7 +148,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                     </Button>
 
                     <Button
-                      variant="whatsappOutline"
+                      variant="outline" className="text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10"
                       onClick={() => window.open(whatsappOrderUrl, '_blank', 'noopener,noreferrer')}
                       className="group/wa w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
@@ -168,9 +169,9 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
       {/* ── Barra flotante de navegación y progreso ── */}
       {slides.length > 1 && (
         <div className="mt-3 flex justify-center sm:mt-6">
-          <div className="flex items-center gap-3 rounded-full border border-border/40 bg-surface px-4 py-2.5">
+          <div className="flex items-center gap-3 rounded-full border border/40 bg-card px-4 py-2.5">
             <Button
-              variant="onSurface"
+              variant="secondary"
               size="icon"
               onClick={() => setPlaying((p) => !p)}
               title={playing ? 'Pausar presentación' : 'Reanudar presentación'}
@@ -188,7 +189,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
 
             <div className="flex items-center gap-1">
               <Button
-                variant="onSurface"
+                variant="secondary"
                 size="icon"
                 onClick={() => {
                   goTo(-1);
@@ -214,7 +215,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                         setActiveIndex(idx);
                         setPlaying(true);
                       }}
-                      className="group/dot flex h-11 items-center rounded-full px-1 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+                      className="group/dot flex h-11 items-center rounded-full px-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                       aria-label={`Ir a la diapositiva ${idx + 1}`}
                       aria-current={isActive}
                     >
@@ -230,7 +231,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                             initial={{ width: '0%' }}
                             animate={{ width: '100%' }}
                             transition={{ duration: SLIDE_MS / 1000, ease: 'linear' }}
-                            className="absolute inset-y-0 left-0 rounded-full bg-accent-2"
+                            className="absolute inset-y-0 left-0 rounded-full bg-primary-2"
                           />
                         )}
                       </span>
@@ -240,7 +241,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
               </div>
 
               <Button
-                variant="onSurface"
+                variant="secondary"
                 size="icon"
                 onClick={() => {
                   goTo(1);

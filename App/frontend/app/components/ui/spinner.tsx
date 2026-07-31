@@ -1,20 +1,9 @@
 import { cn } from "~/lib/utils"
-import { IconPlaceholder } from "~/components/ui/icon-placeholder"
+import { SpinnerIcon } from "@phosphor-icons/react"
 
 function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
   return (
-    <IconPlaceholder
-      lucide="Loader2Icon"
-      tabler="IconLoader"
-      hugeicons="Loading03Icon"
-      phosphor="SpinnerIcon"
-      remixicon="RiLoaderLine"
-      data-slot="spinner"
-      role="status"
-      aria-label="Loading"
-      className={cn("size-4 animate-spin", className)}
-      {...props}
-    />
+    <SpinnerIcon data-slot="spinner" role="status" aria-label="Loading" className={cn("size-4 animate-spin", className)} {...props} />
   )
 }
 

@@ -25,7 +25,7 @@ import { Separator } from '~/components/ui/separator';
 import type { StoreConfig } from '~/store/api/configApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
-import { buildWhatsappUrl, formatCordobas, getProductUrl } from '~/lib/utils';
+import { buildWhatsappUrl, formatCordobas, getProductUrl } from "~/lib/formatters";
 
 export const headers: HeadersFunction = () => ({
   'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
@@ -137,7 +137,7 @@ export default function ProductDetail() {
     <>
       <StoreHeader />
       <main className="mx-auto max-w-7xl px-4 py-6">
-        <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted">
+        <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
           <Link to="/#catalogo" prefetch="intent">
             <ChevronLeft aria-hidden /> Volver al catálogo
           </Link>
@@ -149,27 +149,27 @@ export default function ProductDetail() {
           <div className="flex flex-col gap-5">
             <div className="space-y-3">
               {onSale && (
-                <Badge variant="promo" className="tabular-nums">−{discountPct}%</Badge>
+                <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 tabular-nums">−{discountPct}%</Badge>
               )}
-              {product.isPromo && !onSale && <Badge variant="promo">Oferta</Badge>}
+              {product.isPromo && !onSale && <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80">Oferta</Badge>}
 
-              <h1 className="text-2xl leading-tight font-black tracking-tight text-balance text-text sm:text-4xl">
+              <h1 className="text-2xl leading-tight font-black tracking-tight text-balance text-foreground sm:text-4xl">
                 {product.name}
               </h1>
 
               <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-extrabold text-accent-2 tabular-nums">
+                <span className="text-3xl font-extrabold text-primary-2 tabular-nums">
                   {formatCordobas(product.price, currency)}
                 </span>
                 {onSale && (
-                  <span className="text-base text-muted line-through tabular-nums">
+                  <span className="text-base text-muted-foreground line-through tabular-nums">
                     {formatCordobas(compareAt, currency)}
                   </span>
                 )}
               </div>
 
               {product.description && (
-                <p className="max-w-[65ch] leading-relaxed text-pretty text-muted">
+                <p className="max-w-[65ch] leading-relaxed text-pretty text-muted-foreground">
                   {product.description.replace(/<[^>]*>?/gm, '')}
                 </p>
               )}
@@ -196,7 +196,7 @@ export default function ProductDetail() {
                 {soldOut ? 'Agotado' : 'Agregar al carrito'}
               </Button>
               <Button
-                variant="whatsappOutline"
+                variant="outline" className="text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10"
                 onClick={handleWhatsApp}
                 className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
               >
@@ -209,16 +209,16 @@ export default function ProductDetail() {
               <>
                 <Separator className="bg-border" />
                 <div>
-                  <h2 className="mb-3 text-sm font-bold tracking-[0.18em] text-muted uppercase">
+                  <h2 className="mb-3 text-sm font-bold tracking-[0.18em] text-muted-foreground uppercase">
                     Especificaciones
                   </h2>
                   {/* Grilla con hairlines: el gap de 1px sobre el borde dibuja
                       las líneas, sin bordes por celda. */}
                   <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-xl bg-border sm:grid-cols-2">
                     {product.specs.map((spec) => (
-                      <div key={spec.label} className="bg-surface px-4 py-3">
-                        <dt className="text-xs text-muted capitalize">{spec.label}</dt>
-                        <dd className="mt-0.5 text-sm font-medium text-text">{spec.value}</dd>
+                      <div key={spec.label} className="bg-card px-4 py-3">
+                        <dt className="text-xs text-muted-foreground capitalize">{spec.label}</dt>
+                        <dd className="mt-0.5 text-sm font-medium text-foreground">{spec.value}</dd>
                       </div>
                     ))}
                   </dl>

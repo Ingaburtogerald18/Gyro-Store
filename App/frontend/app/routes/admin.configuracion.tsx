@@ -17,12 +17,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid gap-4 border-t border-border pt-8 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:gap-8">
+    <section className="grid gap-4 border-t border pt-8 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:gap-8">
       <div>
-        <h2 className="text-base font-semibold text-text">{title}</h2>
-        {description && <p className="mt-2 text-sm leading-relaxed text-muted">{description}</p>}
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        {description && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>}
       </div>
-      <Card className="bg-surface border-border overflow-hidden p-5">
+      <Card className="bg-card border overflow-hidden p-5">
         <CardContent className="p-0">
           {children}
         </CardContent>
@@ -156,13 +156,13 @@ function ImagesConfig() {
 
   const renderUploadBox = (title: string, desc: string, key: keyof ImageResources) => {
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-2 p-4">
+      <div className="flex flex-col gap-3 rounded-lg border border bg-muted p-4">
         <div>
-          <h3 className="text-sm font-medium text-text">{title}</h3>
-          <p className="text-xs text-muted">{desc}</p>
+          <h3 className="text-sm font-medium text-foreground">{title}</h3>
+          <p className="text-xs text-muted-foreground">{desc}</p>
         </div>
         {config[key] ? (
-          <div className="relative group rounded-lg border border-border bg-surface p-2">
+          <div className="relative group rounded-lg border border bg-card p-2">
             <div className="aspect-video w-full flex items-center justify-center overflow-hidden rounded-md bg-black/20">
               <img src={config[key]} alt={title} className="max-h-32 max-w-full object-contain" />
             </div>
@@ -185,16 +185,16 @@ function ImagesConfig() {
                 }
                 setConfig(p => ({ ...p, [key]: '' }));
               }}
-              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-danger text-white opacity-0 transition-opacity group-hover:opacity-100"
+              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-destructive text-white opacity-0 transition-opacity group-hover:opacity-100"
               title="Eliminar"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         ) : (
-          <label className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface transition-colors hover:border-accent hover:bg-accent/5">
-            <UploadCloud className="h-8 w-8 text-muted" />
-            <span className="text-sm font-medium text-muted">Subir imagen</span>
+          <label className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border bg-card transition-colors hover:border-primary hover:bg-primary/5">
+            <UploadCloud className="h-8 w-8 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">Subir imagen</span>
             <input 
               type="file" 
               className="hidden" 
@@ -215,7 +215,7 @@ function ImagesConfig() {
     );
   };
 
-  if (loading) return <div className="py-12 text-center text-sm text-muted">Cargando recursos...</div>;
+  if (loading) return <div className="py-12 text-center text-sm text-muted-foreground">Cargando recursos...</div>;
 
   return (
     <Section 
@@ -223,8 +223,8 @@ function ImagesConfig() {
       description="Sube los logos y favicons que se utilizarán en la interfaz y en los tickets generados."
     >
       <div className="space-y-6">
-        {error && <div className="rounded-md bg-danger/20 p-3 text-sm text-danger">{error}</div>}
-        {successMsg && <div className="rounded-md bg-accent/20 p-3 text-sm text-accent">{successMsg}</div>}
+        {error && <div className="rounded-md bg-destructive/20 p-3 text-sm text-destructive">{error}</div>}
+        {successMsg && <div className="rounded-md bg-primary/20 p-3 text-sm text-primary">{successMsg}</div>}
         
         <div className="grid gap-6 md:grid-cols-2">
           {renderUploadBox("Logo estático", "Cabeceras y web. Recomendado: 512x512px (PNG transparente)", "logoStatic")}
@@ -234,7 +234,7 @@ function ImagesConfig() {
         </div>
         
         <div className="flex justify-end pt-2">
-          <Button onClick={() => handleSave()} disabled={saving} className="bg-accent text-bg hover:bg-accent/90">
+          <Button onClick={() => handleSave()} disabled={saving} className="bg-primary text-bg hover:bg-primary/90">
             <Save className="mr-2 h-4 w-4" />
             {saving ? 'Guardando...' : 'Guardar Imágenes'}
           </Button>
@@ -346,13 +346,13 @@ function FinanzasConfig() {
     }
   };
 
-  if (loading) return <div className="flex h-40 items-center justify-center text-muted">Cargando configuración...</div>;
-  if (!config) return <div className="p-4 text-danger">{error}</div>;
+  if (loading) return <div className="flex h-40 items-center justify-center text-muted-foreground">Cargando configuración...</div>;
+  if (!config) return <div className="p-4 text-destructive">{error}</div>;
 
   return (
     <div className="space-y-6">
-      {error && <div className="rounded-md bg-danger/20 p-3 text-sm text-danger">{error}</div>}
-      {successMsg && <div className="rounded-md bg-accent/20 p-3 text-sm text-accent">{successMsg}</div>}
+      {error && <div className="rounded-md bg-destructive/20 p-3 text-sm text-destructive">{error}</div>}
+      {successMsg && <div className="rounded-md bg-primary/20 p-3 text-sm text-primary">{successMsg}</div>}
 
       <form onSubmit={handleSave} className="space-y-8">
         
@@ -375,7 +375,7 @@ function FinanzasConfig() {
                 onChange={e => setConfig({...config, salaryPercentage: parseFloat(e.target.value) || 0})} 
                 className="max-w-xs"
               />
-              <p className="text-xs text-muted">Ejemplo: 0.20 para 20%</p>
+              <p className="text-xs text-muted-foreground">Ejemplo: 0.20 para 20%</p>
             </div>
           </div>
         </Section>
@@ -428,7 +428,7 @@ function FinanzasConfig() {
                   />
                 </div>
                 <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-danger"
+                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
                   onClick={() => {
                     const newScale = config.costoFUScale.filter((_, idx) => idx !== i);
                     setConfig({...config, costoFUScale: newScale});
@@ -479,7 +479,7 @@ function FinanzasConfig() {
                   />
                 </div>
                 <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-danger"
+                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
                   onClick={() => {
                     const newScale = config.marginScale.filter((_, idx) => idx !== i);
                     setConfig({...config, marginScale: newScale});
@@ -530,7 +530,7 @@ function FinanzasConfig() {
                   />
                 </div>
                 <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-danger"
+                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
                   onClick={() => {
                     const newScale = config.commissionScale.filter((_, idx) => idx !== i);
                     setConfig({...config, commissionScale: newScale});
@@ -580,7 +580,7 @@ function FinanzasConfig() {
                   />
                 </div>
                 <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-danger"
+                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
                   onClick={() => {
                     const newScale = config.wholesaleDiscounts.filter((_, idx) => idx !== i);
                     setConfig({...config, wholesaleDiscounts: newScale});
@@ -602,7 +602,7 @@ function FinanzasConfig() {
         </Section>
 
         <div className="sticky bottom-4 mt-8 flex justify-end">
-          <Button type="submit" disabled={saving} className="bg-accent text-bg shadow-lg hover:bg-accent/90">
+          <Button type="submit" disabled={saving} className="bg-primary text-bg shadow-lg hover:bg-primary/90">
             {saving ? 'Guardando...' : 'Guardar Configuración Financiera'}
           </Button>
         </div>
@@ -615,8 +615,8 @@ export default function AdminConfiguracion() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8 pb-20 pt-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-text sm:text-3xl">Configuración</h1>
-        <p className="mt-1 text-sm text-muted">Parámetros del negocio editables desde la UI.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Configuración</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Parámetros del negocio editables desde la UI.</p>
       </div>
       
       <div className="space-y-8">

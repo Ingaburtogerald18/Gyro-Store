@@ -28,7 +28,7 @@ import {
   selectCartSubtotal,
   setQuantity,
 } from '~/store/slices/cartSlice';
-import { formatCordobas } from '~/lib/utils';
+import { formatCordobas } from "~/lib/formatters";
 
 export function CartDrawer() {
   const dispatch = useAppDispatch();
@@ -59,14 +59,14 @@ export function CartDrawer() {
       <Sheet open={isOpen} onOpenChange={(open) => !open && dispatch(closeCart())}>
         <SheetContent
           side={isDesktop ? 'right' : 'top'}
-          className="flex flex-col bg-surface p-0 max-md:h-[85dvh] max-md:rounded-b-3xl md:max-w-md"
+          className="flex flex-col bg-card p-0 max-md:h-[85dvh] max-md:rounded-b-3xl md:max-w-md"
         >
-          <SheetHeader className="shrink-0 border-b border-border p-4">
-            <SheetTitle className="text-lg font-bold text-text">Tu carrito</SheetTitle>
-            <SheetDescription className="flex items-center gap-1.5 text-xs text-muted">
+          <SheetHeader className="shrink-0 border-b border p-4">
+            <SheetTitle className="text-lg font-bold text-foreground">Tu carrito</SheetTitle>
+            <SheetDescription className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {items.length > 0 ? (
                 <>
-                  <Sparkles aria-hidden className="h-3.5 w-3.5 shrink-0 text-accent" />
+                  <Sparkles aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" />
                   Buena elección — revisalo y finalizalo cuando quieras.
                 </>
               ) : (
@@ -78,12 +78,12 @@ export function CartDrawer() {
           <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
             {items.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-                <div className="grid h-16 w-16 place-items-center rounded-full bg-surface-2 text-muted">
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-muted text-muted-foreground">
                   <ShoppingBag aria-hidden className="h-7 w-7" />
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-lg font-bold text-text">Tu carrito está vacío… por ahora</p>
-                  <p className="mx-auto max-w-[16rem] text-sm leading-relaxed text-muted">
+                  <p className="text-lg font-bold text-foreground">Tu carrito está vacío… por ahora</p>
+                  <p className="mx-auto max-w-[16rem] text-sm leading-relaxed text-muted-foreground">
                     Explorá la tienda y descubrí lo que podés llevarte hoy.
                   </p>
                 </div>
@@ -96,22 +96,22 @@ export function CartDrawer() {
                   return (
                     <div
                       key={key}
-                      className="flex gap-3 rounded-xl border border-border bg-bg p-3"
+                      className="flex gap-3 rounded-xl border border bg-background p-3"
                     >
-                      <div className="product-stage h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+                      <div className="product-stage h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                         {item.image ? (
                           <img src={item.image} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <div className="grid h-full place-items-center text-muted">
+                          <div className="grid h-full place-items-center text-muted-foreground">
                             <ImageOff aria-hidden className="h-5 w-5" />
                           </div>
                         )}
                       </div>
 
                       <div className="flex flex-1 flex-col">
-                        <p className="text-sm leading-tight font-medium text-text">{item.name}</p>
+                        <p className="text-sm leading-tight font-medium text-foreground">{item.name}</p>
                         {item.variantName !== 'Estándar' && (
-                          <p className="text-xs text-muted">{item.variantName}</p>
+                          <p className="text-xs text-muted-foreground">{item.variantName}</p>
                         )}
                         <div className="mt-auto flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -126,7 +126,7 @@ export function CartDrawer() {
                             >
                               <Minus aria-hidden className="h-3 w-3" />
                             </Button>
-                            <span className="w-5 text-center text-sm text-text tabular-nums">
+                            <span className="w-5 text-center text-sm text-foreground tabular-nums">
                               {item.quantity}
                             </span>
                             <Button
@@ -141,7 +141,7 @@ export function CartDrawer() {
                               <Plus aria-hidden className="h-3 w-3" />
                             </Button>
                           </div>
-                          <span className="text-sm font-semibold text-text tabular-nums">
+                          <span className="text-sm font-semibold text-foreground tabular-nums">
                             {formatCordobas(item.price * item.quantity, config?.currency)}
                           </span>
                         </div>
@@ -152,7 +152,7 @@ export function CartDrawer() {
                         size="icon"
                         onClick={() => dispatch(removeItem(key))}
                         aria-label={`Eliminar ${item.name} del carrito`}
-                        className="h-11 w-11 shrink-0 self-start text-muted hover:text-danger md:h-8 md:w-8"
+                        className="h-11 w-11 shrink-0 self-start text-muted-foreground hover:text-destructive md:h-8 md:w-8"
                       >
                         <Trash2 aria-hidden className="h-4 w-4" />
                       </Button>
@@ -163,7 +163,7 @@ export function CartDrawer() {
                 <Button
                   variant="ghost"
                   onClick={keepShopping}
-                  className="w-full justify-center gap-2 rounded-xl border border-dashed border-border bg-bg/40 py-3 text-sm font-medium text-muted hover:border-accent/40 hover:text-text"
+                  className="w-full justify-center gap-2 rounded-xl border border-dashed border bg-background/40 py-3 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 >
                   <Plus aria-hidden className="h-4 w-4" />
                   Agregar otro producto
@@ -173,17 +173,16 @@ export function CartDrawer() {
           </div>
 
           {items.length > 0 && (
-            <footer className="shrink-0 border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <footer className="shrink-0 border-t border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-muted">Total</span>
-                <span className="text-xl font-bold text-text tabular-nums">
+                <span className="text-muted-foreground">Total</span>
+                <span className="text-xl font-bold text-foreground tabular-nums">
                   {formatCordobas(subtotal, config?.currency)}
                 </span>
               </div>
               {/* El total definitivo lo recalcula el servidor al crear el pedido. */}
               <Button
-                variant="whatsapp"
-                className="w-full"
+                variant="default" className="bg-[#25D366] text-white hover:bg-[#25D366]/90 w-full"
                 onClick={() => setCheckoutOpen(true)}
               >
                 Finalizar pedido por WhatsApp

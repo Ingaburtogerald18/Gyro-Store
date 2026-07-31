@@ -365,6 +365,7 @@ export const newPurchaseInputSchema = z.object({
   lot: z.string().min(1, 'El lote es obligatorio.').max(40),
   code: z.string().max(40).optional(),
   productName: z.string().min(1, 'El nombre del producto es obligatorio.').max(160),
+  category: z.string().min(1, 'La categoría es obligatoria.').max(80),
   // >0: una compra de 0 unidades no tiene sentido y dividiría por cero en
   // finance.ts al recibirla (doc 11 §1: costo unitario origen = total/cantidad).
   quantity: z.number().int().positive('La cantidad debe ser mayor a 0.'),
@@ -396,7 +397,6 @@ export type UpdatePurchaseInput = z.infer<typeof updatePurchaseInputSchema>;
 export const arrivalInputSchema = z.object({
   arrivalDate: z.iso.date(),
   shippingUnit: z.number().min(0),
-  category: z.string().min(1, 'La categoría es obligatoria.').max(80),
   suggestedPrice: z.number().min(0).optional(),
 });
 export type ArrivalInput = z.infer<typeof arrivalInputSchema>;
@@ -508,4 +508,99 @@ export const publicContactInputSchema = z.object({
   email: z.string().email('Correo inválido.').max(120).optional().or(z.literal('')),
   message: z.string().min(1, 'Escribí tu mensaje.').max(1000, 'Máximo 1000 caracteres.'),
 });
-export type PublicContactInput = z.infer<typeof publicContactInputSchema>;
+export type PublicContactInput = z.infer<typeof publicContactInputSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: OPERACIÓN DIARIA (SALIDAS, CAJA, CUADRE) ──
+// ============================================================================
+
+export const salidaDestinoSchema = z.enum(['mostrador', 'delivery']);
+export const salidaEstadoSchema = z.enum(['facturada', 'pendiente_registro', 'registrada', 'devuelta']);
+export const liquidacionEstadoSchema = z.enum(['no_aplica', 'pendiente', 'depositado', 'efectivo_recibido', 'recordar']);
+
+export const salidaSchema = z.object({
+  id: z.string().uuid(),
+  articulo: z.string(),
+  destino: salidaDestinoSchema,
+  invoice_id: z.string().uuid().nullable(),
+  order_id: z.string().uuid().nullable(),
+  estado: salidaEstadoSchema,
+  repartidor: z.string().nullable(),
+  monto_esperado: z.number().nullable(),
+  liquidacion: liquidacionEstadoSchema,
+  liquidado_at: z.string().nullable(),
+  comprobante_url: z.string().nullable(),
+  cuenta_deposito_id: z.string().uuid().nullable(),
+  nota: z.string().nullable(),
+  salio_at: z.string(),
+  registrado_por: z.string().uuid().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type Salida = z.infer<typeof salidaSchema>;
+
+export const registerSalidaInputSchema = z.object({
+  articulo: z.string().min(1, 'Debe especificar el artículo'),
+  destino: salidaDestinoSchema,
+  invoice_id: z.string().uuid().optional().nullable(),
+  repartidor: z.string().optional().nullable(),
+  monto_esperado: z.coerce.number().optional().nullable(),
+  nota: z.string().optional().nullable(),
+});
+export type RegisterSalidaInput = z.infer<typeof registerSalidaInputSchema>;
+
+export const liquidarSalidaInputSchema = z.object({
+  liquidacion: liquidacionEstadoSchema.exclude(['no_aplica']),
+  monto_esperado: z.coerce.number().optional(),
+  cuenta_deposito_id: z.string().uuid().optional().nullable(),
+  comprobante_url: z.string().optional().nullable(),
+  nota: z.string().optional().nullable(),
+}).refine(data => {
+  if (data.liquidacion === 'depositado') {
+    return !!data.cuenta_deposito_id;
+  }
+  return true;
+}, {
+  message: 'Si la liquidación es por depósito, se requiere seleccionar la cuenta.',
+  path: ['cuenta_deposito_id'],
+});
+export type LiquidarSalidaInput = z.infer<typeof liquidarSalidaInputSchema>;
+
+export const cuentaTipoSchema = z.enum(['banco', 'efectivo']);
+export const movimientoTipoSchema = z.enum(['ingreso', 'egreso']);
+
+export const accountSchema = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  tipo: cuentaTipoSchema,
+  moneda: z.string(),
+  activo: z.boolean(),
+  created_at: z.string(),
+});
+export type Account = z.infer<typeof accountSchema>;
+
+export const accountMovementSchema = z.object({
+  id: z.string().uuid(),
+  account_id: z.string().uuid(),
+  tipo: movimientoTipoSchema,
+  monto: z.number(),
+  categoria: z.string(),
+  descripcion: z.string().nullable(),
+  salida_id: z.string().uuid().nullable(),
+  comprobante_url: z.string().nullable(),
+  ocurrio_at: z.string(),
+  registrado_por: z.string().uuid().nullable(),
+  created_at: z.string(),
+});
+export type AccountMovement = z.infer<typeof accountMovementSchema>;
+
+export const registerMovementInputSchema = z.object({
+  account_id: z.string().uuid('Cuenta inválida'),
+  tipo: movimientoTipoSchema,
+  monto: z.coerce.number().positive('El monto debe ser positivo'),
+  categoria: z.string().min(1, 'Categoría requerida'),
+  descripcion: z.string().optional().nullable(),
+  comprobante_url: z.string().optional().nullable(),
+  ocurrio_at: z.string().optional(),
+});
+export type RegisterMovementInput = z.infer<typeof registerMovementInputSchema>;

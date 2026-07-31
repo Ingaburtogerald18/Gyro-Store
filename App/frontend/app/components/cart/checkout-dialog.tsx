@@ -31,7 +31,8 @@ import {
   selectCartSubtotal,
   toOrderItems,
 } from '~/store/slices/cartSlice';
-import { cn, formatCordobas } from '~/lib/utils';
+import { cn } from "~/lib/utils"
+import { formatCordobas } from "~/lib/formatters";
 
 // Los campos que llena la persona; los ítems los pone el carrito al enviar.
 type CheckoutForm = Omit<PublicOrderInput, 'items'>;
@@ -128,10 +129,10 @@ export function CheckoutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto bg-surface sm:max-w-md">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto bg-card sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-text">Finalizar pedido</DialogTitle>
-          <DialogDescription className="text-muted">
+          <DialogTitle className="text-foreground">Finalizar pedido</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Completá tus datos y te llevamos a WhatsApp con el pedido ya armado.
           </DialogDescription>
         </DialogHeader>
@@ -162,7 +163,7 @@ export function CheckoutDialog({
           </div>
 
           <fieldset className="space-y-1.5">
-            <legend className="mb-1.5 text-sm font-medium text-text">¿Cómo lo recibís?</legend>
+            <legend className="mb-1.5 text-sm font-medium text-foreground">¿Cómo lo recibís?</legend>
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
@@ -175,8 +176,8 @@ export function CheckoutDialog({
                   className={cn(
                     'flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border p-3 text-center text-xs font-medium transition-colors',
                     deliveryMethod === value
-                      ? 'border-accent bg-accent/10 text-accent'
-                      : 'border-border text-muted hover:border-accent/40 hover:text-text',
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border text-muted-foreground hover:border-primary/40 hover:text-foreground',
                   )}
                 >
                   <input
@@ -230,9 +231,9 @@ export function CheckoutDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between border-t border-border pt-3">
-            <span className="text-sm text-muted">Total estimado</span>
-            <span className="text-lg font-bold text-text tabular-nums">
+          <div className="flex items-center justify-between border-t border pt-3">
+            <span className="text-sm text-muted-foreground">Total estimado</span>
+            <span className="text-lg font-bold text-foreground tabular-nums">
               {formatCordobas(subtotal, config?.currency)}
             </span>
           </div>
@@ -240,7 +241,7 @@ export function CheckoutDialog({
           <DialogFooter>
             <Button
               type="submit"
-              variant="whatsapp"
+              variant="default" className="bg-[#25D366] text-white hover:bg-[#25D366]/90"
               disabled={isLoading}
               className="w-full justify-center"
             >

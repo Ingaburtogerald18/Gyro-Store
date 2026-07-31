@@ -63,12 +63,12 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   if (showSuccessPrompt) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <div>
           <h2 className="text-xl font-bold">¡Compra registrada con éxito!</h2>
-          <p className="text-muted mt-1">La compra ha sido guardada con estado "En tránsito".</p>
+          <p className="text-muted-foreground mt-1">La compra ha sido guardada con estado "En tránsito".</p>
         </div>
         <p className="font-medium mt-4">¿Deseas registrar otra compra?</p>
         <div className="flex w-full sm:w-auto gap-3 pt-4">
@@ -100,13 +100,16 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
             name="lot"
             render={({ field }) => (
               <Input type="text"
-                options={Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean)))}
+                list="options-list"
                 value={field.value || ""}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
                 name={field.name}
                 aria-invalid={!!errors.lot}
               />
+      <datalist id="options-list">
+        {Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean))).map((opt: string) => <option key={opt} value={opt} />)}
+      </datalist>
             )}
           />
         </div>
@@ -133,7 +136,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
                     }
                   }}
                 />
-                {codeError && <span className="mt-1 block text-xs text-warning">⚠ {codeError}</span>}
+                {codeError && <span className="mt-1 block text-xs text-amber-500">⚠ {codeError}</span>}
               </>
             );
           })()}
@@ -148,13 +151,16 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
               name="productName"
               render={({ field }) => (
                 <Input type="text"
-                  options={Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean)))}
+                  list="options-list"
                   value={field.value || ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
                   name={field.name}
                   aria-invalid={!!errors.productName}
                 />
+      <datalist id="options-list">
+        {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => <option key={opt} value={opt} />)}
+      </datalist>
               )}
             />
           </div>
@@ -177,24 +183,25 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
         </div>
 
         {/* Tarjeta de totales estilo ticket */}
-        <div className="col-span-3 flex flex-col gap-2 rounded-xl border border-accent/20 bg-accent/5 p-4">
+        <div className="col-span-3 flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4">
           <div className="flex justify-between text-sm">
-            <span className="text-muted">Subtotal (Base × Cantidad)</span>
-            <span className="font-medium text-text">{formatUsd(subtotal)}</span>
+            <span className="text-muted-foreground">Subtotal (Base × Cantidad)</span>
+            <span className="font-medium text-foreground">{formatUsd(subtotal)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted">Total de Impuestos (Imp × Cantidad)</span>
-            <span className="font-medium text-text">+{formatUsd(totalTax, 4)}</span>
+            <span className="text-muted-foreground">Total de Impuestos (Imp × Cantidad)</span>
+            <span className="font-medium text-foreground">+{formatUsd(totalTax, 4)}</span>
           </div>
-          <div className="my-1 border-t border-accent/10" />
+          <div className="my-1 border-t border-primary/10" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-accent/70">Total Final</span>
-            <span className="font-heading text-xl font-bold text-accent-2">{formatUsd(totalFinal)}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-primary/70">Total Final</span>
+            <span className="font-heading text-xl font-bold text-primary-2">{formatUsd(totalFinal)}</span>
           </div>
         </div>
       </div>
 
-      <Button type="submit" className="w-full sm:w-auto" loading={isLoading}>
+      <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Registrar compra
       </Button>
     </form>

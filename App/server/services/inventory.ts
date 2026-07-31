@@ -228,6 +228,7 @@ function toInventoryRow(row: PurchaseRow): InventoryRow {
     priceUnitFinalUsd: round(priceUnitFinal, 4),
     costRealCordobas: row.costo_real_cs ?? 0,
     costoFijoCordobas: row.costo_f_u ?? 0,
+    costeFinalCordobas: costeFinal,
     preTotalUsd: round(priceUnit * available, 4),
     totalFinalUsd: round(priceUnitFinal * available, 4),
     suggestedPrice: row.suggested_price,
@@ -381,6 +382,7 @@ export async function createPurchase(input: NewPurchaseInput): Promise<Purchase>
       code: generatedCode,
       lot: input.lot,
       product_name: input.productName,
+      category: input.category,
       purchase_date: input.purchaseDate,
       quantity: input.quantity,
       costo_china_usd: input.costUnit,
@@ -425,7 +427,6 @@ export async function reportArrival(id: string, input: ArrivalInput): Promise<bo
     .update({
       status: 'received',
       arrival_date: input.arrivalDate,
-      category: input.category,
       envio_unit_usd: input.shippingUnit,
       exchange_rate: config.exchangeRate,
       costo_real_usd: costing.costoRealUsd,
@@ -438,6 +439,30 @@ export async function reportArrival(id: string, input: ArrivalInput): Promise<bo
 
   if (error) throw error;
   return true;
+}
+
+export async function simulateCost(id: string, shippingUnit: number): Promise<{ precioSugerido: number }> {
+  const { data: existing, error: fetchError } = await db
+    .from('purchases')
+    .select('quantity, costo_china_usd, impuesto_unit_usd')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) throw new BadRequestError('Lote no encontrado');
+
+  const config = await getFinancialConfig();
+  const costing = costPurchaseOnArrival(
+    {
+      quantity: existing.quantity,
+      costoChinaUsd: existing.costo_china_usd ?? 0,
+      impuestoUnitUsd: existing.impuesto_unit_usd ?? 0,
+      envioUnitUsd: shippingUnit,
+      exchangeRate: config.exchangeRate,
+    },
+    config,
+  );
+
+  return { precioSugerido: costing.precioSugerido };
 }
 
 export async function updatePurchase(id: string, input: UpdatePurchaseInput): Promise<boolean> {

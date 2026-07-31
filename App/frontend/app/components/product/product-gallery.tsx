@@ -10,7 +10,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
 
   return (
     <div className="space-y-3">
-      <div className="product-stage relative aspect-square w-full overflow-hidden rounded-2xl bg-surface-2">
+      <div className="product-stage relative aspect-square w-full overflow-hidden rounded-2xl bg-muted">
         {current ? (
           <img
             src={current}
@@ -21,7 +21,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
             style={{ viewTransitionName: 'vt-product-detail' } as React.CSSProperties}
           />
         ) : (
-          <div className="grid h-full place-items-center text-muted">
+          <div className="grid h-full place-items-center text-muted-foreground">
             <ImageOff aria-hidden className="h-10 w-10" />
           </div>
         )}
@@ -37,8 +37,8 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
               aria-label={`Ver imagen ${i + 1} de ${name}`}
               aria-current={i === active}
               className={cn(
-                'h-16 w-16 shrink-0 overflow-hidden rounded-lg border transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none',
-                i === active ? 'border-accent' : 'border-border hover:border-white/25',
+                'h-16 w-16 shrink-0 overflow-hidden rounded-lg border transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none',
+                i === active ? 'border-primary' : 'border hover:border-white/25',
               )}
             >
               <img src={src} alt="" className="h-full w-full object-cover" />

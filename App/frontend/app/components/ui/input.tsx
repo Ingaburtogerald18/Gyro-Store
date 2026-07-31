@@ -2,38 +2,17 @@ import * as React from "react"
 
 import { cn } from "~/lib/utils"
 
-function Input({
-  className,
-  type,
-  options,
-  ...props
-}: React.ComponentProps<"input"> & {
-  /** Sugerencias de autocompletado (ej. lotes/nombres ya usados) vía `<datalist>` nativo. */
-  options?: string[]
-}) {
-  // Un `<datalist>` necesita un id estable para que `list` lo referencie.
-  const listId = React.useId()
-
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
-    <>
-      <input
-        type={type}
-        data-slot="input"
-        list={options?.length ? listId : undefined}
-        className={cn(
-          "cn-input w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        {...props}
-      />
-      {options && options.length > 0 && (
-        <datalist id={listId}>
-          {options.map((opt) => (
-            <option key={opt} value={opt} />
-          ))}
-        </datalist>
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-8 w-full min-w-0 rounded-2xl border border-transparent bg-input/50 px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
       )}
-    </>
+      {...props}
+    />
   )
 }
 

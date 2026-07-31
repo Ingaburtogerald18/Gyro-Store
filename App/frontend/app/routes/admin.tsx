@@ -10,12 +10,14 @@ import {
   LayoutDashboard,
   LogOut,
   Package,
+  PackageOpen,
   Settings,
   ShoppingCart,
   Sparkles,
   Truck,
   Users,
   UserCog,
+  Wallet,
   Store,
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
@@ -75,9 +77,11 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Operación',
     items: [
       { name: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true, ready: true },
+      { name: 'Salidas', to: '/admin/salidas', icon: PackageOpen, ready: true },
       { name: 'Inventario', to: '/admin/inventario', icon: Boxes, ready: true },
       { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart, ready: true },
       { name: 'Cuotas', to: '/admin/cuotas', icon: CreditCard, ready: true },
+      { name: 'Caja y banco', to: '/admin/caja', icon: Wallet, ready: true },
     ],
   },
   {
@@ -186,7 +190,7 @@ export default function AdminLayout() {
 
   if (checking || isLoadingMe || isConfigLoading) {
     return (
-      <div className="grid min-h-svh place-items-center bg-bg text-sm text-muted">
+      <div className="grid min-h-svh place-items-center bg-background text-sm text-muted-foreground">
         Cargando interfaz...
       </div>
     );
@@ -214,7 +218,7 @@ export default function AdminLayout() {
                   </div>
                   <div className="grid flex-1 text-left leading-tight">
                     <span className="truncate font-semibold">GyroAdmin</span>
-                    <span className="truncate text-xs text-muted">Panel interno</span>
+                    <span className="truncate text-xs text-muted-foreground">Panel interno</span>
                   </div>
                 </NavLink>
               </SidebarMenuButton>
@@ -278,7 +282,7 @@ export default function AdminLayout() {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-bg/80 px-4 backdrop-blur-md">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border bg-background/80 px-4 backdrop-blur-md">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
 
@@ -304,7 +308,7 @@ export default function AdminLayout() {
           </Breadcrumb>
 
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild className="hidden text-muted sm:flex">
+            <Button variant="ghost" size="sm" asChild className="hidden text-muted-foreground sm:flex">
               <a href="/" target="_blank" rel="noreferrer">
                 <Sparkles aria-hidden className="mr-2 size-4" />
                 Ver tienda
@@ -332,7 +336,7 @@ export default function AdminLayout() {
                       <p className="text-sm leading-none font-medium">
                         {(user.user_metadata?.name as string | undefined) ?? 'Staff'}
                       </p>
-                      <p className="text-xs leading-none text-muted">{user.email}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

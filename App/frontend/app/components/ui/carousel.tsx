@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -7,7 +5,7 @@ import useEmblaCarousel, {
 
 import { cn } from "~/lib/utils"
 import { Button } from "~/components/ui/button"
-import { IconPlaceholder } from "~/components/ui/icon-placeholder"
+import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react"
 
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
@@ -185,7 +183,7 @@ function CarouselPrevious({
       variant={variant}
       size={size}
       className={cn(
-        "cn-carousel-previous absolute touch-manipulation",
+        "absolute touch-manipulation rounded-2xl",
         orientation === "horizontal"
           ? "inset-y-0 -left-12 my-auto"
           : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
@@ -195,14 +193,7 @@ function CarouselPrevious({
       onClick={scrollPrev}
       {...props}
     >
-      <IconPlaceholder
-        lucide="ChevronLeftIcon"
-        tabler="IconChevronLeft"
-        hugeicons="ArrowLeft01Icon"
-        phosphor="CaretLeftIcon"
-        remixicon="RiArrowLeftSLine"
-        className="cn-rtl-flip"
-      />
+      <CaretLeftIcon />
       <span className="sr-only">Previous slide</span>
     </Button>
   )
@@ -222,7 +213,7 @@ function CarouselNext({
       variant={variant}
       size={size}
       className={cn(
-        "cn-carousel-next absolute touch-manipulation",
+        "absolute touch-manipulation rounded-2xl",
         orientation === "horizontal"
           ? "inset-y-0 -right-12 my-auto"
           : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
@@ -232,14 +223,7 @@ function CarouselNext({
       onClick={scrollNext}
       {...props}
     >
-      <IconPlaceholder
-        lucide="ChevronRightIcon"
-        tabler="IconChevronRight"
-        hugeicons="ArrowRight01Icon"
-        phosphor="CaretRightIcon"
-        remixicon="RiArrowRightSLine"
-        className="cn-rtl-flip"
-      />
+      <CaretRightIcon />
       <span className="sr-only">Next slide</span>
     </Button>
   )

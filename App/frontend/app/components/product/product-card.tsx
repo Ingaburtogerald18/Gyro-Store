@@ -16,7 +16,8 @@ import { Button } from '~/components/ui/button';
 import { useGetConfigQuery } from '~/store/api/configApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
-import { buildWhatsappUrl, cn, formatCordobas, getProductUrl } from '~/lib/utils';
+import { cn } from "~/lib/utils"
+import { buildWhatsappUrl, formatCordobas, getProductUrl } from "~/lib/formatters";
 
 export function ProductCard({
   product,
@@ -93,12 +94,12 @@ export function ProductCard({
     >
       <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5">
         {onSale && (
-          <Badge variant="promo" className="text-[10px] tabular-nums sm:px-2.5 sm:text-[11px]">
+          <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 text-[10px] tabular-nums sm:px-2.5 sm:text-[11px]">
             −{discountPct}%
           </Badge>
         )}
         {product.isPromo && !onSale && (
-          <Badge variant="promo" className="text-[10px] sm:px-2.5 sm:text-[11px]">
+          <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 text-[10px] sm:px-2.5 sm:text-[11px]">
             Oferta
           </Badge>
         )}
@@ -106,7 +107,7 @@ export function ProductCard({
 
       {lowStock && (
         <Badge
-          variant="warning"
+          variant="destructive"
           className="absolute top-2 right-2 z-10 text-[10px] sm:px-2.5 sm:text-[11px]"
         >
           ¡Últimas {product.stock}!
@@ -127,14 +128,14 @@ export function ProductCard({
           style={{ viewTransitionName: `vt-product-${product.id}` } as React.CSSProperties}
         />
       ) : (
-        <div className="grid h-full place-items-center text-muted">
+        <div className="grid h-full place-items-center text-muted-foreground">
           <ImageOff aria-hidden className="h-8 w-8" />
         </div>
       )}
 
       {soldOut && (
         <Badge
-          variant="overlay"
+          variant="secondary"
           className="absolute bottom-2 left-1/2 -translate-x-1/2 py-1 text-[10px] sm:bottom-3 sm:px-3 sm:text-[11px]"
         >
           Agotado
@@ -153,21 +154,21 @@ export function ProductCard({
         isList ? 'flex-1 justify-center gap-1.5 py-1' : 'flex-1 pt-3 sm:pt-4',
       )}
     >
-      <h3 className="line-clamp-2 text-[13px] leading-snug font-bold tracking-tight text-text transition-colors group-hover:text-accent-2 sm:text-lg">
+      <h3 className="line-clamp-2 text-[13px] leading-snug font-bold tracking-tight text-foreground transition-colors group-hover:text-primary-2 sm:text-lg">
         {product.name}
       </h3>
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-[13px] font-extrabold text-accent-2 tabular-nums sm:text-lg">
+        <span className="text-[13px] font-extrabold text-primary-2 tabular-nums sm:text-lg">
           {formatCordobas(product.price, currency)}
         </span>
         {onSale && (
-          <span className="text-xs text-muted line-through tabular-nums sm:text-sm">
+          <span className="text-xs text-muted-foreground line-through tabular-nums sm:text-sm">
             {formatCordobas(compareAt, currency)}
           </span>
         )}
       </div>
       {description && (
-        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed font-light text-muted sm:text-sm">
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed font-light text-muted-foreground sm:text-sm">
           {description}
         </p>
       )}
@@ -186,7 +187,7 @@ export function ProductCard({
       </Button>
       {/* Nunca se deshabilita, ni agotado: "avísame" sigue siendo un lead. */}
       <Button
-        variant="whatsapp"
+        variant="default" className="bg-[#25D366] text-white hover:bg-[#25D366]/90"
         size="icon"
         onClick={handleWhatsAppOrder}
         aria-label={

@@ -13,9 +13,14 @@ import {
 } from '~/components/ui/chart';
 import { Progress } from '~/components/ui/progress';
 import { Pie, PieChart } from 'recharts';
-import { DollarSign, ShoppingCart, Package, Percent, PlusSquare, Droplets, PieChart as PieIcon } from 'lucide-react';
+import { DollarSign, ShoppingCart, Package, Percent, PlusSquare, Droplets, PieChart as PieIcon, PackageOpen, Truck, Wallet, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { NavLink } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { useGetKpisQuery } from '~/store/api/reportsApi';
+import { useGetCuadreQuery } from '~/store/api/cuadreApi';
+import { useGetAccountsQuery } from '~/store/api/cajaApi';
+import { formatCordobas } from '~/lib/formatters';
+import { cn } from '~/lib/utils';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Dashboard | Gyro Store Admin' }];
@@ -59,6 +64,85 @@ const incomeChartConfig = {
   salary: { label: 'Salary', color: 'var(--color-chart-3)' },
   ganancia: { label: 'Ganancia tienda', color: 'var(--color-chart-4)' },
 } satisfies ChartConfig;
+
+// "Cuadre de hoy": los pendientes que hay que resolver antes de cerrar el día.
+// Las salidas sin registrar y los deliveries sin liquidar salen en rojo y linkean
+// a la vista filtrada; los saldos por cuenta cierran el panel del dueño.
+function CuadreBanner() {
+  const { data: cuadre } = useGetCuadreQuery();
+  const { data: accounts = [] } = useGetAccountsQuery();
+
+  if (!cuadre) return null;
+
+  const nombreCuenta = (id: string) => accounts.find((a) => a.id === id)?.nombre ?? 'Cuenta';
+
+  const alerts = [
+    {
+      label: 'Salidas sin registrar',
+      count: cuadre.salidasPendientes,
+      icon: PackageOpen,
+      to: '/admin/salidas?estado=pendiente_registro',
+      hint: 'Salieron sin factura y ningún vendedor las registró',
+    },
+    {
+      label: 'Deliveries por liquidar',
+      count: cuadre.deliveriesPorLiquidar,
+      icon: Truck,
+      to: '/admin/salidas?liquidacion=pendiente',
+      hint: 'Entregados por delivery; falta confirmar el dinero',
+    },
+  ];
+
+  return (
+    <section className="mb-6 space-y-3">
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cuadre de hoy</h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {alerts.map((a) => {
+          const pending = a.count > 0;
+          return (
+            <NavLink
+              key={a.label}
+              to={a.to}
+              className={cn(
+                'rounded-card border p-4 transition-colors',
+                pending
+                  ? 'border-danger/30 bg-danger/10 hover:bg-danger/15'
+                  : 'border-border bg-surface hover:bg-surface-hover',
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <a.icon className={cn('size-4', pending && 'text-danger')} />
+                  {a.label}
+                </span>
+                {pending ? (
+                  <AlertTriangle className="size-4 text-danger" />
+                ) : (
+                  <CheckCircle2 className="size-4 text-success" />
+                )}
+              </div>
+              <p className={cn('nums mt-2 text-2xl font-bold', pending ? 'text-danger' : 'text-foreground')}>
+                {a.count}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{pending ? a.hint : 'Todo al día'}</p>
+            </NavLink>
+          );
+        })}
+
+        {cuadre.saldosCuentas.map((s) => (
+          <div key={s.accountId} className="rounded-card border border-border bg-surface p-4">
+            <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Wallet className="size-4" />
+              {nombreCuenta(s.accountId)}
+            </span>
+            <p className="nums mt-2 text-2xl font-bold text-foreground">{formatCordobas(s.balance)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Saldo actual</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function AdminDashboard() {
   const [range, setRange] = useState('month');
@@ -108,7 +192,7 @@ export default function AdminDashboard() {
   return (
     <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-3xl font-extrabold tracking-tight text-text">Dashboard</h2>
+        <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Dashboard</h2>
         <AnimatedTabs
           items={tabs}
           value={range}
@@ -116,17 +200,19 @@ export default function AdminDashboard() {
           layoutId="dashboard-range"
         />
       </div>
-      
+
+      <CuadreBanner />
+
       <QueryState
         loading={isLoading}
         error={isError}
         empty={!kpis}
         loadingFallback={
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="h-32 rounded-card bg-surface-2 animate-pulse" />
-            <div className="h-32 rounded-card bg-surface-2 animate-pulse" />
-            <div className="h-32 rounded-card bg-surface-2 animate-pulse" />
-            <div className="h-32 rounded-card bg-surface-2 animate-pulse" />
+            <div className="h-32 rounded-card bg-muted animate-pulse" />
+            <div className="h-32 rounded-card bg-muted animate-pulse" />
+            <div className="h-32 rounded-card bg-muted animate-pulse" />
+            <div className="h-32 rounded-card bg-muted animate-pulse" />
           </div>
         }
       >
@@ -177,9 +263,9 @@ export default function AdminDashboard() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <SpotlightCard variant="highlight" className="col-span-7 lg:col-span-4 p-5">
-                <div className="mb-6 flex items-center gap-2 border-b border-border pb-4">
-                  <Droplets className="h-5 w-5 text-accent" />
-                  <h3 className="font-semibold text-text">Recaudado por Pozo</h3>
+                <div className="mb-6 flex items-center gap-2 border-b border pb-4">
+                  <Droplets className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Recaudado por Pozo</h3>
                 </div>
                 
                 <div className="space-y-4">
@@ -191,8 +277,8 @@ export default function AdminDashboard() {
                     return (
                       <div key={pozoKey} className="flex flex-col gap-1.5">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium text-text capitalize">{pozoKey}</span>
-                          <span className="nums text-muted">{formatMoney(amount)}</span>
+                          <span className="font-medium text-foreground capitalize">{pozoKey}</span>
+                          <span className="nums text-muted-foreground">{formatMoney(amount)}</span>
                         </div>
                         {/* Progress de shadcn: trae role="progressbar" y sus valores
                             ARIA, que la barra hecha a mano no tenía. Arranca en 0 y
@@ -209,9 +295,9 @@ export default function AdminDashboard() {
               </SpotlightCard>
               
               <SpotlightCard variant="default" className="col-span-7 lg:col-span-3 p-5">
-                <div className="mb-4 flex items-center gap-2 border-b border-border pb-4">
-                  <PieIcon className="h-5 w-5 text-accent" />
-                  <h3 className="font-semibold text-text">Composición del ingreso</h3>
+                <div className="mb-4 flex items-center gap-2 border-b border pb-4">
+                  <PieIcon className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Composición del ingreso</h3>
                 </div>
 
                 <ChartContainer
@@ -236,7 +322,7 @@ export default function AdminDashboard() {
                 <ul className="mt-4 space-y-2">
                   {incomeBreakdown.map((slice) => (
                     <li key={slice.key} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 text-muted">
+                      <span className="flex items-center gap-2 text-muted-foreground">
                         <span
                           aria-hidden
                           className="size-2.5 rounded-full"
@@ -244,7 +330,7 @@ export default function AdminDashboard() {
                         />
                         {slice.label}
                       </span>
-                      <span className="nums font-medium text-text">{formatMoney(slice.value)}</span>
+                      <span className="nums font-medium text-foreground">{formatMoney(slice.value)}</span>
                     </li>
                   ))}
                 </ul>

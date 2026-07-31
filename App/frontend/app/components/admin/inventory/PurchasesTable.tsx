@@ -165,7 +165,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
           if (p.status === "received") {
             return (
               <div className="flex items-center justify-end gap-1.5">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent/15 px-2.5 py-1.5 text-xs font-semibold text-accent-2">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-2.5 py-1.5 text-xs font-semibold text-primary-2">
                   <Warehouse className="h-3.5 w-3.5" />
                   Ingresado a bodega
                 </span>
@@ -173,7 +173,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
               </div>
             );
           }
-          return <span className="text-xs text-muted">—</span>;
+          return <span className="text-xs text-muted-foreground">—</span>;
         },
       },
     ],
@@ -181,17 +181,17 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border-border bg-surface shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
   }
 
   return (
     <>
       {/* Barra de herramientas sticky */}
-      <div className="sticky top-[116px] z-10 -mx-4 bg-bg/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+      <div className="sticky top-[116px] z-10 -mx-4 bg-background/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="flex items-center gap-3">
             {/* Resumen basado en los filtros activos */}
-            <div className="hidden sm:flex items-center divide-x divide-border rounded-xl border border-border bg-surface px-1 py-1">
+            <div className="hidden sm:flex items-center divide-x divide-border rounded-xl border border bg-card px-1 py-1">
               <SummaryPill label="Ítems" value={filteredPurchases.length.toString()} />
               <SummaryPill label="Cantidades" value={filteredPurchases.reduce((s, p) => s + (p.quantity ?? 0), 0).toString()} />
               <SummaryPill label="Impuestos" value={formatUsd(filteredPurchases.reduce((s, p) => s + (p.taxUnit ?? 0) * (p.quantity ?? 0), 0))} />
@@ -227,17 +227,18 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
     <DialogHeader>
       <DialogTitle>{"Eliminar compra"}</DialogTitle>
     </DialogHeader>
-        <p className="text-sm text-muted">
-          ¿Eliminar la compra <strong className="text-text">{deleteFor?.code}</strong>? Esta acción no
+        <p className="text-sm text-muted-foreground">
+          ¿Eliminar la compra <strong className="text-foreground">{deleteFor?.code}</strong>? Esta acción no
           se puede deshacer.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setDeleteFor(null)}>
             Cancelar
           </Button>
-          <Button onClick={handleDelete} loading={deleting} className="bg-danger/90">
-            Eliminar
-          </Button>
+          <Button onClick={handleDelete} disabled={deleting} className="bg-destructive/90">
+        {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Eliminar
+      </Button>
         </div>
         </DialogContent>
 </Dialog>
@@ -248,8 +249,8 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
 function SummaryPill({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="flex flex-col items-center px-3 py-0.5 min-w-[72px]">
-      <span className="text-[10px] uppercase tracking-wide text-muted">{label}</span>
-      <span className={`text-sm font-bold ${accent ? "text-accent-2" : "text-text"}`}>{value}</span>
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={`text-sm font-bold ${accent ? "text-primary-2" : "text-foreground"}`}>{value}</span>
     </div>
   );
 }

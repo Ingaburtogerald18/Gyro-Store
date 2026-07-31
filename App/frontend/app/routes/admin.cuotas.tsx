@@ -23,7 +23,7 @@ import { Badge } from '~/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { QueryState } from '~/components/ui/QueryState';
-import { errMsg, formatCordobas, withoutIds } from '~/lib/utils';
+import { errMsg, formatCordobas, withoutIds } from "~/lib/formatters";
 import {
   useCancelInstallmentPlanMutation,
   useCreateInstallmentPlanMutation,
@@ -42,8 +42,8 @@ function pctPaid(paid: number, total: number): number {
 function ProgressBar({ paid, total }: { paid: number; total: number }) {
   const pct = pctPaid(paid, total);
   return (
-    <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-      <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -82,18 +82,18 @@ function PaymentDialog({ plan, onClose }: { plan: InstallmentPlan | null; onClos
         </DialogHeader>
         {plan && (
           <div className="space-y-4">
-            <div className="space-y-1 rounded-lg border border-border bg-surface-2 p-3 text-sm">
+            <div className="space-y-1 rounded-lg border border bg-muted p-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted">Total</span>
+                <span className="text-muted-foreground">Total</span>
                 <span className="font-semibold">{formatCordobas(plan.total)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Pagado</span>
-                <span className="font-semibold text-accent-2">{formatCordobas(plan.amountPaid)}</span>
+                <span className="text-muted-foreground">Pagado</span>
+                <span className="font-semibold text-primary-2">{formatCordobas(plan.amountPaid)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Pendiente</span>
-                <span className="font-bold text-warning">{formatCordobas(plan.amountPending)}</span>
+                <span className="text-muted-foreground">Pendiente</span>
+                <span className="font-bold text-amber-500">{formatCordobas(plan.amountPending)}</span>
               </div>
               <ProgressBar paid={plan.amountPaid} total={plan.total} />
             </div>
@@ -124,9 +124,10 @@ function PaymentDialog({ plan, onClose }: { plan: InstallmentPlan | null; onClos
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} loading={isLoading}>
-            Registrar pago
-          </Button>
+          <Button onClick={handleSubmit} disabled={isLoading}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Registrar pago
+      </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -149,29 +150,29 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
   const pct = pctPaid(plan.amountPaid, plan.total);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+    <div className="overflow-hidden rounded-xl border border bg-card shadow-sm">
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="truncate font-semibold text-text">{plan.phone ?? 'Sin teléfono'}</p>
+              <p className="truncate font-semibold text-foreground">{plan.phone ?? 'Sin teléfono'}</p>
               <Badge
                 variant="outline"
-                className={plan.status === 'completed' ? 'text-accent-2 border-accent/30 bg-accent/10' : 'text-warning border-warning/30 bg-warning/10'}
+                className={plan.status === 'completed' ? 'text-primary-2 border-primary/30 bg-primary/10' : 'text-amber-500 border-warning/30 bg-amber-500/10'}
               >
                 {plan.status === 'completed' ? 'Pagado' : 'Activo'}
               </Badge>
             </div>
-            {plan.sellerEmail && <p className="text-xs text-muted">Vendedor: {plan.sellerEmail}</p>}
+            {plan.sellerEmail && <p className="text-xs text-muted-foreground">Vendedor: {plan.sellerEmail}</p>}
           </div>
           <div className="text-right text-sm">
-            <p className="font-bold text-text">{formatCordobas(plan.total)}</p>
-            <p className="text-xs text-muted">{plan.numCuotas} cuotas</p>
+            <p className="font-bold text-foreground">{formatCordobas(plan.total)}</p>
+            <p className="text-xs text-muted-foreground">{plan.numCuotas} cuotas</p>
           </div>
         </div>
 
         <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>{pct}% pagado</span>
             <span>Pendiente: {formatCordobas(plan.amountPending)}</span>
           </div>
@@ -179,7 +180,7 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
         </div>
 
         {plan.status === 'active' && (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Primera cuota: {new Date(`${plan.firstDue}T00:00:00`).toLocaleDateString('es-NI')}
           </p>
         )}
@@ -192,13 +193,14 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
             </Button>
           )}
           {plan.payments.length === 0 && (
-            <Button size="sm" variant="ghost" onClick={handleCancel} loading={cancelling} className="text-danger">
-              Cancelar
-            </Button>
+            <Button size="sm" variant="ghost" onClick={handleCancel} disabled={cancelling} className="text-destructive">
+        {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Cancelar
+      </Button>
           )}
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="ml-auto flex items-center gap-1 text-xs text-muted transition-colors hover:text-text"
+            className="ml-auto flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             {expanded ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
             {plan.payments.length} {plan.payments.length === 1 ? 'pago' : 'pagos'}
@@ -207,14 +209,14 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
       </div>
 
       {expanded && plan.payments.length > 0 && (
-        <div className="divide-y divide-border border-t border-border">
+        <div className="divide-y divide-border border-t border">
           {plan.payments.map((p) => (
             <div key={p.id} className="flex items-center justify-between px-4 py-2 text-sm">
               <div>
-                <span className="font-medium text-text">{formatCordobas(p.amount)}</span>
-                <span className="ml-2 text-xs capitalize text-muted">{p.method ?? 'efectivo'}</span>
+                <span className="font-medium text-foreground">{formatCordobas(p.amount)}</span>
+                <span className="ml-2 text-xs capitalize text-muted-foreground">{p.method ?? 'efectivo'}</span>
               </div>
-              <span className="text-xs text-muted">
+              <span className="text-xs text-muted-foreground">
                 {p.paidAt ? new Date(p.paidAt).toLocaleDateString('es-NI') : '—'}
               </span>
             </div>
@@ -254,14 +256,14 @@ function CreatePlanDialog({ sale, onClose }: { sale: SaleListItem | null; onClos
         </DialogHeader>
         {sale && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm">
+            <div className="rounded-lg border border bg-muted p-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted">Cliente</span>
-                <span className="font-medium text-text">{sale.phone ?? '—'}</span>
+                <span className="text-muted-foreground">Cliente</span>
+                <span className="font-medium text-foreground">{sale.phone ?? '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Total</span>
-                <span className="font-semibold text-text">{formatCordobas(sale.total)}</span>
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-semibold text-foreground">{formatCordobas(sale.total)}</span>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -278,9 +280,10 @@ function CreatePlanDialog({ sale, onClose }: { sale: SaleListItem | null; onClos
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} loading={isLoading}>
-            Crear plan
-          </Button>
+          <Button onClick={handleSubmit} disabled={isLoading}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Crear plan
+      </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -309,12 +312,12 @@ export default function AdminCuotas() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-text">Ventas en Cuotas</h2>
-          <p className="text-muted">Seguimiento de pagos hasta saldar el total.</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Ventas en Cuotas</h2>
+          <p className="text-muted-foreground">Seguimiento de pagos hasta saldar el total.</p>
         </div>
         <div className="flex items-center gap-3">
           {activeCount > 0 && (
-            <span className="rounded-full bg-warning/15 px-3 py-1.5 text-sm font-medium text-warning">
+            <span className="rounded-full bg-amber-500/15 px-3 py-1.5 text-sm font-medium text-amber-500">
               {activeCount} activas
             </span>
           )}
@@ -325,7 +328,7 @@ export default function AdminCuotas() {
       </div>
 
       <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-        <TabsList className="bg-surface border border-border">
+        <TabsList className="bg-card border border">
           <TabsTrigger value="active">Activas</TabsTrigger>
           <TabsTrigger value="all">Todas</TabsTrigger>
           <TabsTrigger value="completed">Completadas</TabsTrigger>
@@ -338,14 +341,14 @@ export default function AdminCuotas() {
         empty={plans.length === 0}
         loadingFallback={
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="h-48 animate-pulse rounded-xl bg-surface" />
-            <div className="h-48 animate-pulse rounded-xl bg-surface" />
+            <div className="h-48 animate-pulse rounded-xl bg-card" />
+            <div className="h-48 animate-pulse rounded-xl bg-card" />
           </div>
         }
         emptyFallback={
-          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-surface-2/50 py-20 text-center">
-            <CreditCard className="h-10 w-10 text-muted opacity-40" aria-hidden />
-            <p className="text-muted">No hay planes de cuotas en esta categoría.</p>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border bg-muted/50 py-20 text-center">
+            <CreditCard className="h-10 w-10 text-muted-foreground opacity-40" aria-hidden />
+            <p className="text-muted-foreground">No hay planes de cuotas en esta categoría.</p>
           </div>
         }
       >
@@ -365,7 +368,7 @@ export default function AdminCuotas() {
             <DialogTitle>Elegí la venta aprobada</DialogTitle>
           </DialogHeader>
           {salesWithoutPlan.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted">No hay ventas aprobadas sin plan de cuotas todavía.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">No hay ventas aprobadas sin plan de cuotas todavía.</p>
           ) : (
             <div className="max-h-80 space-y-2 overflow-y-auto">
               {salesWithoutPlan.map((sale) => (
@@ -375,7 +378,7 @@ export default function AdminCuotas() {
                     setCreateFor(sale);
                     setPickerOpen(false);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-surface-2"
+                  className="flex w-full items-center justify-between rounded-lg border border px-3 py-2 text-left text-sm hover:bg-muted"
                 >
                   <span>{sale.phone ?? sale.sellerEmail}</span>
                   <span className="font-semibold">{formatCordobas(sale.total)}</span>

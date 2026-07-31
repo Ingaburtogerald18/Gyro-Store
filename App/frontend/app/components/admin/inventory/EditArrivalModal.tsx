@@ -84,7 +84,7 @@ export function EditArrivalModal({
         <div className="grid gap-2">
           <Label>Precio de venta (C$)</Label>
           <input type="number" step="1" min={0} className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" placeholder="Precio al que se vende" {...register("suggestedPrice")} />
-          <span className="mt-1 block text-xs text-muted">Es el precio que verá el vendedor al cotizar. Puedes cambiarlo cuando quieras.</span>
+          <span className="mt-1 block text-xs text-muted-foreground">Es el precio que verá el vendedor al cotizar. Puedes cambiarlo cuando quieras.</span>
         </div>
 
         <div className="grid gap-2">
@@ -101,13 +101,14 @@ export function EditArrivalModal({
           </select>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <div className="flex justify-end gap-2 border-t border pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">
             Cancelar
           </Button>
-          <Button type="submit" size="sm" loading={isLoading}>
-            Guardar cambios
-          </Button>
+          <Button type="submit" size="sm" disabled={isLoading}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Guardar cambios
+      </Button>
         </div>
       </form>
       </DialogContent>

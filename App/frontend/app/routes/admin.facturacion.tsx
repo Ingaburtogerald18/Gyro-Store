@@ -22,7 +22,7 @@ import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
 import { QueryState } from '~/components/ui/QueryState';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
-import { errMsg, formatCordobas, withoutIds } from '~/lib/utils';
+import { errMsg, formatCordobas, withoutIds } from "~/lib/formatters";
 import { useCreateInvoiceMutation, useGetInvoicesQuery, type Invoice } from '~/store/api/invoicesApi';
 import { useGetSalesQuery, type SaleListItem } from '~/store/api/salesApi';
 
@@ -117,25 +117,25 @@ export default function AdminFacturacion() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-text">Facturación</h2>
-        <p className="text-muted">Emitir factura de una venta aprobada.</p>
+        <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Facturación</h2>
+        <p className="text-muted-foreground">Emitir factura de una venta aprobada.</p>
       </div>
 
-      <Card className="bg-surface border-border shadow-sm">
+      <Card className="bg-card border shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg text-text">Ventas por facturar</CardTitle>
-          <CardDescription className="text-muted">Aprobadas, todavía sin correlativo.</CardDescription>
+          <CardTitle className="text-lg text-foreground">Ventas por facturar</CardTitle>
+          <CardDescription className="text-muted-foreground">Aprobadas, todavía sin correlativo.</CardDescription>
         </CardHeader>
         <CardContent>
           <QueryState
             loading={loadingSales}
             error={salesError}
             empty={pendingSales.length === 0}
-            loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-surface-2" />}
+            loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-muted" />}
             emptyFallback={
-              <div className="rounded-lg border border-dashed border-border bg-surface-2/50 py-10 text-center">
-                <FileText className="mx-auto mb-3 h-9 w-9 text-muted opacity-50" aria-hidden />
-                <p className="font-medium text-text">No hay ventas pendientes de facturar.</p>
+              <div className="rounded-lg border border-dashed border bg-muted/50 py-10 text-center">
+                <FileText className="mx-auto mb-3 h-9 w-9 text-muted-foreground opacity-50" aria-hidden />
+                <p className="font-medium text-foreground">No hay ventas pendientes de facturar.</p>
               </div>
             }
           >
@@ -144,15 +144,15 @@ export default function AdminFacturacion() {
         </CardContent>
       </Card>
 
-      <Card className="bg-surface border-border shadow-sm">
+      <Card className="bg-card border shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg text-text">Facturas emitidas</CardTitle>
+          <CardTitle className="text-lg text-foreground">Facturas emitidas</CardTitle>
         </CardHeader>
         <CardContent>
           <QueryState
             loading={loadingInvoices}
             error={invoicesError}
-            loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-surface-2" />}
+            loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-muted" />}
           >
             <DataTable columns={invoiceColumns} data={invoices} searchPlaceholder="Buscar…" emptyText="Todavía no se emitió ninguna factura." />
           </QueryState>
@@ -168,14 +168,14 @@ export default function AdminFacturacion() {
           </DialogHeader>
           {saleFor && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm">
+              <div className="rounded-lg border border bg-muted p-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted">Vendedor</span>
-                  <span className="font-medium text-text">{saleFor.sellerEmail}</span>
+                  <span className="text-muted-foreground">Vendedor</span>
+                  <span className="font-medium text-foreground">{saleFor.sellerEmail}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted">Total venta</span>
-                  <span className="font-semibold text-text">{formatCordobas(saleFor.total)}</span>
+                  <span className="text-muted-foreground">Total venta</span>
+                  <span className="font-semibold text-foreground">{formatCordobas(saleFor.total)}</span>
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -202,8 +202,8 @@ export default function AdminFacturacion() {
                   onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
                 />
               </div>
-              <p className="text-sm text-muted">
-                Total factura: <span className="font-semibold text-text">{formatCordobas(saleFor.total + deliveryFee)}</span>
+              <p className="text-sm text-muted-foreground">
+                Total factura: <span className="font-semibold text-foreground">{formatCordobas(saleFor.total + deliveryFee)}</span>
               </p>
             </div>
           )}
@@ -211,9 +211,10 @@ export default function AdminFacturacion() {
             <Button variant="ghost" onClick={() => setSaleFor(null)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreate} loading={creating}>
-              Emitir factura
-            </Button>
+            <Button onClick={handleCreate} disabled={creating}>
+        {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Emitir factura
+      </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -83,9 +83,9 @@ export function ArrivalModal({
         </DialogHeader>
       <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-3">
         {purchase && (
-          <div className="rounded-lg bg-surface-2 p-3 text-sm border border-border flex items-center gap-2">
-            <span className="font-mono text-xs font-semibold text-accent-2 bg-accent/10 px-1.5 py-0.5 rounded">{purchase.code}</span>
-            <span className="font-medium text-text">{purchase.productName}</span>
+          <div className="rounded-lg bg-muted p-3 text-sm border border flex items-center gap-2">
+            <span className="font-mono text-xs font-semibold text-primary-2 bg-primary/10 px-1.5 py-0.5 rounded">{purchase.code}</span>
+            <span className="font-medium text-foreground">{purchase.productName}</span>
           </div>
         )}
         
@@ -114,34 +114,35 @@ export function ArrivalModal({
         </div>
 
         {hasShipping && (
-          <div className="rounded-lg bg-surface-2 p-3 text-xs space-y-1.5 border border-border">
-            <div className="flex justify-between text-muted">
+          <div className="rounded-lg bg-muted p-3 text-xs space-y-1.5 border border">
+            <div className="flex justify-between text-muted-foreground">
               <span>Costo Real Unit. (C$)</span>
-              <span className="font-medium text-text">{formatCordobas(costRealCordobas)}</span>
+              <span className="font-medium text-foreground">{formatCordobas(costRealCordobas)}</span>
             </div>
-            <div className="flex justify-between text-muted">
+            <div className="flex justify-between text-muted-foreground">
               <span>Coste c/ Fijos (C$)</span>
-              <span className="font-medium text-warning">{formatCordobas(costoFijo)}</span>
+              <span className="font-medium text-amber-500">{formatCordobas(costoFijo)}</span>
             </div>
-            <div className="flex justify-between font-semibold pt-1 border-t border-border/50">
+            <div className="flex justify-between font-semibold pt-1 border-t border/50">
               <span>Precio Sugerido Calculado</span>
-              <span className="text-accent-2">{formatCordobas(suggestedPriceCalc)}</span>
+              <span className="text-primary-2">{formatCordobas(suggestedPriceCalc)}</span>
             </div>
           </div>
         )}
 
         <div className="grid gap-2">
           <Label>Precio de venta final (C$)</Label>
-          <input type="number" step="0.01" min={0} className="input font-bold text-accent flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("suggestedPrice")} />
+          <input type="number" step="0.01" min={0} className="input font-bold text-primary flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("suggestedPrice")} />
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <div className="flex justify-end gap-2 border-t border pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">
             Cancelar
           </Button>
-          <Button type="submit" size="sm" loading={isLoading}>
-            Confirmar llegada
-          </Button>
+          <Button type="submit" size="sm" disabled={isLoading}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Confirmar llegada
+      </Button>
         </div>
       </form>
       </DialogContent>

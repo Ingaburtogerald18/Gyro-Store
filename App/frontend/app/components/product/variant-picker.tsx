@@ -33,7 +33,7 @@ export function VariantPicker({
     <div className="space-y-4">
       {pickable.map((axis) => (
         <div key={axis.key} className="space-y-2">
-          <Label className="text-xs font-medium tracking-[0.18em] text-muted uppercase">
+          <Label className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
             {axis.key}
           </Label>
           <div className="flex flex-wrap gap-2">
@@ -49,8 +49,8 @@ export function VariantPicker({
                   onClick={() => onChange({ ...selection, [axis.key]: option })}
                   className={
                     active
-                      ? 'rounded-pill border-accent bg-accent/10 text-accent'
-                      : 'rounded-pill text-muted'
+                      ? 'rounded-pill border-primary bg-primary/10 text-primary'
+                      : 'rounded-pill text-muted-foreground'
                   }
                 >
                   {option}

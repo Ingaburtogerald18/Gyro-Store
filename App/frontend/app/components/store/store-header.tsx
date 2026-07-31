@@ -30,7 +30,7 @@ function CartButton() {
       whileTap={{ scale: 0.92 }}
       onClick={() => dispatch(toggleCart())}
       aria-label={count > 0 ? `Abrir carrito, ${count} artículo${count === 1 ? "" : "s"}` : "Abrir carrito"}
-      className="relative grid h-10 w-10 place-items-center rounded-full border border-border bg-surface text-muted shadow-sm backdrop-blur-sm transition-colors hover:border-accent/40 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="relative grid h-10 w-10 place-items-center rounded-full border border bg-card text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <ShoppingCart className="h-5 w-5" />
       <AnimatePresence>
@@ -42,7 +42,7 @@ function CartButton() {
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 520, damping: 20 }}
             // ring-bg lo separa del header con un halo del color de fondo → "flota".
-            className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-bold tabular-nums text-bg ring-2 ring-bg shadow-lg"
+            className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold tabular-nums text-bg ring-2 ring-bg shadow-lg"
           >
             {count > 99 ? '99+' : count}
           </motion.span>
@@ -54,16 +54,16 @@ function CartButton() {
 
 export function StoreHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         {/* El logo ahora tiene transición y efecto hover */}
         <Link 
           to="/" 
-          className="group rounded-xl px-2 py-1 text-left transition-all duration-300 hover:bg-surface-hover active:scale-95"
+          className="group rounded-xl px-2 py-1 text-left transition-all duration-300 hover:bg-primary active:scale-95"
           aria-label="Ir al inicio de Gyro Store"
         >
-          <div className="text-xl font-bold tracking-tight text-text transition-all group-hover:brightness-125">
-            Gyro<span className="text-accent">Store</span>
+          <div className="text-xl font-bold tracking-tight text-foreground transition-all group-hover:brightness-125">
+            Gyro<span className="text-primary">Store</span>
           </div>
         </Link>
 

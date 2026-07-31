@@ -24,7 +24,8 @@ create trigger categories_set_updated_at
 alter table catalog_items
   add column if not exists category_id uuid references categories(id) on delete set null;
 
--- Insertar la categoría requerida por defecto
-insert into categories (name, slug) 
-values ('Audífonos KZ', 'audifonos-kz') 
+-- Insertar las categorías requeridas por defecto
+insert into categories (name, slug) values 
+  ('Audífonos KZ', 'audifonos-kz'),
+  ('KZ Accesorios', 'kz-accesorios')
 on conflict (slug) do nothing;

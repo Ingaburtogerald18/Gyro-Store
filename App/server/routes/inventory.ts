@@ -30,6 +30,7 @@ import {
   createMigratedItem,
   updateMigratedItem,
   deleteMigratedItem,
+  simulateCost,
 } from '../services/inventory';
 
 const router = Router();
@@ -101,6 +102,16 @@ router.patch(
       return;
     }
     res.json({ ok: true });
+  }),
+);
+
+router.post(
+  '/purchases/:id/simulate-cost',
+  asyncHandler(async (req, res) => {
+    const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
+    const shippingUnit = z.number().min(0).parse(req.body.shippingUnit);
+    const result = await simulateCost(id, shippingUnit);
+    res.json(result);
   }),
 );
 

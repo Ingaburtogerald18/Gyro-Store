@@ -77,8 +77,8 @@ export function RowActionsMenu({ actions, className }: { actions: MaybeAction[];
         title="Acciones"
         aria-label="Acciones"
         className={cn(
-          "rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text",
-          open && "bg-surface-2 text-text",
+          "rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+          open && "bg-muted text-foreground",
           className,
         )}
       >
@@ -96,7 +96,7 @@ export function RowActionsMenu({ actions, className }: { actions: MaybeAction[];
                 exit={{ opacity: 0, y: -4, scale: 0.97 }}
                 transition={{ duration: 0.12 }}
                 style={{ position: "fixed", top: coords.top, left: coords.left, width: W }}
-                className="z-[100] flex flex-col gap-0.5 rounded-card border border-border bg-surface p-1 shadow-2xl"
+                className="z-[100] flex flex-col gap-0.5 rounded-card border border bg-card p-1 shadow-2xl"
               >
                 {items.map((a, i) => {
                   const cls = cn(
@@ -104,12 +104,12 @@ export function RowActionsMenu({ actions, className }: { actions: MaybeAction[];
                     a.disabled
                       ? "cursor-not-allowed opacity-40"
                       : a.danger
-                        ? "text-danger hover:bg-danger/10"
-                        : "text-muted hover:bg-surface-2 hover:text-text",
+                        ? "text-destructive hover:bg-destructive/10"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   );
                   return (
                     <div key={i}>
-                      {a.separatorBefore && <div className="my-0.5 border-t border-border/60" />}
+                      {a.separatorBefore && <div className="my-0.5 border-t border/60" />}
                       {a.href ? (
                         <a href={a.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className={cls}>
                           {a.icon}

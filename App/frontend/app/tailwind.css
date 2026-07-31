@@ -11,9 +11,11 @@
 @import "tailwindcss";
 /* Animaciones enter/exit (animate-in / animate-out) de las primitivas shadcn. */
 @import "tw-animate-css";
-/* Style "Rhea" del preset: viste cada primitiva vía clases .cn-* (geometría,
-   densidad y estados). Va DESPUÉS de tailwindcss porque usa @apply. */
-@import "./style-rhea.css";
+/* style-rhea.css removido: el re-apply del preset reemplazó los componentes
+   .cn-* por clases shadcn estándar, así que ese archivo quedó huérfano y su
+   `@apply bg-input/90` rompía el build. El estilo ahora lo trae shadcn/tailwind.css. */
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 
 /* `no-scrollbar` la define el sitio de shadcn en su propio globals.css, no el
    registry — pero style-rhea.css la usa con @apply (listas de command/combobox).
@@ -31,242 +33,7 @@
    del sistema: el tema lo controla useTheme (doc 05 §7). */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-@theme {
-  /* ── Superficies — paleta NEUTRAL oficial de shadcn (preset Rhea).
-     Valores tomados de `apps/v4/app/globals.css` del repo shadcn-ui/ui.
-     Sustituyen a la escala "Midnight" azulada del sistema anterior. ── */
-  --color-bg: oklch(0.145 0 0);
-  --color-surface: oklch(0.205 0 0);
-  --color-surface-2: oklch(0.269 0 0);
-  --color-surface-hover: oklch(0.371 0 0);
-  --color-border: oklch(1 0 0 / 10%);
 
-  /* ── Acento: el "primary" neutro del preset (casi blanco, texto oscuro
-     encima). Reemplaza al teal de marca en toda la app. ── */
-  --color-accent: oklch(0.922 0 0);
-  --color-accent-2: oklch(0.985 0 0);
-  --color-accent-hover: oklch(0.985 0 0);
-  /* WhatsApp en su verde canónico: distinto del teal para no confundirse. */
-  --color-whatsapp: #25d366;
-  --color-grad-from: #14b8a6;
-  --color-grad-to: #0d9488;
-
-  /* ── Texto (neutral del preset) ── */
-  --color-text: oklch(0.985 0 0);
-  --color-muted: oklch(0.708 0 0);
-
-  /* ── Estados semánticos ── */
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
-  --color-info: #38bdf8;
-  --color-success: #22c55e;
-
-  /* ── Violeta acento (segundo color de marca) — badges y detalles ── */
-  --color-badge: #885cf6;
-  --color-badge-2: #a78bfa;
-
-  /* Tipografía UNIFICADA: Inter para todo (body + headings). La jerarquía se
-     logra con tamaño y peso, no con familias distintas. */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-heading: "Inter", system-ui, -apple-system, sans-serif;
-
-  --radius-card: 20px;
-  --radius-input: 14px;
-  --radius-pill: 99px;
-
-  /* Entradas y reveals: ease-out exponencial. */
-  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* ──────────────────────────────────────────────────────────────
-   Puente para las primitivas de shadcn/ui.
-   El CLI genera componentes con la nomenclatura estándar
-   (background/foreground/primary/muted/…). En vez de repintar cada
-   archivo, se mapean acá a los MISMOS tokens de marca: un solo lugar
-   de verdad y el flip dark↔light sigue funcionando.
-
-   OJO con `accent`: shadcn lo usa como fondo de hover sutil, pero en
-   Gyro `accent` es el esmeralda de marca (precio, CTA). Manda la marca
-   — los componentes de ui/ que traían `hover:bg-accent` se corrigieron
-   a `hover:bg-surface-hover`.
-   ────────────────────────────────────────────────────────────── */
-@theme inline {
-  --color-background: var(--color-bg);
-  --color-foreground: var(--color-text);
-  --color-card: var(--color-surface);
-  --color-card-foreground: var(--color-text);
-  --color-popover: var(--color-surface-2);
-  --color-popover-foreground: var(--color-text);
-
-  /* El esmeralda es medio-claro: el CTA plano lleva texto OSCURO (~10:1).
-     Nunca texto blanco sobre el accent plano (DESIGN.md §2). */
-  --color-primary: var(--color-accent);
-  --color-primary-foreground: var(--color-bg);
-
-  --color-secondary: var(--color-surface-2);
-  --color-secondary-foreground: var(--color-text);
-  --color-muted-bg: var(--color-surface-2);
-  --color-muted-foreground: var(--color-muted);
-  --color-accent-foreground: var(--color-bg);
-  --color-destructive: var(--color-danger);
-  --color-destructive-foreground: var(--color-bg);
-  --color-input: var(--color-border);
-  --color-ring: var(--color-accent);
-
-  /* ── Sidebar (primitiva `sidebar` de shadcn) ──
-     El shell del admin es una superficie, no el fondo: por eso `sidebar` cae en
-     `surface` y su hover en `surface-hover`. El "primary" del sidebar es el teal
-     de marca, con texto oscuro encima (mismo criterio que el CTA plano). */
-  --color-sidebar: var(--color-surface);
-  --color-sidebar-foreground: var(--color-text);
-  --color-sidebar-primary: var(--color-accent);
-  --color-sidebar-primary-foreground: var(--color-bg);
-  --color-sidebar-accent: var(--color-surface-hover);
-  --color-sidebar-accent-foreground: var(--color-text);
-  --color-sidebar-border: var(--color-border);
-  --color-sidebar-ring: var(--color-accent);
-
-  /* ── Series de gráficos (primitiva `chart`, sobre Recharts) ──
-     Orden pensado para lectura: el teal de marca manda, el violeta (segundo color
-     de marca) contrasta, y luego los semánticos. Nunca colores crudos de Recharts.
-     Al flipar a claro heredan los valores calibrados de [data-theme="light"]. */
-  /* Chart Color: Neutral (como fija el preset). Escala de grises descendente:
-     las series se distinguen por luminosidad, no por matiz. Antes esto era
-     teal/violeta/sky/amber/rose — herencia del sistema viejo que contradecía
-     el preset. */
-  --color-chart-1: oklch(0.922 0 0);
-  --color-chart-2: oklch(0.708 0 0);
-  --color-chart-3: oklch(0.556 0 0);
-  --color-chart-4: oklch(0.439 0 0);
-  --color-chart-5: oklch(0.371 0 0);
-}
-
-/* ──────────────────────────────────────────────────────────────
-   Modo claro "Daylight" — variante calibrada; el oscuro sigue siendo
-   la identidad de marca. El acento se OSCURECE a emerald-700 para que
-   un solo token sirva como relleno y como texto legible (DESIGN.md §2.1).
-   ────────────────────────────────────────────────────────────── */
-[data-theme="light"] {
-  /* "Alabaster / Frosted Pearl": nunca blanco clínico. El fondo es una perla con
-     tinte frío y la superficie separa sin necesidad de sombra dura. */
-  --color-bg: oklch(1 0 0);
-  --color-surface: oklch(1 0 0);
-  --color-surface-2: oklch(0.97 0 0);
-  --color-surface-hover: oklch(0.97 0 0);
-  --color-border: oklch(0.922 0 0);
-
-  /* Neutral claro del preset: el "primary" es casi negro. */
-  --color-accent: oklch(0.205 0 0);
-  --color-accent-2: oklch(0.145 0 0);
-  --color-accent-hover: oklch(0.145 0 0);
-  --color-whatsapp: #128c3e;
-  --color-grad-from: #0f766e;
-  --color-grad-to: #0d9488;
-
-  --color-text: oklch(0.145 0 0);
-  --color-muted: oklch(0.556 0 0);
-
-  /* Escala de charts invertida: en claro va de oscuro a claro, o el chart-1
-     casi blanco del modo oscuro sería invisible sobre el fondo. */
-  --color-chart-1: oklch(0.205 0 0);
-  --color-chart-2: oklch(0.371 0 0);
-  --color-chart-3: oklch(0.556 0 0);
-  --color-chart-4: oklch(0.708 0 0);
-  --color-chart-5: oklch(0.837 0 0);
-
-  --color-danger: #e11d48;
-  --color-warning: #d97706;
-  --color-info: #0284c7;
-  --color-success: #16a34a;
-
-  --color-badge: #6366f1;
-  --color-badge-2: #4f46e5;
-
-  color-scheme: light;
-}
-
-/* Puente de hairlines: las utilidades `border-white/α` y `bg-white/α` que usa
-   el storefront son INVISIBLES sobre fondo claro; se remapean a tinta oscura
-   translúcida. Si agregás un `border-white/N` nuevo, sumalo también acá
-   (DESIGN.md §2.1, regla 2). */
-[data-theme="light"] .border-white\/5 { border-color: rgba(15, 23, 42, 0.07); }
-[data-theme="light"] .border-white\/10 { border-color: rgba(15, 23, 42, 0.11); }
-[data-theme="light"] .border-white\/20 { border-color: rgba(15, 23, 42, 0.16); }
-[data-theme="light"] .border-white\/25 { border-color: rgba(15, 23, 42, 0.2); }
-[data-theme="light"] .bg-white\/5 { background-color: rgba(15, 23, 42, 0.04); }
-[data-theme="light"] .bg-white\/10 { background-color: rgba(15, 23, 42, 0.06); }
-[data-theme="light"] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.05); }
-[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.07); }
-
-/* ──────────────────────────────────────────────────────────────
-   PIEL DEL ADMIN — "shadcn neutral" (preset Rhea).
-   Decisión del 2026-07-30: el back-office deja de usar el teal de marca y
-   adopta la paleta NEUTRA oficial de shadcn (valores tomados de
-   `apps/v4/app/globals.css` del repo shadcn-ui/ui, base color `neutral`).
-
-   Por qué acá y no en los componentes: las rutas del admin ya consumen tokens
-   semánticos (`bg-surface`, `text-muted`, `text-accent`…), así que redefinir los
-   tokens bajo `[data-skin="admin"]` repinta las ~3.500 líneas del back-office
-   sin tocar un solo archivo .tsx — y sin arrastrar al storefront, que conserva
-   el teal de marca en `data-skin="store"` (root.tsx).
-
-   El gancho `data-skin` ya existía en el layout; hasta ahora ningún CSS lo usaba.
-   ────────────────────────────────────────────────────────────── */
-[data-skin="admin"] {
-  --color-bg: oklch(0.145 0 0);
-  --color-surface: oklch(0.205 0 0);
-  --color-surface-2: oklch(0.269 0 0);
-  --color-surface-hover: oklch(0.371 0 0);
-  --color-border: oklch(1 0 0 / 10%);
-
-  /* En la paleta neutra el "primary" es casi blanco y su texto va oscuro:
-     por eso el CTA plano del admin se ve claro, como en el preset. */
-  --color-accent: oklch(0.922 0 0);
-  --color-accent-2: oklch(0.985 0 0);
-  --color-accent-hover: oklch(0.985 0 0);
-
-  --color-text: oklch(0.985 0 0);
-  --color-muted: oklch(0.708 0 0);
-
-  --color-danger: oklch(0.704 0.191 22.216);
-  --color-ring: oklch(0.556 0 0);
-
-  /* Sidebar y series de gráficos: valores oficiales del preset. */
-  --color-sidebar: oklch(0.205 0 0);
-  --color-sidebar-foreground: oklch(0.985 0 0);
-  --color-sidebar-primary: oklch(0.488 0.243 264.376);
-  --color-sidebar-primary-foreground: oklch(0.985 0 0);
-  --color-sidebar-accent: oklch(0.269 0 0);
-  --color-sidebar-accent-foreground: oklch(0.985 0 0);
-  --color-sidebar-border: oklch(1 0 0 / 10%);
-  --color-sidebar-ring: oklch(0.439 0 0);
-
-  /* Los charts ya son neutrales en @theme; el admin no los redefine. */
-
-  /* Geometría del preset: tarjetas de 24px y controles de 16px. */
-  --radius-card: 24px;
-  --radius-input: 16px;
-}
-
-/* Variante clara del admin (misma paleta neutra, valores de `:root`). */
-[data-theme="light"] [data-skin="admin"],
-[data-skin="admin"][data-theme="light"] {
-  --color-bg: oklch(1 0 0);
-  --color-surface: oklch(1 0 0);
-  --color-surface-2: oklch(0.97 0 0);
-  --color-surface-hover: oklch(0.97 0 0);
-  --color-border: oklch(0.922 0 0);
-  --color-accent: oklch(0.205 0 0);
-  --color-accent-2: oklch(0.145 0 0);
-  --color-accent-hover: oklch(0.145 0 0);
-  --color-text: oklch(0.145 0 0);
-  --color-muted: oklch(0.556 0 0);
-  --color-sidebar: oklch(0.985 0 0);
-  --color-sidebar-foreground: oklch(0.145 0 0);
-  --color-sidebar-accent: oklch(0.97 0 0);
-  --color-sidebar-accent-foreground: oklch(0.205 0 0);
-  --color-sidebar-border: oklch(0.922 0 0);
-}
 
 /* Escenario del producto: transparente a propósito — las fotos del catálogo ya
    traen su propio fondo, así que un recuadro extra solo ensuciaría. Se conserva
@@ -285,8 +52,8 @@ html {
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -302,3 +69,90 @@ body {
 .login-enter-slide { animation: login-enter-slide 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .login-enter-rise { animation: login-enter-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.12s backwards; }
 .login-enter-item { animation: login-enter-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+/*
+ ---break---
+ */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.148 0.004 228.8);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.148 0.004 228.8);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.148 0.004 228.8);
+  --primary: oklch(0.52 0.105 223.128);
+  --primary-foreground: oklch(0.984 0.019 200.873);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.963 0.002 197.1);
+  --muted-foreground: oklch(0.56 0.021 213.5);
+  --accent: oklch(0.963 0.002 197.1);
+  --accent-foreground: oklch(0.218 0.008 223.9);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.925 0.005 214.3);
+  --input: oklch(0.925 0.005 214.3);
+  --ring: oklch(0.723 0.014 214.4);
+  --chart-1: oklch(0.845 0.143 164.978);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.596 0.145 163.225);
+  --chart-4: oklch(0.508 0.118 165.612);
+  --chart-5: oklch(0.432 0.095 166.913);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.987 0.002 197.1);
+  --sidebar-foreground: oklch(0.148 0.004 228.8);
+  --sidebar-primary: oklch(0.609 0.126 221.723);
+  --sidebar-primary-foreground: oklch(0.984 0.019 200.873);
+  --sidebar-accent: oklch(0.963 0.002 197.1);
+  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+  --sidebar-border: oklch(0.925 0.005 214.3);
+  --sidebar-ring: oklch(0.723 0.014 214.4);
+}
+/*
+ ---break---
+ */
+[data-theme="dark"] {
+  --background: oklch(0.148 0.004 228.8);
+  --foreground: oklch(0.987 0.002 197.1);
+  --card: oklch(0.218 0.008 223.9);
+  --card-foreground: oklch(0.987 0.002 197.1);
+  --popover: oklch(0.218 0.008 223.9);
+  --popover-foreground: oklch(0.987 0.002 197.1);
+  --primary: oklch(0.45 0.085 224.283);
+  --primary-foreground: oklch(0.984 0.019 200.873);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.275 0.011 216.9);
+  --muted-foreground: oklch(0.723 0.014 214.4);
+  --accent: oklch(0.275 0.011 216.9);
+  --accent-foreground: oklch(0.987 0.002 197.1);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.56 0.021 213.5);
+  --chart-1: oklch(0.845 0.143 164.978);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.596 0.145 163.225);
+  --chart-4: oklch(0.508 0.118 165.612);
+  --chart-5: oklch(0.432 0.095 166.913);
+  --sidebar: oklch(0.218 0.008 223.9);
+  --sidebar-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-primary: oklch(0.715 0.143 215.221);
+  --sidebar-primary-foreground: oklch(0.302 0.056 229.695);
+  --sidebar-accent: oklch(0.275 0.011 216.9);
+  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.56 0.021 213.5);
+}
+/*
+ ---break---
+ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

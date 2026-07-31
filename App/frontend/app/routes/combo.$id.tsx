@@ -24,7 +24,7 @@ import { Button } from '~/components/ui/button';
 import type { StoreConfig } from '~/store/api/configApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
-import { buildWhatsappUrl, formatCordobas, getComboUrl } from '~/lib/utils';
+import { buildWhatsappUrl, formatCordobas, getComboUrl } from "~/lib/formatters";
 
 export const headers: HeadersFunction = () => ({
   'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
@@ -118,18 +118,18 @@ export default function ComboDetail() {
     <>
       <StoreHeader />
       <main className="mx-auto max-w-7xl px-4 py-6">
-        <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted">
+        <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
           <Link to="/#catalogo" prefetch="intent">
             <ChevronLeft aria-hidden /> Volver al catálogo
           </Link>
         </Button>
 
         <div className="grid gap-8 md:grid-cols-2 md:gap-12">
-          <div className="aspect-square overflow-hidden rounded-xl bg-surface-2">
+          <div className="aspect-square overflow-hidden rounded-xl bg-muted">
             {image ? (
               <img src={image} alt={name} className="h-full w-full object-contain p-8" />
             ) : (
-              <div className="grid h-full place-items-center text-muted">
+              <div className="grid h-full place-items-center text-muted-foreground">
                 <Sparkles className="h-10 w-10" aria-hidden />
               </div>
             )}
@@ -137,21 +137,21 @@ export default function ComboDetail() {
 
           <div className="flex flex-col gap-5">
             <div className="space-y-3">
-              <Badge variant="promo" className="inline-flex items-center gap-1.5">
+              <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 inline-flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 Combo
               </Badge>
 
-              <h1 className="text-2xl leading-tight font-black tracking-tight text-balance text-text sm:text-4xl">
+              <h1 className="text-2xl leading-tight font-black tracking-tight text-balance text-foreground sm:text-4xl">
                 {name}
               </h1>
 
-              <p className="text-3xl font-extrabold text-accent-2 tabular-nums">
+              <p className="text-3xl font-extrabold text-primary-2 tabular-nums">
                 {formatCordobas(price, config?.currency)}
               </p>
 
               {itemCount > 0 && (
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted-foreground">
                   Incluye {itemCount} artículo{itemCount === 1 ? '' : 's'}.
                 </p>
               )}
@@ -163,7 +163,7 @@ export default function ComboDetail() {
                 Agregar al carrito
               </Button>
               <Button
-                variant="whatsappOutline"
+                variant="outline" className="text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10"
                 onClick={handleWhatsApp}
                 className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
               >

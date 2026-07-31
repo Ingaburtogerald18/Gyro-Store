@@ -15,7 +15,7 @@ import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
-import { errMsg } from '~/lib/utils';
+import { errMsg } from "~/lib/formatters";
 import { useSendContactMutation } from '~/store/api/contactApi';
 
 export const meta: MetaFunction = () => [{ title: 'Contacto · Gyro Store' }];
@@ -43,8 +43,8 @@ export default function Contacto() {
     <>
       <StoreHeader />
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
-        <h1 className="text-2xl font-bold text-text">Contacto</h1>
-        <p className="mt-1 text-muted">¿Tenés una consulta? Escribinos y te respondemos.</p>
+        <h1 className="text-2xl font-bold text-foreground">Contacto</h1>
+        <p className="mt-1 text-muted-foreground">¿Tenés una consulta? Escribinos y te respondemos.</p>
 
         <div className="mt-8 grid gap-8 md:grid-cols-2">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -81,13 +81,13 @@ export default function Contacto() {
           </form>
 
           <div className="space-y-4">
-            <div className="rounded-md border border-border bg-surface p-5 shadow-xs">
-              <h2 className="font-semibold text-text">Visitanos</h2>
+            <div className="rounded-md border border bg-card p-5 shadow-xs">
+              <h2 className="font-semibold text-foreground">Visitanos</h2>
               <a
                 href="https://maps.google.com/?q=Managua,Nicaragua"
                 target="_blank"
                 rel="noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted hover:text-text"
+                className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               >
                 <MapPin className="h-4 w-4" aria-hidden /> Managua, Nicaragua
               </a>
