@@ -9,10 +9,12 @@
 //
 // PENDIENTE del Hito 2: los controles de edición en vivo (mover, editar y
 // borrar slides) llegan con el modo edición del admin.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon, ArrowRight01Icon, ArrowRight02Icon, Message01Icon, PauseIcon, PlayIcon } from "@hugeicons/core-free-icons";
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from '@remix-run/react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, ChevronRight, MessageCircle, Pause, Play } from 'lucide-react';
+
 import type { LandingConfig } from '@shared/schemas';
 import { SlideMedia } from '~/components/catalog/slide-media';
 import { Button } from '~/components/ui/button';
@@ -141,21 +143,15 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                       className="group/cta w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
                       <span className="truncate">{activeSlide.buttonText || 'Ver catálogo'}</span>
-                      <ArrowRight
-                        aria-hidden
-                        className="h-3.5 w-3.5 shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1 sm:h-4 sm:w-4"
-                      />
+                      <HugeiconsIcon icon={ArrowRight02Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1 sm: sm:" />
                     </Button>
 
                     <Button
-                      variant="outline" className="text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10"
+                      variant="whatsappOutline"
                       onClick={() => window.open(whatsappOrderUrl, '_blank', 'noopener,noreferrer')}
                       className="group/wa w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
-                      <MessageCircle
-                        aria-hidden
-                        className="h-3.5 w-3.5 shrink-0 transition-transform duration-300 group-hover/wa:scale-110 sm:h-4 sm:w-4"
-                      />
+                      <HugeiconsIcon icon={Message01Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/wa:scale-110 sm: sm:" />
                       <span className="truncate">WhatsApp</span>
                     </Button>
                   </div>
@@ -179,9 +175,9 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
               className="h-11 w-11 rounded-full bg-white/5 md:h-7 md:w-7"
             >
               {playing ? (
-                <Pause aria-hidden className="h-3.5 w-3.5 fill-current" />
+                <HugeiconsIcon icon={PauseIcon} size={14} strokeWidth={2} aria-hidden className="fill-current" />
               ) : (
-                <Play aria-hidden className="ml-0.5 h-3.5 w-3.5 fill-current" />
+                <HugeiconsIcon icon={PlayIcon} size={14} strokeWidth={2} aria-hidden className="ml-0.5 fill-current" />
               )}
             </Button>
 
@@ -199,7 +195,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                 aria-label="Diapositiva anterior"
                 className="h-11 w-11 rounded-full md:h-7 md:w-7"
               >
-                <ChevronLeft aria-hidden className="h-4 w-4" />
+                <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden />
               </Button>
 
               <div className="mx-1 flex items-center gap-1">
@@ -251,7 +247,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                 aria-label="Siguiente diapositiva"
                 className="h-11 w-11 rounded-full md:h-7 md:w-7"
               >
-                <ChevronRight aria-hidden className="h-4 w-4" />
+                <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} aria-hidden />
               </Button>
             </div>
           </div>

@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete02Icon, DragDropVerticalIcon, Edit02Icon, GlobeIcon, Image01Icon, LockIcon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from 'react';
 import {
   DndContext,
@@ -14,7 +16,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Edit, Trash2, Image as ImageIcon, Globe, Lock } from 'lucide-react';
+
 import type { AdminProduct } from '@shared/schemas';
 import { Card, CardContent } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
@@ -94,7 +96,7 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
           className="cursor-grab rounded-lg bg-black/60 p-1.5 text-white active:cursor-grabbing hover:bg-black/80 transition-colors"
           aria-label="Reordenar"
         >
-          <GripVertical className="h-4 w-4" />
+          <HugeiconsIcon icon={DragDropVerticalIcon} size={16} strokeWidth={2} />
         </button>
       </div>
 
@@ -104,14 +106,14 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
           className="rounded-lg bg-black/60 p-1.5 text-white hover:text-primary hover:bg-black/80 transition-colors"
           aria-label="Editar"
         >
-          <Edit className="h-4 w-4" />
+          <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           className="rounded-lg bg-black/60 p-1.5 text-white hover:text-destructive hover:bg-black/80 transition-colors"
           aria-label="Eliminar"
         >
-          <Trash2 className="h-4 w-4" />
+          <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
         </button>
       </div>
 
@@ -119,16 +121,16 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
         {item.images && item.images[0] ? (
           <img src={item.images[0]} alt={item.name} className="object-cover w-full h-full" />
         ) : (
-          <ImageIcon className="w-12 h-12 opacity-50" />
+          <HugeiconsIcon icon={Image01Icon} size={48} strokeWidth={2} className="opacity-50" />
         )}
         <div className="absolute bottom-2 right-2">
           {item.published ? (
             <Badge className="bg-primary/20 text-primary hover:bg-primary/30 border-none">
-              <Globe className="w-3 h-3 mr-1" /> Público
+              <HugeiconsIcon icon={GlobeIcon} size={12} strokeWidth={2} className="mr-1" /> Público
             </Badge>
           ) : (
             <Badge className="bg-muted/80 text-muted-foreground hover:bg-muted border-none">
-              <Lock className="w-3 h-3 mr-1" /> Oculto
+              <HugeiconsIcon icon={LockIcon} size={12} strokeWidth={2} className="mr-1" /> Oculto
             </Badge>
           )}
         </div>

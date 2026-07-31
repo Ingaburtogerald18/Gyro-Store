@@ -1,21 +1,27 @@
 // Formulario de registro de compra (China). Al guardar, la compra entra en estado "En tránsito".
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useForm, Controller, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2 } from "lucide-react";
+
+
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
+import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
-import { formatUsd } from "~/lib/utils";
+import { formatUsd } from "~/lib/formatters";
+import { Spinner } from "~/components/ui/spinner";
 
 const EMPTY_PURCHASE = {
   purchaseDate: "",
   lot: "",
   code: "",
   productName: "",
+  category: "",
   quantity: "",
   costUnit: "",
   taxUnit: "",
@@ -24,6 +30,7 @@ const EMPTY_PURCHASE = {
 export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   const [createPurchase, { isLoading }] = useCreatePurchaseMutation();
   const { data: purchases = [] } = useGetPurchasesQuery();
+  const { data: config } = useGetConfigQuery();
   const [codeError, setCodeError] = useState<string | null>(null);
   const [showSuccessPrompt, setShowSuccessPrompt] = useState(false);
   const {
@@ -64,7 +71,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <CheckCircle2 className="h-8 w-8" />
+          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} strokeWidth={2} />
         </div>
         <div>
           <h2 className="text-xl font-bold">¡Compra registrada con éxito!</h2>
@@ -90,33 +97,38 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* Fila 1: Fecha + Lote */}
         <div className="grid gap-2">
-  <Label>"Fecha de compra" </Label>
+  <Label>Fecha de compra</Label>
           <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
         </div>
         <div className="grid gap-2">
-  <Label>"Lote" </Label>
+  <Label>Lote</Label>
           <Controller
             control={control}
             name="lot"
             render={({ field }) => (
-              <Input type="text"
-                list="options-list"
-                value={field.value || ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                aria-invalid={!!errors.lot}
-              />
-      <datalist id="options-list">
-        {Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean))).map((opt: string) => <option key={opt} value={opt} />)}
-      </datalist>
+              <>
+                <Input
+                  type="text"
+                  list="lot-options"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  aria-invalid={!!errors.lot}
+                />
+                <datalist id="lot-options">
+                  {Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean))).map((opt: string) => (
+                    <option key={opt} value={opt} />
+                  ))}
+                </datalist>
+              </>
             )}
           />
         </div>
 
         {/* Fila 1 cont. (lg): Código */}
         <div className="grid gap-2">
-  <Label>"Código" </Label>
+  <Label>Código</Label>
           {(() => {
             const { onBlur: rhfBlur, onChange: rhfChange, ...codeReg } = register("code");
             return (
@@ -136,7 +148,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
                     }
                   }}
                 />
-                {codeError && <span className="mt-1 block text-xs text-amber-500">⚠ {codeError}</span>}
+                {codeError && <span className="mt-1 block text-xs text-warning">⚠ {codeError}</span>}
               </>
             );
           })()}
@@ -145,40 +157,65 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
         {/* Fila 2: Nombre del producto — ancho completo */}
         <div className="sm:col-span-2 lg:col-span-3">
           <div className="grid gap-2">
-  <Label>"Nombre del producto" </Label>
+  <Label>Nombre del producto</Label>
             <Controller
               control={control}
               name="productName"
               render={({ field }) => (
-                <Input type="text"
-                  list="options-list"
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  aria-invalid={!!errors.productName}
-                />
-      <datalist id="options-list">
-        {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => <option key={opt} value={opt} />)}
-      </datalist>
+                <>
+                  <Input
+                    type="text"
+                    list="product-name-options"
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                    aria-invalid={!!errors.productName}
+                  />
+                  <datalist id="product-name-options">
+                    {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => (
+                      <option key={opt} value={opt} />
+                    ))}
+                  </datalist>
+                </>
               )}
             />
           </div>
         </div>
       </div>
 
+      {/* Categoría: obligatoria en el backend al registrar la compra. */}
+      <div className="grid gap-2">
+        <Label>Categoría</Label>
+        <select
+          className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+          defaultValue=""
+          aria-invalid={!!errors.category}
+          {...register("category")}
+        >
+          <option value="" disabled>
+            Selecciona una categoría
+          </option>
+          {config?.categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.icon} {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* ── Bloque 2: Datos financieros ── */}
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="grid gap-2">
-  <Label>"Cantidad" </Label>
+  <Label>Cantidad</Label>
           <input type="number" min={1} className="input h-10" {...register("quantity")} />
         </div>
         <div className="grid gap-2">
-  <Label>"Precio base (USD)" </Label>
+  <Label>Precio base (USD)</Label>
           <input type="number" step="0.01" min={0} className="input h-10" {...register("costUnit")} />
         </div>
         <div className="grid gap-2">
-  <Label>"Imp. unitario (USD)" </Label>
+  <Label>Imp. unitario (USD)</Label>
           <input type="number" step="0.0001" min={0} className="input h-10" {...register("taxUnit")} />
         </div>
 
@@ -201,7 +238,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
       </div>
 
       <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Spinner className="mr-2" />}
         Registrar compra
       </Button>
     </form>

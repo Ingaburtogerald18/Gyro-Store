@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Alert02Icon, CheckmarkCircle01Icon, DollarSquareIcon, DropletIcon, Package01Icon, PackageOpenIcon, PercentIcon, PieChartIcon, PlusSignSquareIcon, ShoppingCart02Icon, TruckIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useState, useMemo, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 // SpotlightCard es nuestro (resplandor que sigue al cursor), distinto del `Card`
@@ -13,7 +15,7 @@ import {
 } from '~/components/ui/chart';
 import { Progress } from '~/components/ui/progress';
 import { Pie, PieChart } from 'recharts';
-import { DollarSign, ShoppingCart, Package, Percent, PlusSquare, Droplets, PieChart as PieIcon, PackageOpen, Truck, Wallet, AlertTriangle, CheckCircle2 } from 'lucide-react';
+
 import { NavLink } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { useGetKpisQuery } from '~/store/api/reportsApi';
@@ -80,14 +82,14 @@ function CuadreBanner() {
     {
       label: 'Salidas sin registrar',
       count: cuadre.salidasPendientes,
-      icon: PackageOpen,
+      icon: PackageOpenIcon,
       to: '/admin/salidas?estado=pendiente_registro',
       hint: 'Salieron sin factura y ningún vendedor las registró',
     },
     {
       label: 'Deliveries por liquidar',
       count: cuadre.deliveriesPorLiquidar,
-      icon: Truck,
+      icon: TruckIcon,
       to: '/admin/salidas?liquidacion=pendiente',
       hint: 'Entregados por delivery; falta confirmar el dinero',
     },
@@ -112,13 +114,18 @@ function CuadreBanner() {
             >
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <a.icon className={cn('size-4', pending && 'text-destructive')} />
+                  <HugeiconsIcon
+                    icon={a.icon}
+                    size={16}
+                    strokeWidth={2}
+                    className={cn(pending && 'text-destructive')}
+                  />
                   {a.label}
                 </span>
                 {pending ? (
-                  <AlertTriangle className="size-4 text-destructive" />
+                  <HugeiconsIcon icon={Alert02Icon} size={16} strokeWidth={2} className="text-destructive" />
                 ) : (
-                  <CheckCircle2 className="size-4 text-success" />
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="text-success" />
                 )}
               </div>
               <p className={cn('nums mt-2 text-2xl font-bold', pending ? 'text-destructive' : 'text-foreground')}>
@@ -132,7 +139,7 @@ function CuadreBanner() {
         {cuadre.saldosCuentas.map((s) => (
           <div key={s.accountId} className="rounded-card border border-border bg-card p-4">
             <span className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Wallet className="size-4" />
+              <HugeiconsIcon icon={Wallet01Icon} size={16} strokeWidth={2} />
               {nombreCuenta(s.accountId)}
             </span>
             <p className="nums mt-2 text-2xl font-bold text-foreground">{formatCordobas(s.balance)}</p>
@@ -220,7 +227,7 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <StatCard
-                icon={ShoppingCart}
+                icon={ShoppingCart02Icon}
                 label="Ventas"
                 countTo={kpis.total_ventas}
                 sub={`${kpis.total_unidades} unidades`}
@@ -228,7 +235,7 @@ export default function AdminDashboard() {
                 delay={0}
               />
               <StatCard
-                icon={DollarSign}
+                icon={DollarSquareIcon}
                 label="Total Vendido"
                 countTo={kpis.total_vendido}
                 format={formatMoney}
@@ -236,7 +243,7 @@ export default function AdminDashboard() {
                 delay={0.05}
               />
               <StatCard
-                icon={Package}
+                icon={Package01Icon}
                 label="Coste Total"
                 countTo={kpis.coste_total}
                 format={formatMoney}
@@ -244,7 +251,7 @@ export default function AdminDashboard() {
                 delay={0.1}
               />
               <StatCard
-                icon={Percent}
+                icon={PercentIcon}
                 label="Comisiones"
                 countTo={kpis.comision_total}
                 format={formatMoney}
@@ -252,7 +259,7 @@ export default function AdminDashboard() {
                 delay={0.15}
               />
               <StatCard
-                icon={PlusSquare}
+                icon={PlusSignSquareIcon}
                 label="Ganancia Tienda"
                 countTo={kpis.ganancia_tienda_total}
                 format={formatMoney}
@@ -264,7 +271,7 @@ export default function AdminDashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <SpotlightCard variant="highlight" className="col-span-7 lg:col-span-4 p-5">
                 <div className="mb-6 flex items-center gap-2 border-b border pb-4">
-                  <Droplets className="h-5 w-5 text-primary" />
+                  <HugeiconsIcon icon={DropletIcon} size={20} strokeWidth={2} className="text-primary" />
                   <h3 className="font-semibold text-foreground">Recaudado por Pozo</h3>
                 </div>
                 
@@ -296,7 +303,7 @@ export default function AdminDashboard() {
               
               <SpotlightCard variant="default" className="col-span-7 lg:col-span-3 p-5">
                 <div className="mb-4 flex items-center gap-2 border-b border pb-4">
-                  <PieIcon className="h-5 w-5 text-primary" />
+                  <HugeiconsIcon icon={PieChartIcon} size={20} strokeWidth={2} className="text-primary" />
                   <h3 className="font-semibold text-foreground">Composición del ingreso</h3>
                 </div>
 

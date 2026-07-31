@@ -1,15 +1,17 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft02Icon } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "@remix-run/react";
 import type { MetaFunction } from "@remix-run/node";
 import { toast } from "sonner";
-import {
-  ArrowLeft, Loader2
-} from "lucide-react";
+
 import { Button } from "~/components/ui/button";
-import { cn, buildWhatsappUrl } from "~/lib/utils";
+import { cn } from "~/lib/utils";
+import { buildWhatsappUrl } from "~/lib/formatters";
 import { getSupabaseClient } from "~/lib/supabase.client";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { loginSchema, type LoginInput } from "../../../shared/schemas";
+import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => [
   { title: "Acceso Colaboradores · Gyro Store" },
@@ -69,33 +71,33 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#090d16]" data-skin="store">
-        <Loader2 className="w-8 h-8 animate-spin text-[#22d3ee]" />
+      <div className="min-h-screen flex items-center justify-center bg-background" data-skin="store">
+        <Spinner className="text-primary" />
       </div>
     );
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#090d16] font-sans text-white" data-skin="store">
+    <main className="relative min-h-screen w-full overflow-hidden bg-background font-sans text-white" data-skin="store">
       {/* Background concentric circles */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-30">
-        <div className="absolute -left-64 -top-64 h-[800px] w-[800px] rounded-full border border-[#22d3ee]/10" />
-        <div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full border border-[#22d3ee]/10" />
-        <div className="absolute -bottom-64 -right-64 h-[800px] w-[800px] rounded-full border border-[#22d3ee]/10" />
-        <div className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full border border-[#22d3ee]/10" />
+        <div className="absolute -left-64 -top-64 h-[800px] w-[800px] rounded-full border border-primary/10" />
+        <div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full border border-primary/10" />
+        <div className="absolute -bottom-64 -right-64 h-[800px] w-[800px] rounded-full border border-primary/10" />
+        <div className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full border border-primary/10" />
       </div>
 
       {/* Top Left Back Button */}
       <div className="absolute left-6 top-6 z-20">
-        <Button asChild variant="ghost" className="h-10 rounded-full bg-[#13b8a6]/20 px-4 text-[#2dd4bf] hover:bg-[#13b8a6]/30 hover:text-white transition-colors">
+        <Button asChild variant="ghost" className="h-10 rounded-full bg-primary/20 px-4 text-primary hover:bg-primary/30 hover:text-white transition-colors">
           <Link to="/">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Volver al catálogo
+            <HugeiconsIcon icon={ArrowLeft02Icon} size={16} strokeWidth={2} className="mr-2" /> Volver al catálogo
           </Link>
         </Button>
       </div>
 
       <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 lg:p-12">
-        <div className="flex w-full max-w-[1000px] flex-col overflow-hidden rounded-[20px] bg-[#161925] shadow-2xl lg:flex-row border border-white/5 animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex w-full max-w-[1000px] flex-col overflow-hidden rounded-[20px] bg-card shadow-2xl lg:flex-row border border-border animate-in fade-in zoom-in-95 duration-500">
           
           {/* Left Column: Actions */}
           <div className="flex w-full flex-col justify-center p-8 sm:p-12 lg:w-[55%]">
@@ -111,9 +113,9 @@ export default function Login() {
                 variant="outline"
                 disabled={busy === "microsoft"}
                 onClick={runMicrosoft}
-                className="h-14 w-full rounded-xl border-white/10 bg-[#0f111a] text-base font-bold text-white hover:bg-white/5 hover:border-white/20 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                className="h-14 w-full rounded-xl border-foreground/10 bg-muted text-base font-bold text-white hover:bg-foreground/5 hover:border-foreground/20 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
-                {busy !== "microsoft" ? <OutlookIcon className="mr-3 h-6 w-6" /> : <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
+                {busy !== "microsoft" ? <OutlookIcon className="mr-3 h-6 w-6" /> : <Spinner className="mr-3" />}
                 Continuar con Microsoft
               </Button>
               <p className="mt-6 text-center text-xs text-muted-foreground leading-relaxed">
@@ -124,7 +126,7 @@ export default function Login() {
           </div>
 
           {/* Right Column: Graphic */}
-          <div className="hidden flex-col bg-[#0f111a] p-12 lg:flex lg:w-[45%] lg:justify-between border-l border-white/5">
+          <div className="hidden flex-col bg-muted p-12 lg:flex lg:w-[45%] lg:justify-between border-l border-border">
             <div className="flex flex-1 items-center justify-center">
               {config?.images?.logoStatic ? (
                 <img 
@@ -133,7 +135,7 @@ export default function Login() {
                   className="max-h-[300px] object-contain drop-shadow-2xl animate-in fade-in zoom-in duration-700" 
                 />
               ) : (
-                <div className="h-[250px] w-[250px] rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
+                <div className="h-[250px] w-[250px] rounded-2xl bg-white/5 flex items-center justify-center border border-foreground/10">
                   <span className="text-white/20 font-medium">Gyro Store</span>
                 </div>
               )}

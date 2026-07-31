@@ -9,7 +9,8 @@ import { Label } from "~/components/ui/label";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useUpdatePurchaseMutation, useGetPurchasesQuery, type Purchase } from "~/store/api/inventoryV1Api";
 import { Input } from "~/components/ui/input";
-import { formatUsd } from "~/lib/utils";
+import { formatUsd } from "~/lib/formatters";
+import { Spinner } from "~/components/ui/spinner";
 
 export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
   const [updatePurchase, { isLoading }] = useUpdatePurchaseMutation();
@@ -101,7 +102,7 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
                 />
               );
             })()}
-            {codeWarn && <span className="text-xs text-amber-500">{codeWarn}</span>}
+            {codeWarn && <span className="text-xs text-warning">{codeWarn}</span>}
           </div>
 
           {/* Fila 3: Nombre — ancho completo */}
@@ -149,7 +150,7 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
         <div className="flex justify-end gap-2 border-t border pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">Cancelar</Button>
           <Button type="submit" size="sm" disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isLoading && <Spinner className="mr-2" />}
         Guardar cambios
       </Button>
         </div>

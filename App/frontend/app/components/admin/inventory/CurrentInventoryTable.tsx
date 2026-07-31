@@ -1,9 +1,11 @@
 // Inventario Actual: productos recibidos en bodega con todas las columnas
 // calculadas (cantidad = original − vendidos, precios USD y costo real en C$).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Alert02Icon, CheckmarkCircle01Icon, Edit02Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Pencil, AlertTriangle, CheckCircle2 } from "lucide-react";
+
 import { DataTable } from "~/components/ui/DataTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
@@ -17,9 +19,10 @@ import {
   type Purchase,
 } from "~/store/api/inventoryV1Api";
 import { useGetAdminCatalogQuery } from "~/store/api/catalogAdminApi";
-import { formatUsd, formatCordobas } from "~/lib/utils";
+import { formatUsd, formatCordobas } from "~/lib/formatters";
 import { CodeCell } from "~/components/ui/cells";
 import { useNavigate } from "@remix-run/react";
+import { Spinner } from "~/components/ui/spinner";
 
 export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
   const navigate = useNavigate();
@@ -76,15 +79,15 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
               onClick={() => navigate(`/admin/catalogo?edit=${catalogId}`)}
               className="inline-flex items-center gap-1 rounded-md bg-whatsapp/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-whatsapp hover:bg-whatsapp/25 transition-colors cursor-pointer"
             >
-              <CheckCircle2 className="h-3 w-3" />
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} strokeWidth={2} />
               Mapeado
             </button>
           ) : (
             <button
               onClick={() => navigate(`/admin/catalogo?link=new`)}
-              className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-500 hover:bg-amber-500/25 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning hover:bg-warning/25 transition-colors cursor-pointer"
             >
-              <AlertTriangle className="h-3 w-3" />
+              <HugeiconsIcon icon={Alert02Icon} size={12} strokeWidth={2} />
               Sin mapear
             </button>
           );
@@ -95,7 +98,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         accessorKey: "quantitySold",
         header: "Vendido",
         meta: { align: "right" },
-        cell: (c) => <span className={c.getValue() > 0 ? "text-amber-500 font-medium" : "text-muted-foreground"}>{c.getValue()}</span>
+        cell: (c) => <span className={c.getValue() > 0 ? "text-warning font-medium" : "text-muted-foreground"}>{c.getValue()}</span>
       },
 
       {
@@ -119,7 +122,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         accessorKey: "costoFijoCordobas",
         header: "Coste c/ Fijos",
         meta: { align: "right" },
-        cell: (c) => <span className="text-amber-500 font-medium">{formatCordobas(c.getValue() || 0)}</span>,
+        cell: (c) => <span className="text-warning font-medium">{formatCordobas(c.getValue() || 0)}</span>,
       },
       {
         id: "precioSugerido",
@@ -157,7 +160,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
                 Descartar llegada
               </button>
               {p && (
-                <RowActionsMenu actions={[{ label: "Editar", icon: <Pencil className="h-4 w-4" />, onClick: () => setEditFor(p) }]} />
+                <RowActionsMenu actions={[{ label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) }]} />
               )}
             </div>
           );
@@ -168,7 +171,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border bg-card shadow-lg" />;
   }
 
   return (
@@ -202,7 +205,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
             Cancelar
           </Button>
           <Button onClick={handleRevert} disabled={reverting} className="bg-destructive/90 hover:bg-destructive text-white">
-        {reverting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {reverting && <Spinner className="mr-2" />}
         Confirmar y Descartar
       </Button>
         </div>

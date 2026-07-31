@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete02Icon, MoreVerticalIcon, RefreshIcon, SecurityCheckIcon, Shield01Icon, UserAdd01Icon, UserRemove01Icon, UserSettings01Icon } from "@hugeicons/core-free-icons";
 import { useState, useMemo } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -25,7 +27,7 @@ import { selectIsAdmin } from '~/store/slices/authSlice';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
-import { Shield, ShieldAlert, UserCog, UserX, Trash2, UserPlus, RefreshCcw, MoreVertical } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { QueryState } from '~/components/ui/QueryState';
 import { BrandLoader } from '~/components/ui/module-loader';
@@ -172,7 +174,7 @@ export default function AdminUsuarios() {
         const isProtected = user.email === SUPER_ADMIN_EMAIL;
         return (
           <div className="flex items-center gap-3 py-1 min-w-[200px]">
-            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground border border shrink-0">
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground border shrink-0">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="avatar" className="w-full h-full rounded-full object-cover" />
               ) : (
@@ -184,7 +186,7 @@ export default function AdminUsuarios() {
                 {user.name}
                 {isProtected && (
                   <span title="Protegido por el sistema" className="inline-flex shrink-0">
-                    <Shield aria-label="Protegido por el sistema" className="w-3.5 h-3.5 text-warning" />
+                    <HugeiconsIcon icon={Shield01Icon} size={14} strokeWidth={2} aria-label="Protegido por el sistema" className="text-warning" />
                   </span>
                 )}
               </span>
@@ -223,13 +225,13 @@ export default function AdminUsuarios() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <MoreVertical className="h-4 w-4" />
+                <HugeiconsIcon icon={MoreVerticalIcon} size={16} strokeWidth={2} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acciones</div>
               <DropdownMenuItem onClick={() => setSelectedUser(user)} className="cursor-pointer">
-                <UserCog className="mr-2 h-4 w-4" /> Editar Perfil
+                <HugeiconsIcon icon={UserSettings01Icon} size={16} strokeWidth={2} className="mr-2" /> Editar Perfil
               </DropdownMenuItem>
               <div className="h-px bg-border my-1" />
               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rol</div>
@@ -248,7 +250,7 @@ export default function AdminUsuarios() {
                     <>
                       <div className="h-px bg-border my-1" />
                       <DropdownMenuItem onClick={() => handleSuspend(user)} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
-                        <UserX className="mr-2 h-4 w-4" /> Dar de baja
+                        <HugeiconsIcon icon={UserRemove01Icon} size={16} strokeWidth={2} className="mr-2" /> Dar de baja
                       </DropdownMenuItem>
                     </>
                   )}
@@ -257,11 +259,11 @@ export default function AdminUsuarios() {
                 <>
                   <div className="h-px bg-border my-1" />
                   <DropdownMenuItem onClick={() => handleRestore(user)} className="text-primary focus:bg-primary/10 focus:text-primary cursor-pointer">
-                    <RefreshCcw className="mr-2 h-4 w-4" /> Restaurar
+                    <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className="mr-2" /> Restaurar
                   </DropdownMenuItem>
                   {!isProtected && (
                     <DropdownMenuItem onClick={() => setUserToDelete(user)} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
-                      <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                      <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} className="mr-2" /> Eliminar
                     </DropdownMenuItem>
                   )}
                 </>
@@ -290,7 +292,7 @@ export default function AdminUsuarios() {
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="default">
-                <UserPlus className="w-4 h-4 mr-2" />
+                <HugeiconsIcon icon={UserAdd01Icon} size={16} strokeWidth={2} className="mr-2" />
                 Agregar Empleado
               </Button>
             </DialogTrigger>
@@ -363,9 +365,9 @@ export default function AdminUsuarios() {
         <CardHeader className="border-b border pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
             {currentTab === 'activos' ? (
-              <><Shield className="w-5 h-5 text-primary" /> Cuentas Activas</>
+              <><HugeiconsIcon icon={Shield01Icon} size={20} strokeWidth={2} className="text-primary" /> Cuentas Activas</>
             ) : (
-              <><UserX className="w-5 h-5 text-destructive" /> Papelera (30 días)</>
+              <><HugeiconsIcon icon={UserRemove01Icon} size={20} strokeWidth={2} className="text-destructive" /> Papelera (30 días)</>
             )}
           </CardTitle>
           <CardDescription>
@@ -382,7 +384,7 @@ export default function AdminUsuarios() {
             loadingFallback={<div className="flex p-12 justify-center"><BrandLoader text="Cargando perfiles..." /></div>}
             emptyFallback={
               <div className="p-12 text-center text-muted-foreground">
-                <UserCog className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <HugeiconsIcon icon={UserSettings01Icon} size={32} strokeWidth={2} className="mx-auto mb-2 opacity-50" />
                 {currentTab === 'activos' ? 'Sin usuarios registrados' : 'La papelera está vacía'}
               </div>
             }
@@ -403,7 +405,7 @@ export default function AdminUsuarios() {
       {/* Modal de confirmación custom para eliminar usuario permanentemente */}
       {userToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card border border p-6 rounded-card shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+          <div className="bg-card border p-6 rounded-card shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
             <h3 className="text-xl font-bold text-foreground mb-2">Borrar permanentemente</h3>
             <p className="text-muted-foreground mb-6 text-sm">
               ¿Seguro que deseas eliminar por completo a <strong>{userToDelete.name}</strong> y todo su acceso? Esta acción borrará su perfil de la base de datos y no se puede deshacer.
@@ -496,7 +498,7 @@ export default function AdminUsuarios() {
                   onClick={handleSaveProfile}
                   disabled={isUpdatingProfile}
                 >
-                  <RefreshCcw className={`w-4 h-4 mr-2 ${isUpdatingProfile ? 'animate-spin' : ''}`} />
+                  <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className={`w-4 h-4 mr-2 ${isUpdatingProfile ? 'animate-spin' : ''}`} />
                   {isUpdatingProfile ? 'Guardando...' : 'Guardar Cambios'}
                 </Button>
 
@@ -510,7 +512,7 @@ export default function AdminUsuarios() {
                     }}
                     disabled={selectedUser.email === SUPER_ADMIN_EMAIL}
                   >
-                    <UserX className="w-4 h-4 mr-2" />
+                    <HugeiconsIcon icon={UserRemove01Icon} size={16} strokeWidth={2} className="mr-2" />
                     Archivar (Dar de baja)
                   </Button>
                 ) : (
@@ -522,7 +524,7 @@ export default function AdminUsuarios() {
                       setSelectedUser(null);
                     }}
                   >
-                    <RefreshCcw className="w-4 h-4 mr-2" />
+                    <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className="mr-2" />
                     Restaurar Usuario
                   </Button>
                 )}

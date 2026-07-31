@@ -16,15 +16,9 @@ import { Toaster } from 'sonner';
 import { store } from '~/store/store';
 import tailwindHref from './tailwind.css?url';
 
-export const links: LinksFunction = () => [
-  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-  { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
-  {
-    rel: 'stylesheet',
-    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-  },
-  { rel: 'stylesheet', href: tailwindHref },
-];
+// Sin Google Fonts: Figtree (body) y Geist (headings) se sirven localmente
+// vía @fontsource-variable, importados desde tailwind.css.
+export const links: LinksFunction = () => [{ rel: 'stylesheet', href: tailwindHref }];
 
 // Único lugar donde el server pasa config al cliente. Solo llaves PÚBLICAS:
 // la service_role vive exclusivamente en el backend Express.
@@ -46,10 +40,10 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     // suppressHydrationWarning: el script anti-flash puede cambiar data-theme
     // antes de que React hidrate; ese "mismatch" es intencional.
-    // `style-rhea`: activa el style del preset shadcn sobre todas las primitivas.
+    // `style-maia`: activa el style del preset shadcn sobre todas las primitivas.
     <html
       lang="es"
-      className="style-rhea"
+      className="style-maia"
       data-theme="dark"
       data-skin="store"
       suppressHydrationWarning
@@ -98,7 +92,7 @@ export default function App() {
           position="bottom-center"
           toastOptions={{
             className:
-              'border border bg-card text-foreground rounded-lg text-sm',
+              'border bg-card text-foreground rounded-lg text-sm',
           }}
         />
       </TooltipProvider>

@@ -4,10 +4,12 @@
 //
 // El dato se carga en el SERVIDOR para que el título, la descripción y la foto
 // estén en el HTML (Open Graph al compartir por WhatsApp).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon, Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
 import { Link, useLoaderData } from '@remix-run/react';
-import { ChevronLeft, MessageCircle, ShoppingCart } from 'lucide-react';
+
 import { toast } from 'sonner';
 import type { CatalogDetail, CatalogProduct } from '@shared/schemas';
 import { CartDrawer } from '~/components/cart/cart-drawer';
@@ -139,7 +141,7 @@ export default function ProductDetail() {
       <main className="mx-auto max-w-7xl px-4 py-6">
         <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
           <Link to="/#catalogo" prefetch="intent">
-            <ChevronLeft aria-hidden /> Volver al catálogo
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden /> Volver al catálogo
           </Link>
         </Button>
 
@@ -149,9 +151,9 @@ export default function ProductDetail() {
           <div className="flex flex-col gap-5">
             <div className="space-y-3">
               {onSale && (
-                <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80 tabular-nums">−{discountPct}%</Badge>
+                <Badge variant="promo" className="tabular-nums">−{discountPct}%</Badge>
               )}
-              {product.isPromo && !onSale && <Badge variant="default" className="bg-[#885cf6] text-white hover:bg-[#885cf6]/80">Oferta</Badge>}
+              {product.isPromo && !onSale && <Badge variant="promo">Oferta</Badge>}
 
               <h1 className="text-2xl leading-tight font-black tracking-tight text-balance text-foreground sm:text-4xl">
                 {product.name}
@@ -192,15 +194,15 @@ export default function ProductDetail() {
                 disabled={soldOut}
                 className="h-12 flex-1 text-sm"
               >
-                <ShoppingCart aria-hidden />
+                <HugeiconsIcon icon={ShoppingCart02Icon} size={16} strokeWidth={2} aria-hidden />
                 {soldOut ? 'Agotado' : 'Agregar al carrito'}
               </Button>
               <Button
-                variant="outline" className="text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10"
+                variant="whatsappOutline"
                 onClick={handleWhatsApp}
                 className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
               >
-                <MessageCircle aria-hidden />
+                <HugeiconsIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden />
                 {soldOut ? 'Avisame' : 'Pedir por WhatsApp'}
               </Button>
             </div>

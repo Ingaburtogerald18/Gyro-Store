@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon, CloudUploadIcon, FloppyDiskIcon, ImageAdd01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState, useRef } from 'react';
 import { getSupabaseClient } from '~/lib/supabase.client';
 import { Card, CardContent } from '~/components/ui/card';
@@ -5,7 +7,7 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Button } from '~/components/ui/button';
 import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
-import { ImagePlus, X, Save, UploadCloud } from 'lucide-react';
+
 import type { FinancialConfig, ImageResources } from '@shared/schemas';
 import { BrandLoader } from '~/components/ui/module-loader';
 import { useAppDispatch } from '~/store/hooks';
@@ -165,13 +167,13 @@ function ImagesConfig() {
     const acceptAttr = isAnimated ? "image/*,video/*" : "image/*";
 
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border bg-muted p-4">
+      <div className="flex flex-col gap-3 rounded-lg border bg-muted p-4">
         <div>
           <h3 className="text-sm font-medium text-foreground">{title}</h3>
           <p className="text-xs text-muted-foreground">{desc}</p>
         </div>
         {config[key] ? (
-          <div className="relative group rounded-lg border border bg-card p-2">
+          <div className="relative group rounded-lg border bg-card p-2">
             <div className="aspect-video w-full flex items-center justify-center overflow-hidden rounded-md bg-black/20">
               {config[key]?.match(/\.(webm|mp4|mov)$/i) ? (
                 <video src={config[key]} autoPlay loop muted playsInline className="max-h-32 max-w-full object-contain" />
@@ -201,12 +203,12 @@ function ImagesConfig() {
               className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-destructive text-white opacity-0 transition-opacity group-hover:opacity-100"
               title="Eliminar"
             >
-              <X className="h-4 w-4" />
+              <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
             </button>
           </div>
         ) : (
           <label className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border bg-card transition-colors hover:border-primary hover:bg-primary/5">
-            <UploadCloud className="h-8 w-8 text-muted-foreground" />
+            <HugeiconsIcon icon={CloudUploadIcon} size={32} strokeWidth={2} className="text-muted-foreground" />
             <span className="text-sm font-medium text-muted-foreground">Subir imagen</span>
             <input 
               type="file" 
@@ -248,7 +250,7 @@ function ImagesConfig() {
         
         <div className="flex justify-end pt-2">
           <Button onClick={() => handleSave()} disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
+            <HugeiconsIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
             {saving ? 'Guardando...' : 'Guardar Imágenes'}
           </Button>
         </div>
@@ -653,7 +655,7 @@ function GeneralConfig() {
           </div>
           <div className="flex justify-end pt-4">
             <Button className="shadow-sm">
-              <Save className="mr-2 h-4 w-4" />
+              <HugeiconsIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
               Guardar General
             </Button>
           </div>

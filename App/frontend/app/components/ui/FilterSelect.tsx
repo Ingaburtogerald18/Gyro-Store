@@ -1,8 +1,10 @@
 // Dropdown de filtro estilizado (reemplazo del <select> nativo).
 // Soporta un "punto" indicador por opción (p. ej. vendedores con ventas pendientes).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDown01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Check } from "lucide-react";
+
 import { cn } from "~/lib/utils";
 
 export interface FilterSelectOption {
@@ -71,7 +73,7 @@ export function FilterSelect({
           variant === "ghost"
             ? "bg-transparent border-none p-0 text-sm font-semibold text-foreground hover:text-primary-2"
             : cn(
-                "flex w-full items-center justify-between gap-2 rounded-pill border border bg-muted px-4 py-2 text-sm text-foreground transition-all duration-200 hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-primary/20",
+                "flex w-full items-center justify-between gap-2 rounded-pill border bg-muted px-4 py-2 text-sm text-foreground transition-all duration-200 hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-primary/20",
                 open && "border-primary/50 ring-2 ring-primary/20"
               ),
         )}
@@ -92,13 +94,7 @@ export function FilterSelect({
             )}
           </span>
         </span>
-        <ChevronDown
-          className={cn(
-            "shrink-0 transition-transform duration-200",
-            variant === "ghost" ? "h-3.5 w-3.5 text-muted-foreground" : "h-4 w-4 text-muted-foreground",
-            open && "rotate-180",
-          )}
-        />
+        <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={2} className={cn( "shrink-0 transition-transform duration-200", variant === "ghost" ? "h-3.5 w-3.5 text-muted-foreground" : "h-4 w-4 text-muted-foreground", open && "rotate-180", )} />
       </button>
 
       <AnimatePresence>
@@ -108,7 +104,7 @@ export function FilterSelect({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-0 z-50 mt-2 flex flex-col gap-1 min-w-[180px] w-max max-w-[300px] max-h-64 overflow-y-auto rounded-card border border bg-card p-1 shadow-2xl"
+            className="absolute left-0 z-50 mt-2 flex flex-col gap-1 min-w-[180px] w-max max-w-[300px] max-h-64 overflow-y-auto rounded-card border bg-card p-1 shadow-2xl"
           >
             {options.map((o) => {
               const isSel = o.value === value;
@@ -128,7 +124,7 @@ export function FilterSelect({
                   {/* Reservar el ancho del punto siempre, para que los nombres queden alineados */}
                   {o.dot ? <Dot /> : <span className="h-1.5 w-1.5 shrink-0" />}
                   <span className="flex-1 truncate">{o.label}</span>
-                  {isSel && <Check className="h-3.5 w-3.5 shrink-0 text-primary-2" />}
+                  {isSel && <HugeiconsIcon icon={Tick01Icon} size={14} strokeWidth={2} className="shrink-0 text-primary-2" />}
                 </button>
               );
             })}

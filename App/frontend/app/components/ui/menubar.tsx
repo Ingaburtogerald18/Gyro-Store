@@ -1,10 +1,12 @@
 "use client"
 
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowRight01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import * as React from "react"
 import { Menubar as MenubarPrimitive } from "radix-ui"
 
 import { cn } from "~/lib/utils"
-import { CheckIcon, CaretRightIcon } from "@phosphor-icons/react"
+
 
 function Menubar({
   className,
@@ -130,8 +132,7 @@ function MenubarCheckboxItem({
     >
       <span className="pointer-events-none absolute left-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
         <MenubarPrimitive.ItemIndicator>
-          <CheckIcon
-          />
+          <HugeiconsIcon icon={Tick01Icon} size={16} strokeWidth={2} />
         </MenubarPrimitive.ItemIndicator>
       </span>
       {children}
@@ -159,8 +160,7 @@ function MenubarRadioItem({
     >
       <span className="pointer-events-none absolute left-1.5 flex size-4 items-center justify-center [&_svg:not([class*='size-'])]:size-4">
         <MenubarPrimitive.ItemIndicator>
-          <CheckIcon
-          />
+          <HugeiconsIcon icon={Tick01Icon} size={16} strokeWidth={2} />
         </MenubarPrimitive.ItemIndicator>
       </span>
       {children}
@@ -242,7 +242,7 @@ function MenubarSubTrigger({
       {...props}
     >
       {children}
-      <CaretRightIcon className="ml-auto size-4" />
+      <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} className="ml-auto" />
     </MenubarPrimitive.SubTrigger>
   )
 }

@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, ArrowDownRight01Icon, ArrowUpRight01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { PageHeader } from '~/components/layout/PageHeader';
@@ -11,7 +13,6 @@ import { DataTable } from '~/components/ui/DataTable';
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { QueryState } from '~/components/ui/QueryState';
 import { StatCard } from '~/components/ui/stat-card';
-import { Plus, ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
 import {
   useGetAccountsQuery,
   useGetMovementsQuery,
@@ -20,7 +21,7 @@ import {
 } from '~/store/api/cajaApi';
 import { useGetCuadreQuery } from '~/store/api/cuadreApi';
 import { format } from 'date-fns';
-import type { AccountMovement } from '~/shared/schemas';
+import type { AccountMovement } from '@shared/schemas';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Caja y Bancos | Gyro Store' }];
@@ -108,7 +109,7 @@ export default function AdminCajaRoute() {
         const t = info.getValue();
         return (
           <span className={`inline-flex items-center gap-1 ${t === 'ingreso' ? 'text-success' : 'text-destructive'}`}>
-            {t === 'ingreso' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+            {t === 'ingreso' ? <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} strokeWidth={2} /> : <HugeiconsIcon icon={ArrowDownRight01Icon} size={16} strokeWidth={2} />}
             {t.toUpperCase()}
           </span>
         );
@@ -141,7 +142,7 @@ export default function AdminCajaRoute() {
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setIsAccOpen(true)}>Nueva Cuenta</Button>
           <Button onClick={() => setIsMovOpen(true)} className="shadow-sm">
-            <Plus className="mr-2 h-4 w-4" /> Registrar Movimiento
+            <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" /> Registrar Movimiento
           </Button>
         </div>
       </div>
@@ -152,21 +153,20 @@ export default function AdminCajaRoute() {
           return (
             <StatCard
               key={acc.id}
-              title={acc.nombre}
+              label={acc.nombre}
               value={`${bal.toFixed(2)} ${acc.moneda}`}
-              icon={Wallet}
-              description={acc.tipo === 'banco' ? 'Cuenta Bancaria' : 'Caja de Efectivo'}
+              icon={Wallet01Icon}
+              sub={acc.tipo === 'banco' ? 'Cuenta Bancaria' : 'Caja de Efectivo'}
             />
           );
         })}
       </div>
 
-      <QueryState isLoading={isLoadingMov || isLoadingAcc} onRetry={refetch}>
+      <QueryState loading={isLoadingMov || isLoadingAcc} onRetry={refetch}>
         <DataTable
           columns={columns}
           data={movements}
           searchPlaceholder="Buscar en descripción..."
-          searchColumn="descripcion"
         />
       </QueryState>
 

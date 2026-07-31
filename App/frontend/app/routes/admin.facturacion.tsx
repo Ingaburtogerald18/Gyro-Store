@@ -10,11 +10,13 @@
 // reescribe como un selector de "ventas aprobadas sin factura" + emisión.
 // El ticket térmico 80mm queda como TODO: react-to-print no está instalado
 // y no se agregan dependencias sin avisar.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { File01Icon, Invoice01Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
-import { FileText, Receipt } from 'lucide-react';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -25,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/u
 import { errMsg, formatCordobas, withoutIds } from "~/lib/formatters";
 import { useCreateInvoiceMutation, useGetInvoicesQuery, type Invoice } from '~/store/api/invoicesApi';
 import { useGetSalesQuery, type SaleListItem } from '~/store/api/salesApi';
+import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => [{ title: 'Facturación | Gyro Store Admin' }];
 
@@ -82,7 +85,7 @@ export default function AdminFacturacion() {
         cell: ({ row }) => (
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setSaleFor(row.original)}>
-              <Receipt className="h-4 w-4 mr-1.5" aria-hidden /> Facturar
+              <HugeiconsIcon icon={Invoice01Icon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Facturar
             </Button>
           </div>
         ),
@@ -134,7 +137,7 @@ export default function AdminFacturacion() {
             loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-muted" />}
             emptyFallback={
               <div className="rounded-lg border border-dashed border bg-muted/50 py-10 text-center">
-                <FileText className="mx-auto mb-3 h-9 w-9 text-muted-foreground opacity-50" aria-hidden />
+                <HugeiconsIcon icon={File01Icon} size={36} strokeWidth={2} className="mx-auto mb-3 text-muted-foreground opacity-50" aria-hidden />
                 <p className="font-medium text-foreground">No hay ventas pendientes de facturar.</p>
               </div>
             }
@@ -168,7 +171,7 @@ export default function AdminFacturacion() {
           </DialogHeader>
           {saleFor && (
             <div className="space-y-4">
-              <div className="rounded-lg border border bg-muted p-3 text-sm">
+              <div className="rounded-lg border bg-muted p-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Vendedor</span>
                   <span className="font-medium text-foreground">{saleFor.sellerEmail}</span>
@@ -212,7 +215,7 @@ export default function AdminFacturacion() {
               Cancelar
             </Button>
             <Button onClick={handleCreate} disabled={creating}>
-        {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {creating && <Spinner className="mr-2" />}
         Emitir factura
       </Button>
           </div>

@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDown02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp02Icon, InboxIcon, Search01Icon, Tick01Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Skeleton } from "~/components/ui/skeleton";
 // Tabla de datos genérica sobre TanStack Table v8: ordenable, con búsqueda
 // global y paginación. Se reutiliza en todos los portales del admin.
@@ -14,7 +16,7 @@ import {
   type SortingState,
   type Table as TableInstance,
 } from "@tanstack/react-table";
-import { Search, Check, ArrowUp, ArrowDown, ChevronsUpDown, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
+
 import { motion, useReducedMotion } from "framer-motion";
 
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "./empty";
@@ -106,8 +108,8 @@ export function DataTable<T>({
   return (
     <div className="space-y-3">
       {!hideSearch && (
-        <div className="flex items-center gap-2 rounded-pill border border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:max-w-xs">
-          <Search className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 rounded-pill border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:max-w-xs">
+          <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
           <input
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
@@ -127,7 +129,7 @@ export function DataTable<T>({
         </div>
       ) : (
       <>
-      <div className="hidden md:block overflow-auto max-h-[75vh] rounded-card border border bg-card shadow-premium relative">
+      <div className="hidden md:block overflow-auto max-h-[75vh] rounded-card border bg-card shadow-lg relative">
         <table className="w-full text-sm">
           <thead className="table-header-brand text-left sticky top-0 z-20 shadow-sm">
             {table.getHeaderGroups().map((hg) => (
@@ -143,7 +145,7 @@ export function DataTable<T>({
                             : "border bg-card hover:bg-muted"
                         }`}
                       >
-                        {allSelected && <Check className="h-3.5 w-3.5" />}
+                        {allSelected && <HugeiconsIcon icon={Tick01Icon} size={14} strokeWidth={2} />}
                       </div>
                     )}
                   </th>
@@ -172,11 +174,11 @@ export function DataTable<T>({
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {sorted === "asc" ? (
-                            <ArrowUp className="h-3 w-3 shrink-0 text-primary-2" />
+                            <HugeiconsIcon icon={ArrowUp02Icon} size={12} strokeWidth={2} className="shrink-0 text-primary-2" />
                           ) : sorted === "desc" ? (
-                            <ArrowDown className="h-3 w-3 shrink-0 text-primary-2" />
+                            <HugeiconsIcon icon={ArrowDown02Icon} size={12} strokeWidth={2} className="shrink-0 text-primary-2" />
                           ) : (
-                            <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover/sort:opacity-50" />
+                            <HugeiconsIcon icon={UnfoldMoreIcon} size={12} strokeWidth={2} className="shrink-0 opacity-0 transition-opacity group-hover/sort:opacity-50" />
                           )}
                         </button>
                       ) : (
@@ -206,7 +208,7 @@ export function DataTable<T>({
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
-                        <Inbox />
+                        <HugeiconsIcon icon={InboxIcon} size={16} strokeWidth={2} />
                       </EmptyMedia>
                       <EmptyTitle>{emptyText}</EmptyTitle>
                     </EmptyHeader>
@@ -256,7 +258,7 @@ export function DataTable<T>({
                               : "border bg-card"
                           }`}
                         >
-                          {isSelected && <Check className="h-3.5 w-3.5" />}
+                          {isSelected && <HugeiconsIcon icon={Tick01Icon} size={14} strokeWidth={2} />}
                         </div>
                       </td>
                     )}
@@ -310,7 +312,7 @@ export function DataTable<T>({
       {/* Vista móvil: tarjetas (bonitas si el panel define mobileCard; genéricas si no). */}
       <div className="space-y-3 md:hidden">
         {table.getRowModel().rows.length === 0 ? (
-          <p className="rounded-card border border bg-card shadow-premium py-8 text-center text-muted-foreground">{emptyText}</p>
+          <p className="rounded-card border bg-card shadow-lg py-8 text-center text-muted-foreground">{emptyText}</p>
         ) : (
           table.getRowModel().rows.map((row) => {
             const rowId = (row.original as any).id;
@@ -325,7 +327,7 @@ export function DataTable<T>({
                 {mobileCard ? (
                   mobileCard(row.original)
                 ) : (
-                  <div className="space-y-1.5 rounded-card border border bg-card shadow-premium p-4">
+                  <div className="space-y-1.5 rounded-card border bg-card shadow-lg p-4">
                     {row.getVisibleCells().map((cell) => {
                       const header = cell.column.columnDef.header;
                       const label = typeof header === "string" ? header : "";
@@ -376,9 +378,9 @@ function TablePagination<T>({ table }: { table: TableInstance<T> }) {
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
           aria-label="Página anterior"
-          className="grid h-11 w-11 place-items-center rounded-lg border border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
+          className="grid h-11 w-11 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} />
         </button>
         <span className="nums px-2 text-muted-foreground">
           Página <span className="font-semibold text-foreground">{pageIndex + 1}</span> de{" "}
@@ -389,9 +391,9 @@ function TablePagination<T>({ table }: { table: TableInstance<T> }) {
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
           aria-label="Página siguiente"
-          className="grid h-11 w-11 place-items-center rounded-lg border border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
+          className="grid h-11 w-11 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronRight className="h-4 w-4" />
+          <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} />
         </button>
       </div>
     </nav>

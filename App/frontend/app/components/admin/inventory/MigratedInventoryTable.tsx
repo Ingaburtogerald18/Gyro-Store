@@ -1,8 +1,10 @@
 // Tabla del inventario migrado (histórico). Cada fila lleva el badge "Migrado".
 // Solo lectura + borrar; su lógica de venta se definirá después.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, Search, Plus, X } from "lucide-react";
+
 import { toast } from "sonner";
 import { DataTable } from "~/components/ui/DataTable";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -14,7 +16,7 @@ import {
   useDeleteMigratedItemMutation,
   type MigratedItem,
 } from "~/store/api/inventoryV1Api";
-import { formatUsd, formatCordobas } from "~/lib/utils";
+import { formatUsd, formatCordobas } from "~/lib/formatters";
 import { CodeCell } from "~/components/ui/cells";
 
 export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenForm?: () => void; period?: string }) {
@@ -52,7 +54,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         header: "",
         enableSorting: false,
         cell: () => (
-          <span className="rounded-pill bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-500">
+          <span className="rounded-pill bg-warning/15 px-2 py-1 text-xs font-medium text-warning">
             Migrado
           </span>
         ),
@@ -78,7 +80,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         accessorKey: "stock",
         header: "Stock",
         meta: { align: "right" },
-        cell: (c) => <span className="nums font-bold text-blue-500 bg-blue-500/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
+        cell: (c) => <span className="nums font-bold text-info bg-info/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
       },
       // USD a 2 decimales visibles; precisión completa en el tooltip.
       { accessorKey: "priceBaseUsd", header: "P. Base", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
@@ -94,7 +96,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border bg-card shadow-lg" />;
   }
 
   return (
@@ -103,8 +105,8 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
       <div className="sticky top-[116px] z-10 -mx-4 bg-background/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           
-          <div className="flex items-center gap-2 rounded-pill border border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:w-80">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-2 rounded-pill border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:w-80">
+            <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground" />
             <input
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
@@ -124,14 +126,14 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
                   onClick={() => setEditFor(selectedItem)}
                   className="h-8 bg-muted text-xs hover:text-primary"
                 >
-                  <Pencil className="mr-2 h-3.5 w-3.5" /> Editar
+                  <HugeiconsIcon icon={Edit02Icon} size={14} strokeWidth={2} className="mr-2" /> Editar
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={() => setDeleteFor(selectedItem)}
                   className="h-8 bg-muted text-xs text-destructive hover:bg-destructive/15 hover:text-destructive"
                 >
-                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                  <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} className="mr-2" /> Eliminar
                 </Button>
                 <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
                 <button
@@ -139,7 +141,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
                   className="p-1.5 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
                   title="Cancelar selección"
                 >
-                  <X className="h-4 w-4" />
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
                 </button>
               </div>
             ) : (
@@ -156,7 +158,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
                 />
                 {onOpenForm && (
                   <Button onClick={onOpenForm} className="flex items-center gap-1.5 whitespace-nowrap">
-                    <Plus className="h-4 w-4" />
+                    <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} />
                     <span className="hidden sm:inline">Registrar ítem</span>
                   </Button>
                 )}

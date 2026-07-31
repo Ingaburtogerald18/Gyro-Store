@@ -1,25 +1,11 @@
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import { CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, PackageOpenIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { motion, useReducedMotion } from 'framer-motion';
-import {
-  Boxes,
-  CreditCard,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  Package,
-  PackageOpen,
-  Settings,
-  ShoppingCart,
-  Sparkles,
-  Truck,
-  Users,
-  UserCog,
-  Wallet,
-  Store,
-} from 'lucide-react';
+
 import { Button } from '~/components/ui/button';
 import {
   Breadcrumb,
@@ -64,7 +50,7 @@ import { BrandLoader, ModuleLoader, useAnyQueryPending } from '~/components/ui/m
 interface NavItem {
   name: string;
   to: string;
-  icon: React.ElementType;
+  icon: IconSvgElement;
   end?: boolean;
   ready?: boolean;
 }
@@ -78,28 +64,28 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operación',
     items: [
-      { name: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true, ready: true },
-      { name: 'Salidas', to: '/admin/salidas', icon: PackageOpen, ready: true },
-      { name: 'Inventario', to: '/admin/inventario', icon: Boxes, ready: true },
-      { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart, ready: true },
-      { name: 'Cuotas', to: '/admin/cuotas', icon: CreditCard, ready: true },
-      { name: 'Caja y banco', to: '/admin/caja', icon: Wallet, ready: true },
+      { name: 'Dashboard', to: '/admin', icon: DashboardSquare01Icon, end: true, ready: true },
+      { name: 'Salidas', to: '/admin/salidas', icon: PackageOpenIcon, ready: true },
+      { name: 'Inventario', to: '/admin/inventario', icon: PackageIcon, ready: true },
+      { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart02Icon, ready: true },
+      { name: 'Cuotas', to: '/admin/cuotas', icon: CreditCardIcon, ready: true },
+      { name: 'Caja y banco', to: '/admin/caja', icon: Wallet01Icon, ready: true },
     ],
   },
   {
     label: 'Tienda',
     items: [
-      { name: 'Catálogo', to: '/admin/catalogo', icon: Package, ready: true },
-      { name: 'Facturación', to: '/admin/facturacion', icon: FileText, ready: true },
+      { name: 'Catálogo', to: '/admin/catalogo', icon: Package01Icon, ready: true },
+      { name: 'Facturación', to: '/admin/facturacion', icon: File01Icon, ready: true },
     ],
   },
   {
     label: 'Análisis y sistema',
     items: [
-      { name: 'Logística', to: '/admin/logistica', icon: Truck, ready: false },
-      { name: 'CRM y clientes', to: '/admin/crm', icon: Users, ready: false },
-      { name: 'Personal', to: '/admin/usuarios', icon: UserCog, ready: true },
-      { name: 'Configuración', to: '/admin/configuracion', icon: Settings, ready: true },
+      { name: 'Logística', to: '/admin/logistica', icon: TruckIcon, ready: false },
+      { name: 'CRM y clientes', to: '/admin/crm', icon: UserMultiple02Icon, ready: false },
+      { name: 'Personal', to: '/admin/usuarios', icon: UserSettings01Icon, ready: true },
+      { name: 'Configuración', to: '/admin/configuracion', icon: Settings02Icon, ready: true },
     ],
   },
 ];
@@ -152,7 +138,7 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
         {/* Collapsed View (Icon) */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
           <NavLink to="/admin" className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:opacity-90 transition-opacity">
-            <Store className="size-4" />
+            <HugeiconsIcon icon={Store01Icon} size={16} strokeWidth={2} />
           </NavLink>
         </div>
       </SidebarHeader>
@@ -183,7 +169,7 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                           tooltip="Próximamente"
                           className="cursor-not-allowed opacity-40"
                         >
-                          <item.icon />
+                          <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
                           <span>{item.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -194,7 +180,7 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                     <SidebarMenuItem key={item.name}>
                       <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
                         <NavLink to={item.to} end={item.end} prefetch="intent">
-                          <item.icon />
+                          <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
                           <span>{item.name}</span>
                         </NavLink>
                       </SidebarMenuButton>
@@ -342,7 +328,7 @@ export default function AdminLayout() {
                   <BreadcrumbSeparator className="hidden sm:block" />
                   <BreadcrumbItem>
                     <BreadcrumbPage className="flex items-center gap-1.5">
-                      <current.icon className="size-4 shrink-0" />
+                      <HugeiconsIcon icon={current.icon} size={16} strokeWidth={2} className="shrink-0" />
                       {current.name}
                     </BreadcrumbPage>
                   </BreadcrumbItem>
@@ -354,7 +340,7 @@ export default function AdminLayout() {
           <div className="ml-auto flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild className="hidden text-muted-foreground sm:flex">
               <a href="/" target="_blank" rel="noreferrer">
-                <Sparkles aria-hidden className="mr-2 size-4" />
+                <HugeiconsIcon icon={SparklesIcon} size={16} strokeWidth={2} aria-hidden className="mr-2" />
                 Ver tienda
               </a>
             </Button>
@@ -385,7 +371,7 @@ export default function AdminLayout() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
-                    <LogOut className="mr-2 size-4" />
+                    <HugeiconsIcon icon={Logout03Icon} size={16} strokeWidth={2} className="mr-2" />
                     <span>Cerrar sesión</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

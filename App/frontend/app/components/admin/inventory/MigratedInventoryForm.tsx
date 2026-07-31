@@ -1,9 +1,11 @@
 // Formulario de carga MANUAL de inventario migrado (histórico del Excel viejo).
 // Vive en su propia colección: no toca el inventario actual. Cada ítem guardado
 // queda marcado con la bandera origin:'migrated'.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useForm, Controller, type DefaultValues } from "react-hook-form";
-import { CheckCircle2 } from "lucide-react";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -16,7 +18,8 @@ import {
   type MigratedItem,
 } from "~/store/api/inventoryV1Api";
 import { Input } from "~/components/ui/input";
-import { formatUsd, formatCordobas } from "~/lib/utils";
+import { formatUsd, formatCordobas } from "~/lib/formatters";
+import { Spinner } from "~/components/ui/spinner";
 
 const RATE = 37; // USD → C$ (igual que el server)
 
@@ -93,7 +96,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-primary">
-          <CheckCircle2 className="h-8 w-8" />
+          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} strokeWidth={2} />
         </div>
         <div>
           <h2 className="text-xl font-bold">¡Ítem registrado con éxito!</h2>
@@ -142,61 +145,77 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
       </div>
 
       <div className="grid gap-2">
-  <Label>"Fecha" </Label>
+  <Label>Fecha</Label>
         <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
       </div>
       <div className="grid gap-2">
-  <Label>"Lote" </Label>
+  <Label>Lote</Label>
         <Controller
           control={control}
           name="lot"
           render={({ field }) => (
-            <Input type="text"
-              options={Array.from(new Set(existingItems.map((i) => i.lot).filter(Boolean)))}
-              value={field.value || ""}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              name={field.name}
-              aria-invalid={!!errors.lot}
-            />
+            <>
+              <Input
+                type="text"
+                list="migrated-lot-options"
+                value={field.value || ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                aria-invalid={!!errors.lot}
+              />
+              <datalist id="migrated-lot-options">
+                {Array.from(new Set(existingItems.map((i) => i.lot).filter(Boolean))).map((opt) => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
+            </>
           )}
         />
       </div>
       <div className="grid gap-2">
-  <Label>"Código" </Label>
+  <Label>Código</Label>
         <input className="input" {...register("code")} />
       </div>
 
       <div className="sm:col-span-2 lg:col-span-3">
         <div className="grid gap-2">
-  <Label>"Nombre del producto" </Label>
+  <Label>Nombre del producto</Label>
           <Controller
             control={control}
             name="productName"
             render={({ field }) => (
-              <Input type="text"
-                options={Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean)))}
-                value={field.value || ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                aria-invalid={!!errors.productName}
-              />
+              <>
+                <Input
+                  type="text"
+                  list="migrated-product-name-options"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  aria-invalid={!!errors.productName}
+                />
+                <datalist id="migrated-product-name-options">
+                  {Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean))).map((opt) => (
+                    <option key={opt} value={opt} />
+                  ))}
+                </datalist>
+              </>
             )}
           />
         </div>
       </div>
 
       <div className="grid gap-2">
-  <Label>"Entradas (cantidad)" </Label>
+  <Label>Entradas (cantidad)</Label>
         <input type="number" min={1} className="input" {...register("quantity")} />
       </div>
       <div className="grid gap-2">
-  <Label>"Precio base (USD)" </Label>
+  <Label>Precio base (USD)</Label>
         <input type="number" step="0.0001" min={0} className="input" {...register("costUnit")} />
       </div>
       <div className="grid gap-2">
-  <Label>"Costo de envío unit. (USD)" </Label>
+  <Label>Costo de envío unit. (USD)</Label>
         <input type="number" step="0.0001" min={0} className="input" {...register("shippingUnit")} />
       </div>
 
@@ -218,15 +237,16 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
 
       <div className="sm:col-span-2 lg:col-span-3">
         <div className="grid gap-2">
-  <Label>"Comentarios" </Label>
+  <Label>Comentarios</Label>
           <input className="input" placeholder="Opcional" {...register("comments")} />
         </div>
       </div>
 
       <div className="flex items-end sm:col-span-2 lg:col-span-3">
-        <Button type="submit" className="w-full sm:w-auto" loading={creating || updating}>
-          {isEdit ? "Guardar cambios" : "Registrar ítem migrado"}
-        </Button>
+        <Button type="submit" className="w-full sm:w-auto" disabled={creating || updating}>
+  {creating || updating && <Spinner className="mr-2" />}
+  {isEdit ? "Guardar cambios" : "Registrar ítem migrado"}
+</Button>
       </div>
     </form>
   );

@@ -1,10 +1,12 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Search01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search } from "lucide-react";
+
 import { type Purchase } from "~/store/api/inventoryV1Api";
 
 const STATUS_LABEL: Record<Purchase["status"], { label: string; cls: string }> = {
-  china: { label: "En tránsito", cls: "bg-blue-500/15 text-blue-500" },
+  china: { label: "En tránsito", cls: "bg-info/15 text-info" },
   received: { label: "Recibido", cls: "bg-primary/15 text-primary-2" },
 };
 
@@ -80,7 +82,7 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
           >
             {/* Search input */}
             <div className="flex items-center gap-3 border-b border/60 px-4 py-3.5">
-              <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <HugeiconsIcon icon={Search01Icon} size={20} strokeWidth={2} className="shrink-0 text-muted-foreground" />
               <input
                 ref={inputRef}
                 value={query}

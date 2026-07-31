@@ -3,10 +3,12 @@
 // Se renderiza en portal (position:fixed) para que el overflow de la tabla no lo recorte.
 // Convención del proyecto: dejar visible el CTA principal del flujo y mandar aquí las
 // acciones secundarias (editar, eliminar, etc.).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { MoreVerticalIcon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { MoreVertical } from "lucide-react";
+
 import { cn } from "~/lib/utils";
 
 export interface RowAction {
@@ -82,7 +84,7 @@ export function RowActionsMenu({ actions, className }: { actions: MaybeAction[];
           className,
         )}
       >
-        <MoreVertical className="h-4 w-4" />
+        <HugeiconsIcon icon={MoreVerticalIcon} size={16} strokeWidth={2} />
       </button>
 
       {typeof document !== "undefined" &&
@@ -96,7 +98,7 @@ export function RowActionsMenu({ actions, className }: { actions: MaybeAction[];
                 exit={{ opacity: 0, y: -4, scale: 0.97 }}
                 transition={{ duration: 0.12 }}
                 style={{ position: "fixed", top: coords.top, left: coords.left, width: W }}
-                className="z-[100] flex flex-col gap-0.5 rounded-card border border bg-card p-1 shadow-2xl"
+                className="z-[100] flex flex-col gap-0.5 rounded-card border bg-card p-1 shadow-2xl"
               >
                 {items.map((a, i) => {
                   const cls = cn(
