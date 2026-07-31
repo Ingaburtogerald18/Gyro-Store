@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 // SpotlightCard es nuestro (resplandor que sigue al cursor), distinto del `Card`
 // de shadcn: por eso lleva nombre propio y no colisiona al importar.
@@ -11,6 +11,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '~/components/ui/chart';
+import { Progress } from '~/components/ui/progress';
 import { Pie, PieChart } from 'recharts';
 import { DollarSign, ShoppingCart, Package, Percent, PlusSquare, Droplets, PieChart as PieIcon } from 'lucide-react';
 import type { MetaFunction } from '@remix-run/node';
@@ -39,6 +40,17 @@ function getDateRange(range: string) {
   return { startDate: start.toISOString(), endDate: end.toISOString() };
 }
 
+// Los 7 pozos del doc 11, en el orden en que se reparte el Costo F/U.
+const POZOS = [
+  'publicidad',
+  'mantenimiento',
+  'utiles',
+  'garantias',
+  'prestamos',
+  'suscripciones',
+  'servicios',
+] as const;
+
 // Series del gráfico. Los colores salen de los tokens chart-*, así que siguen
 // el tema (claro/oscuro) sin tocar nada acá.
 const incomeChartConfig = {
@@ -63,6 +75,20 @@ export default function AdminDashboard() {
     { id: '30d', label: '30 Días' },
     { id: 'month', label: 'Este Mes' },
   ];
+
+  // Las barras entran desde 0 en el primer frame tras montar, para que se vea
+  // el llenado. Si el usuario pidió menos movimiento, van directo al valor.
+  const reduce = useReducedMotion();
+  const [barsReady, setBarsReady] = useState(false);
+  useEffect(() => {
+    if (reduce) {
+      setBarsReady(true);
+      return;
+    }
+    setBarsReady(false);
+    const id = requestAnimationFrame(() => setBarsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, [reduce, kpis]);
 
   // A dónde va cada córdoba vendido. Se descartan los tramos en cero para que
   // el donut no dibuje segmentos invisibles.
@@ -157,25 +183,25 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="space-y-4">
-                  {['publicidad', 'mantenimiento', 'utiles', 'garantias', 'prestamos', 'suscripciones', 'servicios'].map((pozoKey, i) => {
+                  {POZOS.map((pozoKey) => {
                     const amount = kpis.pozos_recogidos?.[pozoKey] || 0;
                     const maxAmount = Math.max(...Object.values(kpis.pozos_recogidos || {}), 1);
-                    const widthPercent = `${(amount / maxAmount) * 100}%`;
-                    
+                    const pct = (amount / maxAmount) * 100;
+
                     return (
                       <div key={pozoKey} className="flex flex-col gap-1.5">
                         <div className="flex justify-between text-sm">
                           <span className="font-medium text-text capitalize">{pozoKey}</span>
                           <span className="nums text-muted">{formatMoney(amount)}</span>
                         </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: widthPercent }}
-                            transition={{ duration: 0.8, delay: i * 0.1, ease: "easeOut" }}
-                            className="h-full bg-accent"
-                          />
-                        </div>
+                        {/* Progress de shadcn: trae role="progressbar" y sus valores
+                            ARIA, que la barra hecha a mano no tenía. Arranca en 0 y
+                            sube al montar; con reduced-motion va directo al valor. */}
+                        <Progress
+                          value={barsReady ? pct : 0}
+                          aria-label={`Recaudado en ${pozoKey}`}
+                          className="h-2"
+                        />
                       </div>
                     );
                   })}
