@@ -13,9 +13,10 @@ import {
   type SortingState,
   type Table as TableInstance,
 } from "@tanstack/react-table";
-import { Search, Check, ArrowUp, ArrowDown, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Check, ArrowUp, ArrowDown, ChevronsUpDown, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { TableSkeleton } from "./skeleton";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "./empty";
 import { cn } from "~/lib/utils";
 
 // Tope de filas para la entrada escalonada: por encima, se renderiza sin motion
@@ -191,8 +192,18 @@ export function DataTable<T>({
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={onRowClick ? columns.length + 1 : columns.length} className="px-3 py-10 text-center text-muted">
-                  {emptyText}
+                <td colSpan={onRowClick ? columns.length + 1 : columns.length} className="px-3 py-6">
+                  {/* Primitiva Empty: da jerarquía (ícono + título) donde antes
+                      había una sola línea de texto suelta. `emptyText` sigue
+                      siendo el título, así que las vistas que lo pasan no cambian. */}
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Inbox />
+                      </EmptyMedia>
+                      <EmptyTitle>{emptyText}</EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
                 </td>
               </tr>
             ) : (
