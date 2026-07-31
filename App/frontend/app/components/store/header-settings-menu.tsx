@@ -56,7 +56,7 @@ function ThemeSwitch({ isDark, onToggle }: { isDark: boolean; onToggle: () => vo
           {isDark ? (
             <Moon className="h-3 w-3 text-accent" />
           ) : (
-            <Sun className="h-3 w-3 text-amber-500" />
+            <Sun className="h-3 w-3 text-warning" />
           )}
         </motion.span>
       </button>
@@ -252,10 +252,10 @@ export function HeaderSettingsMenu() {
 
                   <button
                     onClick={handleLogout}
-                    className={cn(ROW, "text-rose-500 hover:bg-rose-500/10")}
+                    className={cn(ROW, "text-danger hover:bg-danger/10")}
                     role="menuitem"
                   >
-                    <span className={cn(CHIP, "bg-rose-500/15 text-rose-500")}>
+                    <span className={cn(CHIP, "bg-danger/15 text-danger")}>
                       <LogOut className="h-4 w-4" />
                     </span>
                     Cerrar Sesión
