@@ -1,12 +1,13 @@
 /*
- * Sistema de diseño Gyro Store — preset shadcn "b2DeDSSjx" (cyan/emerald/Geist).
+ * Sistema de diseño Gyro Store — preset shadcn "b3ae24HXW4"
+ * (style Maia · theme Emerald · charts Green · Figtree + Geist).
  *
  * Migración nativa: los tokens los define el preset en `:root` / `[data-theme="dark"]`
  * (más abajo). Este archivo agrega lo único que el preset no trae:
  *   1. El bloque `@theme inline` que registra `--color-*` → `var(--*)` (sin esto
  *      Tailwind no genera `bg-background`, `border-border`, etc.).
  *   2. Tokens semánticos que shadcn no incluye pero la app necesita: whatsapp
- *      (verde del canal), success / warning / info, y los radios card / pill.
+ *      (verde del canal), promo, success / warning / info, y los radios card / pill.
  *
  * Regla: cero colores crudos de Tailwind en componentes; todo sale de estos tokens.
  */
@@ -16,6 +17,10 @@
 /* Utilidades del preset (variantes data-open/data-closed, no-scrollbar, scroll-fade,
    shimmer). Los componentes las usan; sin este import quedan sin estilo. */
 @import "shadcn/tailwind.css";
+/* El style del preset: define `.style-maia`, la clase que root.tsx pone en <html>.
+   (El style-rhea anterior nunca se importó, así que esas reglas nunca se aplicaron.) */
+@import "./style-maia.css";
+@import "@fontsource-variable/figtree";
 @import "@fontsource-variable/geist";
 
 /* La variante `dark:` sigue a nuestro data-theme, no al prefers-color-scheme del
@@ -65,6 +70,7 @@
 
   /* ── Extras de Gyro (shadcn no los trae) ── */
   --color-whatsapp: var(--whatsapp);
+  --color-promo: var(--promo);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
@@ -76,8 +82,11 @@
   --radius-card: 0.75rem;
   --radius-pill: 9999px;
 
-  /* Tipografía del preset. */
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Tipografía del preset: Figtree body, Geist headings.
+     Registrar --font-heading acá es lo que hace que Tailwind genere la clase
+     `font-heading` que ya usan varios componentes. */
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Escenario del producto: transparente a propósito — las fotos del catálogo ya
@@ -125,8 +134,8 @@ body {
   --card-foreground: oklch(0.148 0.004 228.8);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.148 0.004 228.8);
-  --primary: oklch(0.52 0.105 223.128);
-  --primary-foreground: oklch(0.984 0.019 200.873);
+  --primary: oklch(0.508 0.118 165.612);
+  --primary-foreground: oklch(0.979 0.021 166.113);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.963 0.002 197.1);
@@ -137,22 +146,23 @@ body {
   --border: oklch(0.925 0.005 214.3);
   --input: oklch(0.925 0.005 214.3);
   --ring: oklch(0.723 0.014 214.4);
-  --chart-1: oklch(0.845 0.143 164.978);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.596 0.145 163.225);
-  --chart-4: oklch(0.508 0.118 165.612);
-  --chart-5: oklch(0.432 0.095 166.913);
+  --chart-1: oklch(0.871 0.15 154.449);
+  --chart-2: oklch(0.723 0.219 149.579);
+  --chart-3: oklch(0.627 0.194 149.214);
+  --chart-4: oklch(0.527 0.154 150.069);
+  --chart-5: oklch(0.448 0.119 151.328);
   --radius: 0.625rem;
   --sidebar: oklch(0.987 0.002 197.1);
   --sidebar-foreground: oklch(0.148 0.004 228.8);
-  --sidebar-primary: oklch(0.609 0.126 221.723);
-  --sidebar-primary-foreground: oklch(0.984 0.019 200.873);
+  --sidebar-primary: oklch(0.596 0.145 163.225);
+  --sidebar-primary-foreground: oklch(0.979 0.021 166.113);
   --sidebar-accent: oklch(0.963 0.002 197.1);
   --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
   --sidebar-border: oklch(0.925 0.005 214.3);
   --sidebar-ring: oklch(0.723 0.014 214.4);
   /* Extras Gyro. */
   --whatsapp: #128c3e;
+  --promo: oklch(0.585 0.233 292.5);
   --success: oklch(0.63 0.15 150);
   --warning: oklch(0.72 0.15 75);
   --info: oklch(0.6 0.14 245);
@@ -165,8 +175,8 @@ body {
   --card-foreground: oklch(0.987 0.002 197.1);
   --popover: oklch(0.218 0.008 223.9);
   --popover-foreground: oklch(0.987 0.002 197.1);
-  --primary: oklch(0.45 0.085 224.283);
-  --primary-foreground: oklch(0.984 0.019 200.873);
+  --primary: oklch(0.432 0.095 166.913);
+  --primary-foreground: oklch(0.979 0.021 166.113);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.275 0.011 216.9);
@@ -177,21 +187,22 @@ body {
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.56 0.021 213.5);
-  --chart-1: oklch(0.845 0.143 164.978);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.596 0.145 163.225);
-  --chart-4: oklch(0.508 0.118 165.612);
-  --chart-5: oklch(0.432 0.095 166.913);
+  --chart-1: oklch(0.871 0.15 154.449);
+  --chart-2: oklch(0.723 0.219 149.579);
+  --chart-3: oklch(0.627 0.194 149.214);
+  --chart-4: oklch(0.527 0.154 150.069);
+  --chart-5: oklch(0.448 0.119 151.328);
   --sidebar: oklch(0.218 0.008 223.9);
   --sidebar-foreground: oklch(0.987 0.002 197.1);
-  --sidebar-primary: oklch(0.715 0.143 215.221);
-  --sidebar-primary-foreground: oklch(0.302 0.056 229.695);
+  --sidebar-primary: oklch(0.696 0.17 162.48);
+  --sidebar-primary-foreground: oklch(0.262 0.051 172.552);
   --sidebar-accent: oklch(0.275 0.011 216.9);
   --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0.021 213.5);
   /* Extras Gyro (tono para fondo oscuro). */
   --whatsapp: #25d366;
+  --promo: oklch(0.585 0.233 292.5);
   --success: oklch(0.72 0.16 150);
   --warning: oklch(0.8 0.16 78);
   --info: oklch(0.7 0.15 245);
