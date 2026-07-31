@@ -12,6 +12,13 @@ import {
   listAdminCatalog,
   updateAdminProduct,
 } from '../services/adminCatalog';
+import {
+  createCategory,
+  deleteCategory,
+  getCategory,
+  listCategories,
+  updateCategory,
+} from '../services/categories';
 
 const router = Router();
 
@@ -23,6 +30,65 @@ router.get(
     res.json({ items: await listAdminCatalog() });
   }),
 );
+
+// ==========================================
+// RUTAS DE CATEGORÍAS
+// ==========================================
+
+const categoryInputSchema = z.object({
+  name: z.string().min(1).max(80),
+  slug: z.string().min(1).max(80),
+});
+
+router.get(
+  '/categories',
+  asyncHandler(async (_req, res) => {
+    res.json(await listCategories());
+  }),
+);
+
+router.post(
+  '/categories',
+  asyncHandler(async (req, res) => {
+    const data = categoryInputSchema.parse(req.body);
+    res.status(201).json(await createCategory(data.name, data.slug));
+  }),
+);
+
+router.put(
+  '/categories/:id',
+  asyncHandler(async (req, res) => {
+    const id = idSchema.safeParse(req.params.id);
+    if (!id.success) {
+      res.status(404).json({ error: 'Categoría no encontrada.' });
+      return;
+    }
+    const data = categoryInputSchema.parse(req.body);
+    const updated = await updateCategory(id.data, data.name, data.slug);
+    if (!updated) {
+      res.status(404).json({ error: 'Categoría no encontrada.' });
+      return;
+    }
+    res.json(updated);
+  }),
+);
+
+router.delete(
+  '/categories/:id',
+  asyncHandler(async (req, res) => {
+    const id = idSchema.safeParse(req.params.id);
+    if (!id.success) {
+      res.status(404).json({ error: 'Categoría no encontrada.' });
+      return;
+    }
+    await deleteCategory(id.data);
+    res.json({ ok: true });
+  }),
+);
+
+// ==========================================
+// RUTAS DE PRODUCTOS
+// ==========================================
 
 router.post(
   '/',

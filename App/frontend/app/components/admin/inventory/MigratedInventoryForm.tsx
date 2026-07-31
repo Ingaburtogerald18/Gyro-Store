@@ -92,12 +92,12 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
   if (showSuccessPrompt) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-primary">
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <div>
           <h2 className="text-xl font-bold">¡Ítem registrado con éxito!</h2>
-          <p className="text-muted mt-1">El artículo ha sido guardado en el inventario migrado.</p>
+          <p className="text-muted-foreground mt-1">El artículo ha sido guardado en el inventario migrado.</p>
         </div>
         <p className="font-medium mt-4">¿Deseas agregar otro ítem?</p>
         <div className="flex w-full sm:w-auto gap-3 pt-4">
@@ -136,7 +136,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
         <span className="rounded-pill bg-warning/15 px-2.5 py-1 text-xs font-medium text-warning">
           🏷️ Migrado
         </span>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Datos históricos del Excel viejo. No afectan el inventario actual.
         </p>
       </div>
@@ -201,18 +201,18 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
       </div>
 
       {/* Preview calculado en vivo */}
-      <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-6 rounded-card border border-border bg-surface/60 px-4 py-2">
+      <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-6 rounded-card border border-border bg-card/60 px-4 py-2">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted">P. unit. final</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">P. unit. final</p>
           <p className="font-heading text-base font-bold">{formatUsd(priceUnitFinal, 4)}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted">Coste real unit.</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Coste real unit.</p>
           <p className="font-heading text-base font-bold">{formatCordobas(costeReal)}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted">P. sugerido (+40%)</p>
-          <p className="font-heading text-base font-bold text-accent-2">{formatCordobas(sugerido)}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">P. sugerido (+40%)</p>
+          <p className="font-heading text-base font-bold text-primary">{formatCordobas(sugerido)}</p>
         </div>
       </div>
 

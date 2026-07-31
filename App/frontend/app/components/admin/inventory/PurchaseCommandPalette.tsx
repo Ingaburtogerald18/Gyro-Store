@@ -4,8 +4,8 @@ import { Search } from "lucide-react";
 import { type Purchase } from "~/store/api/inventoryV1Api";
 
 const STATUS_LABEL: Record<Purchase["status"], { label: string; cls: string }> = {
-  china: { label: "En tránsito", cls: "bg-info/15 text-info" },
-  received: { label: "Recibido", cls: "bg-accent/15 text-accent-2" },
+  china: { label: "En tránsito", cls: "bg-blue-500/15 text-blue-500" },
+  received: { label: "Recibido", cls: "bg-primary/15 text-primary-2" },
 };
 
 interface Props {
@@ -76,22 +76,22 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -12 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-xl mx-4 overflow-hidden rounded-2xl border border-white/10 bg-surface/80 shadow-2xl backdrop-blur-xl"
+            className="w-full max-w-xl mx-4 overflow-hidden rounded-2xl border border-white/10 bg-card/80 shadow-2xl backdrop-blur-xl"
           >
             {/* Search input */}
-            <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3.5">
-              <Search className="h-5 w-5 shrink-0 text-muted" />
+            <div className="flex items-center gap-3 border-b border/60 px-4 py-3.5">
+              <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por código, lote, producto..."
-                className="flex-1 bg-transparent text-lg outline-none placeholder:text-muted/50"
+                className="flex-1 bg-transparent text-lg outline-none placeholder:text-muted-foreground/50"
               />
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="text-xs text-muted hover:text-text transition-colors"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Limpiar
                 </button>
@@ -101,8 +101,8 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
             {/* Results */}
             <div className="max-h-[360px] overflow-y-auto">
               {results.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted">
-                  Sin resultados para "<span className="text-text">{query}</span>"
+                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  Sin resultados para "<span className="text-foreground">{query}</span>"
                 </p>
               ) : (
                 <ul className="p-1.5">
@@ -112,18 +112,18 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
                       <li key={p.id}>
                         <button
                           onClick={() => select(p)}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none"
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                         >
                           {/* Code badge */}
-                          <span className="shrink-0 rounded-lg bg-accent/10 px-2 py-1 font-mono text-xs font-bold text-accent-2">
+                          <span className="shrink-0 rounded-lg bg-primary/10 px-2 py-1 font-mono text-xs font-bold text-primary-2">
                             {p.code}
                           </span>
 
                           {/* Name + lot */}
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-text">{p.productName}</p>
+                            <p className="truncate text-sm font-medium text-foreground">{p.productName}</p>
                             {p.lot && (
-                              <p className="truncate text-xs text-muted">Lote: {p.lot}</p>
+                              <p className="truncate text-xs text-muted-foreground">Lote: {p.lot}</p>
                             )}
                           </div>
 
@@ -140,7 +140,7 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
             </div>
 
             {/* Footer hint */}
-            <div className="flex items-center gap-3 border-t border-border/40 px-4 py-2 text-[11px] text-muted/60">
+            <div className="flex items-center gap-3 border-t border/40 px-4 py-2 text-[11px] text-muted-foreground/60">
               <span><kbd className="font-mono">↵</kbd> seleccionar</span>
               <span><kbd className="font-mono">Esc</kbd> cerrar</span>
               <span className="ml-auto"><kbd className="font-mono">⌘K</kbd> abrir</span>

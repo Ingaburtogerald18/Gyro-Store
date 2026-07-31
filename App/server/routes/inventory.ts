@@ -30,6 +30,7 @@ import {
   createMigratedItem,
   updateMigratedItem,
   deleteMigratedItem,
+  simulateCost,
 } from '../services/inventory';
 
 const router = Router();
@@ -104,6 +105,16 @@ router.patch(
   }),
 );
 
+router.post(
+  '/purchases/:id/simulate-cost',
+  asyncHandler(async (req, res) => {
+    const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
+    const shippingUnit = z.number().min(0).parse(req.body.shippingUnit);
+    const result = await simulateCost(id, shippingUnit);
+    res.json(result);
+  }),
+);
+
 router.put(
   '/purchases/:id',
   asyncHandler(async (req, res) => {
@@ -135,7 +146,7 @@ router.delete(
   '/purchases/:id',
   asyncHandler(async (req, res) => {
     const id = parseUuidParam(req.params.id, 'Compra no encontrada.');
-    const ok = await deletePurchase(id);
+    const ok = await deletePurchase(id, req.user!.uid);
     if (!ok) {
       res.status(404).json({ error: 'Compra no encontrada.' });
       return;

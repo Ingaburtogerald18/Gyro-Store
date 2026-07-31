@@ -64,7 +64,7 @@ router.put(
     
     const removed = oldImages.filter(url => typeof url === 'string' && !newImages.includes(url));
     if (removed.length > 0) {
-      removed.forEach(url => deleteFileByUrl(url).catch(console.error));
+      await Promise.all(removed.map(url => deleteFileByUrl(url).catch(console.error)));
     }
 
     res.json(updated);

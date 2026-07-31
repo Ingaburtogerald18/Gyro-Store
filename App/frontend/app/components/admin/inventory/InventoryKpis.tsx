@@ -29,7 +29,7 @@ export function InventoryKpis({ tab, period = "all" }: InventoryKpisProps) {
         {[0, 1].map((row) => (
           <div key={row} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="skeleton h-[92px] rounded-card border border-border" />
+              <div key={i} className="skeleton h-[92px] rounded-card border border" />
             ))}
           </div>
         ))}

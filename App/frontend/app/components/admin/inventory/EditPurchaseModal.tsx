@@ -129,26 +129,29 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
           </div>
 
           {/* Tarjeta de totales estilo ticket */}
-          <div className="col-span-3 flex flex-col gap-2 rounded-xl border border-accent/20 bg-accent/5 p-4">
+          <div className="col-span-3 flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4">
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Subtotal (Base × Cantidad)</span>
-              <span className="font-medium text-text">{formatUsd(subtotal)}</span>
+              <span className="text-muted-foreground">Subtotal (Base × Cantidad)</span>
+              <span className="font-medium text-foreground">{formatUsd(subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Total de Impuestos (Imp × Cantidad)</span>
-              <span className="font-medium text-text">+{formatUsd(totalTax, 4)}</span>
+              <span className="text-muted-foreground">Total de Impuestos (Imp × Cantidad)</span>
+              <span className="font-medium text-foreground">+{formatUsd(totalTax, 4)}</span>
             </div>
-            <div className="my-1 border-t border-accent/10" />
+            <div className="my-1 border-t border-primary/10" />
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-accent/70">Total Final</span>
-              <span className="font-heading text-xl font-bold text-accent-2">{formatUsd(totalFinal)}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary/70">Total Final</span>
+              <span className="font-heading text-xl font-bold text-primary-2">{formatUsd(totalFinal)}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <div className="flex justify-end gap-2 border-t border pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">Cancelar</Button>
-          <Button type="submit" size="sm" loading={isLoading}>Guardar cambios</Button>
+          <Button type="submit" size="sm" disabled={isLoading}>
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Guardar cambios
+      </Button>
         </div>
       </form>
       </DialogContent>

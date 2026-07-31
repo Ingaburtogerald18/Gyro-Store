@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import crypto from 'crypto';
 import { uploadFile, optimizeImageBuffer, sanitizePathSegment, deleteFileByUrl } from '../services/storage.js';
 import { requireAdmin } from '../middleware/auth.js';
 
@@ -12,8 +13,8 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Solo se permiten imágenes.'));
+    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+      return cb(new Error('Solo se permiten imágenes y videos.'));
     }
     cb(null, true);
   },
@@ -46,8 +47,9 @@ router.post('/', requireAdmin, upload.single('file'), async (req, res, next) => 
       ext = optimized.ext || ext;
     }
 
-    // Generate unique filename
-    const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+    // Generate unique filename using a hash to prevent duplicates in R2
+    const hash = crypto.createHash('sha256').update(bufferToUpload).digest('hex').substring(0, 16);
+    const uniqueFilename = `${hash}${ext}`;
 
     const url = await uploadFile(bufferToUpload, folder, uniqueFilename, contentType);
 

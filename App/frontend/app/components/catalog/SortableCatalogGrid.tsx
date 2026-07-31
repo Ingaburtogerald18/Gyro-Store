@@ -85,7 +85,7 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
     <Card
       ref={setNodeRef}
       style={style}
-      className={`bg-surface border-border overflow-hidden flex flex-col relative ${isDragging ? 'shadow-2xl ring-2 ring-indigo-500' : ''}`}
+      className={`bg-card border overflow-hidden flex flex-col relative ${isDragging ? 'shadow-2xl ring-2 ring-ring' : ''}`}
     >
       <div className="absolute left-2 top-2 z-10 flex gap-1">
         <button
@@ -101,21 +101,21 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
       <div className="absolute right-2 top-2 z-10 flex gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="rounded-lg bg-black/60 p-1.5 text-white hover:text-indigo-400 hover:bg-black/80 transition-colors"
+          className="rounded-lg bg-black/60 p-1.5 text-white hover:text-primary hover:bg-black/80 transition-colors"
           aria-label="Editar"
         >
           <Edit className="h-4 w-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="rounded-lg bg-black/60 p-1.5 text-white hover:text-rose-400 hover:bg-black/80 transition-colors"
+          className="rounded-lg bg-black/60 p-1.5 text-white hover:text-destructive hover:bg-black/80 transition-colors"
           aria-label="Eliminar"
         >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="aspect-square bg-slate-900/50 relative flex items-center justify-center text-slate-600">
+      <div className="aspect-square bg-card/50 relative flex items-center justify-center text-muted-foreground">
         {item.images && item.images[0] ? (
           <img src={item.images[0]} alt={item.name} className="object-cover w-full h-full" />
         ) : (
@@ -123,11 +123,11 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
         )}
         <div className="absolute bottom-2 right-2">
           {item.published ? (
-            <Badge className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-none">
+            <Badge className="bg-primary/20 text-primary hover:bg-primary/30 border-none">
               <Globe className="w-3 h-3 mr-1" /> Público
             </Badge>
           ) : (
-            <Badge className="bg-slate-800/80 text-slate-400 hover:bg-slate-800 border-none">
+            <Badge className="bg-muted/80 text-muted-foreground hover:bg-muted border-none">
               <Lock className="w-3 h-3 mr-1" /> Oculto
             </Badge>
           )}
@@ -135,15 +135,15 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
       </div>
       <CardContent className="p-4 flex-1">
         {item.isPromo && (
-          <span className="mb-1 block text-xs font-semibold text-indigo-400">Promoción</span>
+          <span className="mb-1 block text-xs font-semibold text-primary">Promoción</span>
         )}
-        <h3 className="font-semibold text-text line-clamp-2" title={item.name}>
+        <h3 className="font-semibold text-foreground line-clamp-2" title={item.name}>
           {item.name}
         </h3>
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-lg font-bold text-indigo-400">C$ {item.price}</span>
+          <span className="text-lg font-bold text-primary">C$ {item.price}</span>
           {item.basePrice && item.basePrice > item.price && (
-            <span className="text-xs text-muted line-through">C$ {item.basePrice}</span>
+            <span className="text-xs text-muted-foreground line-through">C$ {item.basePrice}</span>
           )}
         </div>
       </CardContent>

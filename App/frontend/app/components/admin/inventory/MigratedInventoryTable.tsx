@@ -52,7 +52,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         header: "",
         enableSorting: false,
         cell: () => (
-          <span className="rounded-pill bg-warning/15 px-2 py-1 text-xs font-medium text-warning">
+          <span className="rounded-pill bg-amber-500/15 px-2 py-1 text-xs font-medium text-amber-500">
             Migrado
           </span>
         ),
@@ -65,20 +65,20 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         accessorKey: "quantity",
         header: "Compradas",
         meta: { align: "right" },
-        cell: (c) => <span className="nums font-semibold text-accent-2 bg-accent/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
+        cell: (c) => <span className="nums font-semibold text-primary-2 bg-primary/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
       },
       {
         accessorKey: "quantitySold",
         header: "Salidas",
         meta: { align: "right" },
-        cell: (c) => <span className="nums font-semibold text-danger bg-danger/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
+        cell: (c) => <span className="nums font-semibold text-destructive bg-destructive/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
       },
 
       {
         accessorKey: "stock",
         header: "Stock",
         meta: { align: "right" },
-        cell: (c) => <span className="nums font-bold text-info bg-info/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
+        cell: (c) => <span className="nums font-bold text-blue-500 bg-blue-500/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
       },
       // USD a 2 decimales visibles; precisión completa en el tooltip.
       { accessorKey: "priceBaseUsd", header: "P. Base", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
@@ -94,49 +94,49 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border-border bg-surface shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
   }
 
   return (
     <div className="space-y-4">
       {/* Barra de herramientas unificada y sticky */}
-      <div className="sticky top-[116px] z-10 -mx-4 bg-bg/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+      <div className="sticky top-[116px] z-10 -mx-4 bg-background/90 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           
-          <div className="flex items-center gap-2 rounded-pill border border-border bg-surface px-3 py-1.5 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/15 sm:w-80">
-            <Search className="h-4 w-4 shrink-0 text-muted" />
+          <div className="flex items-center gap-2 rounded-pill border border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:w-80">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               placeholder="Buscar código, lote, producto..."
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
 
           <div className="flex items-center gap-3">
             {selectedItem ? (
               <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
-                <span className="text-sm font-medium text-muted hidden lg:inline mr-2">
-                  <strong className="text-text">{selectedItem.code}</strong> seleccionado
+                <span className="text-sm font-medium text-muted-foreground hidden lg:inline mr-2">
+                  <strong className="text-foreground">{selectedItem.code}</strong> seleccionado
                 </span>
                 <Button
                   variant="ghost"
                   onClick={() => setEditFor(selectedItem)}
-                  className="h-8 bg-surface-2 text-xs hover:text-accent"
+                  className="h-8 bg-muted text-xs hover:text-primary"
                 >
                   <Pencil className="mr-2 h-3.5 w-3.5" /> Editar
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={() => setDeleteFor(selectedItem)}
-                  className="h-8 bg-surface-2 text-xs text-danger hover:bg-danger/15 hover:text-danger"
+                  className="h-8 bg-muted text-xs text-destructive hover:bg-destructive/15 hover:text-destructive"
                 >
                   <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
                 </Button>
                 <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="p-1.5 text-muted hover:text-text rounded-full hover:bg-surface-2 transition-colors"
+                  className="p-1.5 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
                   title="Cancelar selección"
                 >
                   <X className="h-4 w-4" />
@@ -152,7 +152,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
                   value={filterTab}
                   onChange={(id) => { setFilterTab(id as "in_stock" | "out_of_stock"); setSelectedItem(null); }}
                   layoutId="migrated-subtabs"
-                  indicatorClassName={filterTab === "out_of_stock" ? "bg-danger/90" : "bg-gradient-accent"}
+                  indicatorClassName={filterTab === "out_of_stock" ? "bg-destructive/90" : "bg-gradient-accent"}
                 />
                 {onOpenForm && (
                   <Button onClick={onOpenForm} className="flex items-center gap-1.5 whitespace-nowrap">
@@ -196,14 +196,14 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
           <DialogHeader>
             <DialogTitle>Eliminar ítem migrado</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted">
-            ¿Eliminar el ítem migrado <strong className="text-text">{deleteFor?.code}</strong>? Esta acción no se puede deshacer.
+          <p className="text-sm text-muted-foreground">
+            ¿Eliminar el ítem migrado <strong className="text-foreground">{deleteFor?.code}</strong>? Esta acción no se puede deshacer.
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setDeleteFor(null)}>
               Cancelar
             </Button>
-            <Button onClick={handleDelete} disabled={deleting} className="bg-danger/90">
+            <Button onClick={handleDelete} disabled={deleting} className="bg-destructive/90">
               Eliminar
             </Button>
           </div>

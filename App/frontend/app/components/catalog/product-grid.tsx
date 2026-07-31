@@ -103,15 +103,15 @@ function GridSkeleton() {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-card border border-border bg-surface py-20 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-card border border bg-card py-20 text-center">
       <span
-        className="relative grid h-16 w-16 place-items-center rounded-2xl bg-accent/8 text-accent-2 ring-1 ring-accent/15 ring-inset"
+        className="relative grid h-16 w-16 place-items-center rounded-2xl bg-primary/8 text-primary-2 ring-1 ring-primary/15 ring-inset"
         aria-hidden
       >
-        <span className="absolute inset-0 rounded-2xl bg-accent/10 blur-xl" />
+        <span className="absolute inset-0 rounded-2xl bg-primary/10 blur-xl" />
         <PackageSearch className="relative h-7 w-7" />
       </span>
-      <p className="max-w-xs text-sm text-balance text-muted">{text}</p>
+      <p className="max-w-xs text-sm text-balance text-muted-foreground">{text}</p>
     </div>
   );
 }

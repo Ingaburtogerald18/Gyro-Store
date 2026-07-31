@@ -39,6 +39,7 @@ export interface InventoryRow {
   priceUnitFinalUsd?: number;
   costRealCordobas?: number;
   costoFijoCordobas?: number;
+  costeFinalCordobas?: number;
   preTotalUsd?: number;
   totalFinalUsd?: number;
   suggestedPrice?: number | null;
@@ -60,6 +61,7 @@ export interface NewPurchase {
   lot: string;
   code: string;
   productName: string;
+  category: string;
   quantity: number;
   costUnit: number;
   taxUnit: number;
@@ -106,7 +108,6 @@ export interface NewMigratedItem {
 export interface ArrivalPayload {
   arrivalDate: string;
   shippingUnit: number;
-  category: string;
   suggestedPrice?: number;
 }
 
@@ -145,6 +146,9 @@ export const inventoryApi = baseApi.injectEndpoints({
     reportArrival: build.mutation<{ ok: boolean }, { id: string; body: ArrivalPayload }>({
       query: ({ id, body }) => ({ url: `/inventory/purchases/${id}/arrival`, method: "PATCH", body }),
       invalidatesTags: ["Purchase", "Product", "Catalog"],
+    }),
+    simulateCost: build.mutation<{ precioSugerido: number }, { id: string; shippingUnit: number }>({
+      query: ({ id, shippingUnit }) => ({ url: `/inventory/purchases/${id}/simulate-cost`, method: "POST", body: { shippingUnit } }),
     }),
     updatePurchase: build.mutation<{ ok: boolean }, { id: string; body: Partial<Purchase> }>({
       query: ({ id, body }) => ({ url: `/inventory/purchases/${id}`, method: "PUT", body }),
@@ -188,6 +192,7 @@ export const {
   useGetInventoryKpisQuery,
   useCreatePurchaseMutation,
   useReportArrivalMutation,
+  useSimulateCostMutation,
   useUpdatePurchaseMutation,
   useRevertPurchaseMutation,
   useDeletePurchaseMutation,

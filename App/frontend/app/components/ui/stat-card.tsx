@@ -4,24 +4,24 @@ import { cn } from "~/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { CountUp } from "./CountUp";
 
-export type CardVariant = "default" | "interactive" | "highlight";
+export type SpotlightCardVariant = "default" | "interactive" | "highlight";
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: CardVariant;
+export interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: SpotlightCardVariant;
   /** Radio del resplandor en px (solo para variant="highlight"). */
   spotlightRadius?: number;
   /** Intensidad del color de acento (0–100) (solo para variant="highlight"). */
   spotlightIntensity?: number;
 }
 
-export function Card({
+export function SpotlightCard({
   variant = "default",
   spotlightRadius = 360,
   spotlightIntensity = 16,
   className,
   children,
   ...props
-}: CardProps) {
+}: SpotlightCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
 
@@ -32,7 +32,7 @@ export function Card({
     ref.current.style.setProperty("--spot-y", `${e.clientY - r.top}px`);
   }
 
-  const baseStyles = "rounded-card border border-border bg-surface shadow-premium transition-all duration-300 hover:shadow-2xl hover:border-border/80 hover:-translate-y-1";
+  const baseStyles = "rounded-card border border bg-card shadow-premium transition-all duration-300 hover:shadow-2xl hover:border/80 hover:-translate-y-1";
   
   if (variant === "highlight") {
     return (
@@ -61,7 +61,7 @@ export function Card({
     <div
       className={cn(
         baseStyles,
-        variant === "interactive" && "transition-colors hover:border-white/10 hover:bg-surface-hover",
+        variant === "interactive" && "transition-colors hover:border-white/10 hover:bg-primary",
         className,
       )}
       {...props}
@@ -71,7 +71,7 @@ export function Card({
   );
 }
 
-export function CardHeader({
+export function SectionHeader({
   title,
   subtitle,
   action,
@@ -83,10 +83,10 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3 border-b border-border px-5 py-4", className)}>
+    <div className={cn("flex items-start justify-between gap-3 border-b border px-5 py-4", className)}>
       <div className="min-w-0">
-        <h3 className="truncate text-sm font-semibold text-text">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
+        <h3 className="truncate text-sm font-semibold text-foreground">{title}</h3>
+        {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -96,16 +96,16 @@ export function CardHeader({
 // ── StatCard unificado (mantiene su nombre y Props para retrocompatibilidad) ──
 export type StatCardColor = "neutral" | "indigo" | "sky" | "amber" | "emerald" | "rose" | "purple" | "red";
 
-const BASE_STAT = "bg-surface-2/30 border-border hover:border-white/10";
+const BASE_STAT = "bg-muted/30 border hover:border-white/10";
 const COLOR_MAP: Record<StatCardColor, { card: string; icon: string; label: string; value: string }> = {
-  neutral: { card: BASE_STAT, icon: "stat-card-icon text-muted", label: "text-muted/90", value: "text-text" },
-  indigo: { card: `${BASE_STAT} hover:border-tone-indigo/30`, icon: "stat-card-icon text-tone-indigo", label: "text-muted/90", value: "text-tone-indigo" },
-  sky: { card: `${BASE_STAT} hover:border-tone-sky/30`, icon: "stat-card-icon text-tone-sky", label: "text-muted/90", value: "text-tone-sky" },
-  amber: { card: `${BASE_STAT} hover:border-tone-amber/30`, icon: "stat-card-icon text-tone-amber", label: "text-muted/90", value: "text-tone-amber" },
-  emerald: { card: `${BASE_STAT} hover:border-accent/30`, icon: "stat-card-icon text-tone-emerald", label: "text-muted/90", value: "text-tone-emerald" },
-  rose: { card: `${BASE_STAT} hover:border-tone-rose/30`, icon: "stat-card-icon text-tone-rose", label: "text-muted/90", value: "text-tone-rose" },
-  purple: { card: `${BASE_STAT} hover:border-tone-purple/30`, icon: "stat-card-icon text-tone-purple", label: "text-muted/90", value: "text-tone-purple" },
-  red: { card: `${BASE_STAT} hover:border-tone-red/30`, icon: "stat-card-icon text-tone-red", label: "text-muted/90", value: "text-tone-red" },
+  neutral: { card: BASE_STAT, icon: "stat-card-icon text-muted-foreground", label: "text-muted-foreground/90", value: "text-foreground" },
+  indigo: { card: `${BASE_STAT} hover:border-tone-indigo/30`, icon: "stat-card-icon text-tone-indigo", label: "text-muted-foreground/90", value: "text-tone-indigo" },
+  sky: { card: `${BASE_STAT} hover:border-tone-sky/30`, icon: "stat-card-icon text-tone-sky", label: "text-muted-foreground/90", value: "text-tone-sky" },
+  amber: { card: `${BASE_STAT} hover:border-tone-amber/30`, icon: "stat-card-icon text-tone-amber", label: "text-muted-foreground/90", value: "text-tone-amber" },
+  emerald: { card: `${BASE_STAT} hover:border-primary/30`, icon: "stat-card-icon text-tone-emerald", label: "text-muted-foreground/90", value: "text-tone-emerald" },
+  rose: { card: `${BASE_STAT} hover:border-tone-rose/30`, icon: "stat-card-icon text-tone-rose", label: "text-muted-foreground/90", value: "text-tone-rose" },
+  purple: { card: `${BASE_STAT} hover:border-tone-purple/30`, icon: "stat-card-icon text-tone-purple", label: "text-muted-foreground/90", value: "text-tone-purple" },
+  red: { card: `${BASE_STAT} hover:border-tone-red/30`, icon: "stat-card-icon text-tone-red", label: "text-muted-foreground/90", value: "text-tone-red" },
 };
 
 export function StatCard({
@@ -127,7 +127,7 @@ export function StatCard({
       title={hint}
       className={`stat-card-container rounded-card border transition-colors duration-300 ${theme.card}`}
     >
-      <Card variant="highlight" className="p-4 shadow-none bg-transparent border-none">
+      <SpotlightCard variant="highlight" className="p-4 shadow-none bg-transparent border-none">
         <div className="flex items-center gap-2">
           {Icon && <Icon className={`h-4 w-4 ${theme.icon}`} />}
           <span className={`stat-card-label text-xs uppercase tracking-wide font-medium ${theme.label}`}>{label}</span>
@@ -135,8 +135,8 @@ export function StatCard({
         <p className={`stat-card-value nums mt-2 font-heading text-2xl font-bold ${theme.value}`}>
           {countTo !== undefined ? <CountUp value={countTo} format={format} /> : value}
         </p>
-        {sub && <p className="nums mt-0.5 text-sm font-medium text-muted">{sub}</p>}
-      </Card>
+        {sub && <p className="nums mt-0.5 text-sm font-medium text-muted-foreground">{sub}</p>}
+      </SpotlightCard>
     </motion.div>
   );
 }

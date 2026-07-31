@@ -82,7 +82,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
           ) : (
             <button
               onClick={() => navigate(`/admin/catalogo?link=new`)}
-              className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning hover:bg-warning/25 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-500 hover:bg-amber-500/25 transition-colors cursor-pointer"
             >
               <AlertTriangle className="h-3 w-3" />
               Sin mapear
@@ -95,14 +95,14 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         accessorKey: "quantitySold",
         header: "Vendido",
         meta: { align: "right" },
-        cell: (c) => <span className={c.getValue() > 0 ? "text-warning font-medium" : "text-muted"}>{c.getValue()}</span>
+        cell: (c) => <span className={c.getValue() > 0 ? "text-amber-500 font-medium" : "text-muted-foreground"}>{c.getValue()}</span>
       },
 
       {
         accessorKey: "available",
         header: "Stock",
         meta: { align: "right" },
-        cell: (c) => <span className={c.getValue() === 0 ? "text-danger font-bold" : "text-accent-2 font-bold"}>{c.getValue()}</span>
+        cell: (c) => <span className={c.getValue() === 0 ? "text-destructive font-bold" : "text-primary-2 font-bold"}>{c.getValue()}</span>
       },
       // USD a 2 decimales visibles; la precisión completa (4) queda en el tooltip.
       { accessorKey: "priceUnitUsd", header: "P. Unit. (USD)", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
@@ -113,13 +113,13 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         accessorKey: "costRealCordobas",
         header: "Coste",
         meta: { align: "right" },
-        cell: (c) => <span className="text-accent-2">{formatCordobas(c.getValue())}</span>,
+        cell: (c) => <span className="text-primary-2">{formatCordobas(c.getValue())}</span>,
       },
       {
         accessorKey: "costoFijoCordobas",
         header: "Coste c/ Fijos",
         meta: { align: "right" },
-        cell: (c) => <span className="text-warning font-medium">{formatCordobas(c.getValue() || 0)}</span>,
+        cell: (c) => <span className="text-amber-500 font-medium">{formatCordobas(c.getValue() || 0)}</span>,
       },
       {
         id: "precioSugerido",
@@ -127,8 +127,8 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         meta: { align: "right" },
         cell: ({ row }) => {
           const ps = row.original.suggestedPrice;
-          if (!ps) return <span className="text-muted text-xs">—</span>;
-          return <span className="text-accent-2 font-semibold">{formatCordobas(ps)}</span>;
+          if (!ps) return <span className="text-muted-foreground text-xs">—</span>;
+          return <span className="text-primary-2 font-semibold">{formatCordobas(ps)}</span>;
         },
       },
       {
@@ -137,8 +137,8 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         meta: { align: "right" },
         cell: ({ row }) => {
           const ganancia = row.original.gananciaUnitCordobas;
-          if (ganancia == null) return <span className="text-muted text-xs">—</span>;
-          return <span className="text-accent font-semibold">{formatCordobas(ganancia)}</span>;
+          if (ganancia == null) return <span className="text-muted-foreground text-xs">—</span>;
+          return <span className="text-primary font-semibold">{formatCordobas(ganancia)}</span>;
         },
       },
       {
@@ -152,7 +152,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
             <div className="flex items-center justify-end gap-1.5">
               <button
                 onClick={() => setRevertFor(rowData)}
-                className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2.5 py-1 text-xs font-medium text-danger hover:bg-danger/10 transition-colors"
+                className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
               >
                 Descartar llegada
               </button>
@@ -168,7 +168,7 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
   );
 
   if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card border border-border bg-surface shadow-premium" />;
+    return <div className="h-64 animate-pulse rounded-card border border bg-card shadow-premium" />;
   }
 
   return (
@@ -187,23 +187,24 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
       <DialogTitle>{"Descartar Llegada de Lote"}</DialogTitle>
     </DialogHeader>
         <div className="space-y-4">
-          <p className="text-sm text-muted leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             ¿Estás seguro de que deseas descartar la llegada del producto{" "}
-            <strong className="text-text font-semibold">{revertFor?.productName}</strong> (Lote:{" "}
-            <span className="text-accent-2 font-mono font-bold">{revertFor?.lot}</span>)?
+            <strong className="text-foreground font-semibold">{revertFor?.productName}</strong> (Lote:{" "}
+            <span className="text-primary-2 font-mono font-bold">{revertFor?.lot}</span>)?
           </p>
-          <div className="rounded-lg border border-danger/20 bg-danger/5 p-3.5 text-xs text-danger leading-normal">
-            <strong className="block mb-1 text-danger font-semibold">⚠️ Advertencia de Inventario:</strong>
-            Se restarán <strong className="text-danger font-bold">{revertFor?.available} unidades</strong> del stock actual en bodega. El lote completo volverá al estado original de <strong className="text-danger font-semibold">"En tránsito"</strong> en el Registro de Compras.
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3.5 text-xs text-destructive leading-normal">
+            <strong className="block mb-1 text-destructive font-semibold">⚠️ Advertencia de Inventario:</strong>
+            Se restarán <strong className="text-destructive font-bold">{revertFor?.available} unidades</strong> del stock actual en bodega. El lote completo volverá al estado original de <strong className="text-destructive font-semibold">"En tránsito"</strong> en el Registro de Compras.
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setRevertFor(null)}>
             Cancelar
           </Button>
-          <Button onClick={handleRevert} loading={reverting} className="bg-danger/90 hover:bg-danger text-white">
-            Confirmar y Descartar
-          </Button>
+          <Button onClick={handleRevert} disabled={reverting} className="bg-destructive/90 hover:bg-destructive text-white">
+        {reverting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Confirmar y Descartar
+      </Button>
         </div>
         </DialogContent>
 </Dialog>

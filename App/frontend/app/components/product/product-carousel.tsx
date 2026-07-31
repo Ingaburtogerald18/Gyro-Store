@@ -9,7 +9,8 @@ import type { CatalogProduct } from '@shared/schemas';
 import { ProductCard } from './product-card';
 import { Button } from '~/components/ui/button';
 import { useGetConfigQuery } from '~/store/api/configApi';
-import { cn, formatCordobas, getProductUrl } from '~/lib/utils';
+import { cn } from "~/lib/utils"
+import { formatCordobas, getProductUrl } from "~/lib/formatters";
 
 export function ProductCarousel({
   title,
@@ -54,9 +55,9 @@ export function ProductCarousel({
     <section className="py-2 md:py-8" aria-label={title}>
       <div className="mb-5 flex items-end justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="text-[17px] font-bold tracking-tight text-text sm:text-2xl">{title}</h2>
+          <h2 className="text-[17px] font-bold tracking-tight text-foreground sm:text-2xl">{title}</h2>
           {subtitle && (
-            <p className="mt-0.5 text-[11px] font-light text-muted sm:text-sm">{subtitle}</p>
+            <p className="mt-0.5 text-[11px] font-light text-muted-foreground sm:text-sm">{subtitle}</p>
           )}
         </div>
 
@@ -76,7 +77,7 @@ export function ProductCarousel({
                 className={cn(
                   'ease-expo h-8 w-8 rounded-full active:scale-95 sm:h-10 sm:w-10',
                   'disabled:opacity-30',
-                  !showcase && 'bg-surface text-muted hover:border-white/25 hover:text-text',
+                  !showcase && 'bg-card text-muted-foreground hover:border-white/25 hover:text-foreground',
                 )}
               >
                 <Icon aria-hidden className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -89,7 +90,7 @@ export function ProductCarousel({
       <div className="relative">
         <div
           className={cn(
-            'pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-bg to-transparent transition-opacity',
+            'pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent transition-opacity',
             canNext ? 'opacity-100' : 'opacity-0',
           )}
           aria-hidden
@@ -162,27 +163,27 @@ function ShowcaseCard({ product, index }: { product: CatalogProduct; index: numb
               style={{ viewTransitionName: `vt-product-${product.id}` } as React.CSSProperties}
             />
           ) : (
-            <div className="grid h-full place-items-center text-muted">
+            <div className="grid h-full place-items-center text-muted-foreground">
               <ImageOff aria-hidden className="h-8 w-8" />
             </div>
           )}
         </div>
 
-        <h3 className="mt-3 text-[13px] leading-snug font-bold tracking-tight text-text transition-colors group-hover:text-accent-2 sm:mt-4 sm:text-xl">
+        <h3 className="mt-3 text-[13px] leading-snug font-bold tracking-tight text-foreground transition-colors group-hover:text-primary-2 sm:mt-4 sm:text-xl">
           {product.name}
         </h3>
         <div className="mt-1.5 flex items-baseline gap-2">
-          <span className="text-[13px] font-extrabold text-accent-2 tabular-nums sm:text-lg">
+          <span className="text-[13px] font-extrabold text-primary-2 tabular-nums sm:text-lg">
             {formatCordobas(product.price, config?.currency)}
           </span>
           {onSale && (
-            <span className="text-xs text-muted line-through tabular-nums sm:text-sm">
+            <span className="text-xs text-muted-foreground line-through tabular-nums sm:text-sm">
               {formatCordobas(compareAt, config?.currency)}
             </span>
           )}
         </div>
         {description && (
-          <p className="mt-1.5 line-clamp-2 max-w-[400px] text-[11px] leading-relaxed font-light text-pretty text-muted sm:mt-2 sm:line-clamp-4 sm:text-sm">
+          <p className="mt-1.5 line-clamp-2 max-w-[400px] text-[11px] leading-relaxed font-light text-pretty text-muted-foreground sm:mt-2 sm:line-clamp-4 sm:text-sm">
             {description}
           </p>
         )}

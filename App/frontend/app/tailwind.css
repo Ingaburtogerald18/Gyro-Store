@@ -1,155 +1,87 @@
 /*
- * Sistema de diseño "Editorial Dark" — tokens de marca Gyro Store.
+ * Sistema de diseño Gyro Store — preset shadcn "b2DeDSSjx" (cyan/emerald/Geist).
  *
- * Fuente de verdad: DESIGN.md (§2 Color). Los valores se portaron del código
- * que hoy corre en gyrostorenic.com (v1 `app/styles/globals.css`), que es el
- * look aprobado; donde DESIGN.md y ese código divergían, mandó el código.
+ * Migración nativa: los tokens los define el preset en `:root` / `[data-theme="dark"]`
+ * (más abajo). Este archivo agrega lo único que el preset no trae:
+ *   1. El bloque `@theme inline` que registra `--color-*` → `var(--*)` (sin esto
+ *      Tailwind no genera `bg-background`, `border-border`, etc.).
+ *   2. Tokens semánticos que shadcn no incluye pero la app necesita: whatsapp
+ *      (verde del canal), success / warning / info, y los radios card / pill.
  *
- * Regla dura: ningún componente usa colores crudos de Tailwind
- * (`bg-slate-800`, `text-cyan-400`). Todo sale de estos tokens semánticos.
+ * Regla: cero colores crudos de Tailwind en componentes; todo sale de estos tokens.
  */
 @import "tailwindcss";
 /* Animaciones enter/exit (animate-in / animate-out) de las primitivas shadcn. */
 @import "tw-animate-css";
+/* Utilidades del preset (variantes data-open/data-closed, no-scrollbar, scroll-fade,
+   shimmer). Los componentes las usan; sin este import quedan sin estilo. */
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 
-/* La variante `dark:` sigue a nuestro data-theme, no al prefers-color-scheme
-   del sistema: el tema lo controla useTheme (doc 05 §7). */
+/* La variante `dark:` sigue a nuestro data-theme, no al prefers-color-scheme del
+   sistema: el tema lo controla useTheme (doc 05 §7). */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-@theme {
-  /* ── Superficies — Midnight (neutros fríos casi-negros, nunca negro puro).
-     Cada nivel sube un peldaño real de luminosidad → profundidad legible. ── */
-  --color-bg: #0a0a0f;
-  --color-surface: #15151e;
-  --color-surface-2: #1e1e2a;
-  --color-surface-hover: #2a2a38;
-  --color-border: rgba(148, 184, 255, 0.09);
-
-  /* ── Acento: TEAL de marca (logo #42c5b0). El primario vivo resalta sobre el
-     fondo oscuro; el hover baja al teal profundo. ── */
-  --color-accent: #2dd4bf;
-  --color-accent-2: #5eead4;
-  --color-accent-hover: #14b8a6;
-  /* WhatsApp en su verde canónico: distinto del teal para no confundirse. */
-  --color-whatsapp: #25d366;
-  --color-grad-from: #14b8a6;
-  --color-grad-to: #0d9488;
-
-  /* ── Texto ── */
-  --color-text: #eaf1ff;
-  --color-muted: #8b9bb8;
-
-  /* ── Estados semánticos ── */
-  --color-danger: #f87171;
-  --color-warning: #fbbf24;
-  --color-info: #38bdf8;
-  --color-success: #22c55e;
-
-  /* ── Violeta acento (segundo color de marca) — badges y detalles ── */
-  --color-badge: #885cf6;
-  --color-badge-2: #a78bfa;
-
-  /* Tipografía UNIFICADA: Inter para todo (body + headings). La jerarquía se
-     logra con tamaño y peso, no con familias distintas. */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-heading: "Inter", system-ui, -apple-system, sans-serif;
-
-  --radius-card: 20px;
-  --radius-input: 14px;
-  --radius-pill: 99px;
-
-  /* Entradas y reveals: ease-out exponencial. */
-  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 /* ──────────────────────────────────────────────────────────────
-   Puente para las primitivas de shadcn/ui.
-   El CLI genera componentes con la nomenclatura estándar
-   (background/foreground/primary/muted/…). En vez de repintar cada
-   archivo, se mapean acá a los MISMOS tokens de marca: un solo lugar
-   de verdad y el flip dark↔light sigue funcionando.
-
-   OJO con `accent`: shadcn lo usa como fondo de hover sutil, pero en
-   Gyro `accent` es el esmeralda de marca (precio, CTA). Manda la marca
-   — los componentes de ui/ que traían `hover:bg-accent` se corrigieron
-   a `hover:bg-surface-hover`.
+   Registro de tokens: mapea los `--*` del preset a los `--color-*` que Tailwind
+   usa para generar utilidades. Es el bloque estándar de shadcn v4 + los extras
+   propios de Gyro al final.
    ────────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--color-bg);
-  --color-foreground: var(--color-text);
-  --color-card: var(--color-surface);
-  --color-card-foreground: var(--color-text);
-  --color-popover: var(--color-surface-2);
-  --color-popover-foreground: var(--color-text);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: oklch(0.985 0 0);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  /* El esmeralda es medio-claro: el CTA plano lleva texto OSCURO (~10:1).
-     Nunca texto blanco sobre el accent plano (DESIGN.md §2). */
-  --color-primary: var(--color-accent);
-  --color-primary-foreground: var(--color-bg);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 
-  --color-secondary: var(--color-surface-2);
-  --color-secondary-foreground: var(--color-text);
-  --color-muted-bg: var(--color-surface-2);
-  --color-muted-foreground: var(--color-muted);
-  --color-accent-foreground: var(--color-bg);
-  --color-destructive: var(--color-danger);
-  --color-destructive-foreground: var(--color-bg);
-  --color-input: var(--color-border);
-  --color-ring: var(--color-accent);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ── Extras de Gyro (shadcn no los trae) ── */
+  --color-whatsapp: var(--whatsapp);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-card: 0.75rem;
+  --radius-pill: 9999px;
+
+  /* Tipografía del preset. */
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }
-
-/* ──────────────────────────────────────────────────────────────
-   Modo claro "Daylight" — variante calibrada; el oscuro sigue siendo
-   la identidad de marca. El acento se OSCURECE a emerald-700 para que
-   un solo token sirva como relleno y como texto legible (DESIGN.md §2.1).
-   ────────────────────────────────────────────────────────────── */
-[data-theme="light"] {
-  /* "Alabaster / Frosted Pearl": nunca blanco clínico. El fondo es una perla con
-     tinte frío y la superficie separa sin necesidad de sombra dura. */
-  --color-bg: #e9edf3;
-  --color-surface: #ffffff;
-  --color-surface-2: #eef2f7;
-  --color-surface-hover: #e3e9f1;
-  --color-border: rgba(15, 40, 70, 0.12);
-
-  /* Teal profundo: legible como texto sobre blanco y mantiene la marca. */
-  --color-accent: #0f766e;
-  --color-accent-2: #115e59;
-  --color-accent-hover: #115e59;
-  --color-whatsapp: #128c3e;
-  --color-grad-from: #0f766e;
-  --color-grad-to: #0d9488;
-
-  --color-text: #0f2420;
-  --color-muted: #5c6b66;
-
-  --color-danger: #e11d48;
-  --color-warning: #d97706;
-  --color-info: #0284c7;
-  --color-success: #16a34a;
-
-  --color-badge: #6366f1;
-  --color-badge-2: #4f46e5;
-
-  color-scheme: light;
-}
-
-/* Puente de hairlines: las utilidades `border-white/α` y `bg-white/α` que usa
-   el storefront son INVISIBLES sobre fondo claro; se remapean a tinta oscura
-   translúcida. Si agregás un `border-white/N` nuevo, sumalo también acá
-   (DESIGN.md §2.1, regla 2). */
-[data-theme="light"] .border-white\/5 { border-color: rgba(15, 23, 42, 0.07); }
-[data-theme="light"] .border-white\/10 { border-color: rgba(15, 23, 42, 0.11); }
-[data-theme="light"] .border-white\/20 { border-color: rgba(15, 23, 42, 0.16); }
-[data-theme="light"] .border-white\/25 { border-color: rgba(15, 23, 42, 0.2); }
-[data-theme="light"] .bg-white\/5 { background-color: rgba(15, 23, 42, 0.04); }
-[data-theme="light"] .bg-white\/10 { background-color: rgba(15, 23, 42, 0.06); }
-[data-theme="light"] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.05); }
-[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.07); }
 
 /* Escenario del producto: transparente a propósito — las fotos del catálogo ya
-   traen su propio fondo, así que un recuadro extra solo ensuciaría. Se conserva
-   como gancho de layout para poder cambiarlo en un solo lugar. */
+   traen su propio fondo. Se conserva como gancho de layout. */
 @utility product-stage {
   background-color: transparent;
 }
@@ -164,13 +96,13 @@ html {
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Cifras siempre tabulares (precios, stock, contadores) — DESIGN.md §3. */
+/* Cifras siempre tabulares (precios, stock, contadores). */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
@@ -181,3 +113,98 @@ body {
 .login-enter-slide { animation: login-enter-slide 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .login-enter-rise { animation: login-enter-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.12s backwards; }
 .login-enter-item { animation: login-enter-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+
+/* ──────────────────────────────────────────────────────────────
+   Tokens del preset b2DeDSSjx. Light en :root, dark en [data-theme="dark"].
+   Los 4 extras (whatsapp/success/warning/info) se agregan a ambos.
+   ────────────────────────────────────────────────────────────── */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.148 0.004 228.8);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.148 0.004 228.8);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.148 0.004 228.8);
+  --primary: oklch(0.52 0.105 223.128);
+  --primary-foreground: oklch(0.984 0.019 200.873);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.963 0.002 197.1);
+  --muted-foreground: oklch(0.56 0.021 213.5);
+  --accent: oklch(0.963 0.002 197.1);
+  --accent-foreground: oklch(0.218 0.008 223.9);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.925 0.005 214.3);
+  --input: oklch(0.925 0.005 214.3);
+  --ring: oklch(0.723 0.014 214.4);
+  --chart-1: oklch(0.845 0.143 164.978);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.596 0.145 163.225);
+  --chart-4: oklch(0.508 0.118 165.612);
+  --chart-5: oklch(0.432 0.095 166.913);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.987 0.002 197.1);
+  --sidebar-foreground: oklch(0.148 0.004 228.8);
+  --sidebar-primary: oklch(0.609 0.126 221.723);
+  --sidebar-primary-foreground: oklch(0.984 0.019 200.873);
+  --sidebar-accent: oklch(0.963 0.002 197.1);
+  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+  --sidebar-border: oklch(0.925 0.005 214.3);
+  --sidebar-ring: oklch(0.723 0.014 214.4);
+  /* Extras Gyro. */
+  --whatsapp: #128c3e;
+  --success: oklch(0.63 0.15 150);
+  --warning: oklch(0.72 0.15 75);
+  --info: oklch(0.6 0.14 245);
+}
+
+[data-theme="dark"] {
+  --background: oklch(0.148 0.004 228.8);
+  --foreground: oklch(0.987 0.002 197.1);
+  --card: oklch(0.218 0.008 223.9);
+  --card-foreground: oklch(0.987 0.002 197.1);
+  --popover: oklch(0.218 0.008 223.9);
+  --popover-foreground: oklch(0.987 0.002 197.1);
+  --primary: oklch(0.45 0.085 224.283);
+  --primary-foreground: oklch(0.984 0.019 200.873);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.275 0.011 216.9);
+  --muted-foreground: oklch(0.723 0.014 214.4);
+  --accent: oklch(0.275 0.011 216.9);
+  --accent-foreground: oklch(0.987 0.002 197.1);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.56 0.021 213.5);
+  --chart-1: oklch(0.845 0.143 164.978);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.596 0.145 163.225);
+  --chart-4: oklch(0.508 0.118 165.612);
+  --chart-5: oklch(0.432 0.095 166.913);
+  --sidebar: oklch(0.218 0.008 223.9);
+  --sidebar-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-primary: oklch(0.715 0.143 215.221);
+  --sidebar-primary-foreground: oklch(0.302 0.056 229.695);
+  --sidebar-accent: oklch(0.275 0.011 216.9);
+  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.56 0.021 213.5);
+  /* Extras Gyro (tono para fondo oscuro). */
+  --whatsapp: #25d366;
+  --success: oklch(0.72 0.16 150);
+  --warning: oklch(0.8 0.16 78);
+  --info: oklch(0.7 0.15 245);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

@@ -6,11 +6,11 @@ import { cn, formatCordobas } from "~/lib/utils";
 type MoneyTone = "default" | "muted" | "strong" | "pos" | "neg";
 
 const MONEY_TONE: Record<MoneyTone, string> = {
-  default: "text-text",
-  muted: "text-muted",
-  strong: "font-semibold text-text",
-  pos: "font-semibold text-accent-2",
-  neg: "font-semibold text-danger",
+  default: "text-foreground",
+  muted: "text-muted-foreground",
+  strong: "font-semibold text-foreground",
+  pos: "font-semibold text-primary-2",
+  neg: "font-semibold text-destructive",
 };
 
 /** Monto en córdobas. `negative` antepone el signo − (deducciones). */
@@ -23,7 +23,7 @@ export function MoneyCell({
   tone?: MoneyTone;
   negative?: boolean;
 }) {
-  if (value === undefined || value === null) return <span className="text-muted">—</span>;
+  if (value === undefined || value === null) return <span className="text-muted-foreground">—</span>;
   return (
     <span className={cn("nums", MONEY_TONE[tone])}>
       {negative ? "−" : ""}
@@ -34,7 +34,7 @@ export function MoneyCell({
 
 /** Código de producto (mono, discreto). */
 export function CodeCell({ value }: { value?: string | null }) {
-  return <span className="font-mono text-xs text-muted">{value || "—"}</span>;
+  return <span className="font-mono text-xs text-muted-foreground">{value || "—"}</span>;
 }
 
 /** 

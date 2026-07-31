@@ -37,10 +37,10 @@ export function GlobalProgress() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { delay: 0.3 } }}
-          className="fixed top-0 left-0 right-0 z-[100] h-[3px] bg-accent/20"
+          className="fixed top-0 left-0 right-0 z-[100] h-[3px] bg-primary/20"
         >
           <motion.div
-            className="h-full bg-accent shadow-[0_0_10px_theme('colors.accent.DEFAULT')]"
+            className="h-full bg-primary shadow-[0_0_10px_theme('colors.accent.DEFAULT')]"
             initial={{ width: '0%' }}
             animate={{ width: `${progress}%` }}
             transition={{ ease: 'easeOut', duration: 0.2 }}

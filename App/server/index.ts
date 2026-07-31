@@ -21,8 +21,12 @@ import uploadRouter from './routes/upload';
 
 import combosRouter from './routes/combos';
 import ordersRouter from './routes/orders';
+import reportsRouter from './routes/reports';
 import contactRouter from './routes/contact';
 import authRouter from './routes/auth';
+import salidasRouter from './routes/salidas';
+import cajaRouter from './routes/caja';
+import cuadreRouter from './routes/cuadre';
 import { apiLimiter, publicOrderLimiter, contactLimiter } from './middleware/rateLimiter';
 import { sanitizeBody } from './utils/sanitize';
 import { logger } from './utils/logger';
@@ -78,6 +82,9 @@ app.use('/api/invoices', invoicesRouter);
 app.use('/api/installments', installmentsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/combos', combosRouter);
+app.use('/api/salidas', salidasRouter);
+app.use('/api/caja', cajaRouter);
+app.use('/api/cuadre', cuadreRouter);
 
 // Límite propio para el checkout público, ANTES de montar el router de pedidos:
 // es el único endpoint anónimo que escribe en la base. Solo intercepta el POST
@@ -89,6 +96,7 @@ app.use('/api/orders', ordersRouter);
 // Mismo patrón: el límite propio intercepta el POST antes del router.
 app.post('/api/contact', contactLimiter);
 app.use('/api/contact', contactRouter);
+app.use('/api/reports', reportsRouter);
 
 // ── Cierre de la cadena ──
 app.use('/api', notFoundHandler);

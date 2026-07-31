@@ -46,7 +46,14 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     // suppressHydrationWarning: el script anti-flash puede cambiar data-theme
     // antes de que React hidrate; ese "mismatch" es intencional.
-    <html lang="es" data-theme="dark" data-skin="store" suppressHydrationWarning>
+    // `style-rhea`: activa el style del preset shadcn sobre todas las primitivas.
+    <html
+      lang="es"
+      className="style-rhea"
+      data-theme="dark"
+      data-skin="store"
+      suppressHydrationWarning
+    >
       <head>
         {/* Anti-flash de tema: aplica el tema guardado ANTES del primer paint.
             Debe ir primero en <head>. Clave sincronizada con useTheme. */}
@@ -72,21 +79,29 @@ export function Layout({ children }: { children: ReactNode }) {
 
 import { AuthSync } from '~/components/auth/AuthSync';
 import { GlobalProgress } from '~/components/ui/global-progress';
+import { TooltipProvider } from '~/components/ui/tooltip';
 
 export default function App() {
   return (
     <Provider store={store}>
-      <GlobalProgress />
-      <AuthSync />
-      <Outlet />
-      {/* Toasts pintados con los tokens de marca, no con el tema de sonner. */}
-      <Toaster
-        position="bottom-center"
-        toastOptions={{
-          className:
-            'border border-border bg-surface text-text rounded-lg text-sm',
-        }}
-      />
+      {/* TooltipProvider va acá y no dentro de cada vista: las primitivas del
+          registry montan <Tooltip> sin proveedor propio (el `tooltip` de
+          SidebarMenuButton, por ejemplo) y Radix lanza si no encuentra uno.
+          delayDuration 0: en un panel interno el tooltip es una etiqueta del
+          ícono colapsado, no una ayuda opcional — debe salir de inmediato. */}
+      <TooltipProvider delayDuration={0}>
+        <GlobalProgress />
+        <AuthSync />
+        <Outlet />
+        {/* Toasts pintados con los tokens de marca, no con el tema de sonner. */}
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            className:
+              'border border bg-card text-foreground rounded-lg text-sm',
+          }}
+        />
+      </TooltipProvider>
     </Provider>
   );
 }

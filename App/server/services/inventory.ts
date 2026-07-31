@@ -228,6 +228,7 @@ function toInventoryRow(row: PurchaseRow): InventoryRow {
     priceUnitFinalUsd: round(priceUnitFinal, 4),
     costRealCordobas: row.costo_real_cs ?? 0,
     costoFijoCordobas: row.costo_f_u ?? 0,
+    costeFinalCordobas: costeFinal,
     preTotalUsd: round(priceUnit * available, 4),
     totalFinalUsd: round(priceUnitFinal * available, 4),
     suggestedPrice: row.suggested_price,
@@ -352,12 +353,36 @@ export async function getInventoryKpis(period?: string): Promise<InventoryKpis> 
 // ============================================================================
 
 export async function createPurchase(input: NewPurchaseInput): Promise<Purchase> {
+  // Generar código GS-IN-XX automático usando el primer hueco disponible
+  const { data: codes, error: codeErr } = await db
+    .from('purchases')
+    .select('code')
+    .like('code', 'GS-IN-%');
+
+  if (codeErr) throw codeErr;
+
+  const usedNumbers = (codes || [])
+    .map(r => parseInt(r.code.replace('GS-IN-', ''), 10))
+    .filter(n => !isNaN(n))
+    .sort((a, b) => a - b);
+
+  let nextId = 1;
+  for (const n of usedNumbers) {
+    if (n === nextId) {
+      nextId++;
+    } else if (n > nextId) {
+      break;
+    }
+  }
+  const generatedCode = `GS-IN-${nextId}`;
+
   const { data, error } = await db
     .from('purchases')
     .insert({
-      code: input.code,
+      code: generatedCode,
       lot: input.lot,
       product_name: input.productName,
+      category: input.category,
       purchase_date: input.purchaseDate,
       quantity: input.quantity,
       costo_china_usd: input.costUnit,
@@ -402,7 +427,6 @@ export async function reportArrival(id: string, input: ArrivalInput): Promise<bo
     .update({
       status: 'received',
       arrival_date: input.arrivalDate,
-      category: input.category,
       envio_unit_usd: input.shippingUnit,
       exchange_rate: config.exchangeRate,
       costo_real_usd: costing.costoRealUsd,
@@ -415,6 +439,30 @@ export async function reportArrival(id: string, input: ArrivalInput): Promise<bo
 
   if (error) throw error;
   return true;
+}
+
+export async function simulateCost(id: string, shippingUnit: number): Promise<{ precioSugerido: number }> {
+  const { data: existing, error: fetchError } = await db
+    .from('purchases')
+    .select('quantity, costo_china_usd, impuesto_unit_usd')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!existing) throw new BadRequestError('Lote no encontrado');
+
+  const config = await getFinancialConfig();
+  const costing = costPurchaseOnArrival(
+    {
+      quantity: existing.quantity,
+      costoChinaUsd: existing.costo_china_usd ?? 0,
+      impuestoUnitUsd: existing.impuesto_unit_usd ?? 0,
+      envioUnitUsd: shippingUnit,
+      exchangeRate: config.exchangeRate,
+    },
+    config,
+  );
+
+  return { precioSugerido: costing.precioSugerido };
 }
 
 export async function updatePurchase(id: string, input: UpdatePurchaseInput): Promise<boolean> {
@@ -514,10 +562,10 @@ export async function revertPurchase(id: string): Promise<boolean> {
   return true;
 }
 
-export async function deletePurchase(id: string): Promise<boolean> {
+export async function deletePurchase(id: string, authorUid: string): Promise<boolean> {
   const { data: existing, error: fetchError } = await db
     .from('purchases')
-    .select('quantity_sold, quantity_reserved')
+    .select('*')
     .eq('id', id)
     .maybeSingle();
   if (fetchError) throw fetchError;
@@ -529,6 +577,17 @@ export async function deletePurchase(id: string): Promise<boolean> {
 
   const { error } = await db.from('purchases').delete().eq('id', id);
   if (error) throw error;
+
+  await db.from('audit_logs').insert({
+    entity: 'purchases',
+    entity_id: id,
+    action: 'delete',
+    reason: 'Eliminación manual desde panel',
+    author_uid: authorUid,
+    before: existing,
+    after: null,
+  });
+
   return true;
 }
 
