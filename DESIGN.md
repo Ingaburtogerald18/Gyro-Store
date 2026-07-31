@@ -1,16 +1,16 @@
-# DESIGN.md — Gyro Store · Sistema de diseño **shadcn / style Rhea**
+# DESIGN.md — Gyro Store · Sistema de diseño **shadcn / style Maia**
 
-> **Reemplaza al sistema "Editorial Dark"** (teal de marca, escala Midnight, motion propio).
-> Decisión del 2026-07-30: el proyecto adopta el preset oficial de shadcn (`b27GcrRo`) tal cual,
-> en storefront y back-office. Este documento describe el sistema **vivo en el código**; si el
-> código y este archivo divergen, se actualiza este archivo en el mismo PR.
+> El proyecto adopta el preset oficial de shadcn `b3ae24HXW4` tal cual, en storefront y
+> back-office: **style Maia · theme Emerald · charts Green · Figtree + Geist**.
+> Este documento describe el sistema **vivo en el código**; si el código y este archivo
+> divergen, se actualiza este archivo en el mismo PR.
 
 ---
 
 ## 0. En una frase
 
-La apariencia **no se escribe en los componentes**: se hereda del style `Rhea` de shadcn. Los
-componentes solo declaran estructura y semántica; el vestido vive en `app/style-rhea.css`.
+La apariencia **no se escribe en los componentes**: se hereda del style `Maia` de shadcn. Los
+componentes solo declaran estructura y semántica; el vestido vive en `app/style-maia.css`.
 
 ---
 
@@ -19,81 +19,88 @@ componentes solo declaran estructura y semántica; el vestido vive en `app/style
 | Capa | Archivo | Qué define |
 |---|---|---|
 | Primitivas | `app/components/ui/*.tsx` | Estructura, accesibilidad, `data-slot`, clases `.cn-*` |
-| Style (apariencia) | `app/style-rhea.css` | Geometría, densidad, estados, sombras y anillos |
-| Tokens (color) | `app/tailwind.css` → `@theme` | La paleta, en tokens semánticos |
-| Puente shadcn | `app/tailwind.css` → `@theme inline` | Mapea `background/primary/muted/…` a los tokens |
+| Style (apariencia) | `app/style-maia.css` | Geometría, densidad, estados, sombras y anillos |
+| Tokens (color) | `app/tailwind.css` → `:root` / `[data-theme="dark"]` | La paleta, en tokens semánticos |
+| Puente shadcn | `app/tailwind.css` → `@theme inline` | Mapea `--background`/`--primary`/… a `--color-*` |
 
 **Regla base:** los componentes de `ui/` vienen del registry de shadcn (base `radix`) y se
 modifican **lo mínimo**. Todo lo que sea apariencia va al style, no al `.tsx`.
 
+`style-maia.css` se carga con un `@import "./style-maia.css"` desde `tailwind.css`, y la clase
+`.style-maia` la pone `root.tsx` en el `<html>`. **Las dos cosas hacen falta**: sin el import, la
+clase no tiene CSS detrás y el style entero queda sin aplicar (le pasó al `style-rhea` anterior).
+
 ---
 
-## 2. Color — paleta **neutral** del preset
+## 2. Color — base **Mist** + theme **Emerald**
 
-Escala de grises `oklch`, tomada de `apps/v4/app/globals.css` del repo `shadcn-ui/ui`
-(base color `neutral`). **No hay color de marca en la UI.**
+Tokens `oklch` del preset. Light en `:root`, dark en `[data-theme="dark"]` — la variante `dark:`
+sigue a `data-theme`, no al `prefers-color-scheme` del sistema (lo controla `useTheme`).
 
-### Oscuro (default)
+| Token | Uso |
+|---|---|
+| `--background` / `--foreground` | Fondo y texto de la app |
+| `--card` / `--popover` | Tarjetas, popovers, sidebar |
+| `--muted` / `--muted-foreground` | Superficie secundaria y texto secundario |
+| `--primary` | CTA y acento de marca (Emerald) |
+| `--border` / `--input` / `--ring` | Hairlines, campos y anillos de foco |
+| `--destructive` | Error y acciones destructivas |
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--color-bg` | `oklch(0.145 0 0)` | Fondo de la app |
-| `--color-surface` | `oklch(0.205 0 0)` | Tarjetas, popovers, sidebar |
-| `--color-surface-2` | `oklch(0.269 0 0)` | Superficie secundaria, `muted` |
-| `--color-surface-hover` | `oklch(0.371 0 0)` | Hover/focus de ítems de menú |
-| `--color-border` | `oklch(1 0 0 / 10%)` | Hairlines y anillos |
-| `--color-accent` | `oklch(0.922 0 0)` | "Primary": CTA plano, **casi blanco** |
-| `--color-text` | `oklch(0.985 0 0)` | Texto principal |
-| `--color-muted` | `oklch(0.708 0 0)` | Texto secundario |
-
-### Claro
-
-Misma escala invertida: `bg`/`surface` en blanco, `accent` en `oklch(0.205 0 0)` (casi negro),
-texto `oklch(0.145 0 0)`, muted `oklch(0.556 0 0)`.
+En Tailwind se usan como `bg-background`, `text-muted-foreground`, `border-border`, etc. — nunca
+la variable cruda.
 
 ### Series de gráficos
 
-`--color-chart-1..5` → azules del preset. Los consume la primitiva `chart` (sobre Recharts).
+`--chart-1..5` es la escala **Green** del preset. La consume la primitiva `chart` (sobre Recharts).
 
-### La única excepción de color
+### Extras que shadcn no trae
 
-`--color-whatsapp` se mantiene en su **verde canónico** (`#25d366`). No es decorativo: identifica
-el canal de contacto y el checkout. Vive en las variantes `whatsapp` / `whatsappOutline` de `Button`.
+Viven en `tailwind.css` junto a los del preset, con valor por tema:
+
+- `--whatsapp` — verde canónico del canal (`#128c3e` claro / `#25d366` oscuro). No es decorativo:
+  identifica el contacto y el checkout. Se usa vía las variantes `whatsapp` / `whatsappOutline`
+  de `Button`, nunca como hex suelto.
+- `--promo` — violeta de la etiqueta de promoción. Variante `promo` de `Badge`.
+- `--success` / `--warning` / `--info` — estados semánticos.
+- `--tone-indigo|sky|amber|emerald|rose|purple|red` — los 7 acentos de `StatCard`.
+  **No se mapean a `--chart-*`**: en este preset los charts son toda la escala Green y las
+  tarjetas quedarían todas del mismo color.
+- `--radius-card` (12px) y `--radius-pill` → clases `rounded-card` y `rounded-pill`.
 
 ### Reglas de color
 
-1. **Cero colores crudos de Tailwind** en componentes (`bg-slate-900`, `text-emerald-500`…).
-   Todo sale de tokens semánticos.
-2. El CTA plano lleva **texto oscuro** sobre el `accent` claro (`--color-primary-foreground`).
-3. Nada de segundo acento decorativo. La jerarquía se hace con peso, tamaño y espacio.
+1. **Cero colores crudos de Tailwind** en componentes (`bg-slate-900`, `text-emerald-500`…) y
+   **cero hex arbitrarios** (`bg-[#25D366]`). Todo sale de tokens semánticos.
+2. Nada de segundo acento decorativo. La jerarquía se hace con peso, tamaño y espacio.
 
 ---
 
 ## 3. Tipografía
 
-**Inter** para todo (cuerpo y titulares), como fija el preset. La jerarquía se logra con
-**tamaño y peso**, nunca con familias distintas. Cifras (precios, stock, contadores) siempre
+Dos familias, servidas localmente con `@fontsource-variable` (sin Google Fonts):
+
+- **Figtree** — cuerpo. Es `--font-sans`, o sea la fuente por defecto de la app.
+- **Geist** — titulares. Es `--font-heading`, y se aplica con la clase `font-heading`.
+
+Ambas se registran en `@theme inline`; registrar `--font-heading` ahí es justamente lo que hace
+que Tailwind genere la clase `font-heading`. Cifras (precios, stock, contadores) siempre
 `tabular-nums` / `.nums`.
 
 ---
 
 ## 4. Geometría y espaciado
 
-La define Rhea, no nosotros:
-
-- **Tarjetas** `rounded-[min(var(--radius-4xl),24px)]`, con `ring-1` en vez de borde duro y `shadow-sm`.
-- **Controles** (botón, input, select, tabs) `rounded-2xl`, altura compacta `h-8` por defecto.
-- **Popovers / menús** `rounded-2xl`, `shadow-lg`, `ring-1`.
-- Tamaños de botón: `xs · sm · default · lg` + variantes `icon-*`.
+La define Maia, no nosotros. Los radios y densidades salen del style; lo propio se limita a
+`rounded-card` para las tarjetas del admin.
 
 ---
 
 ## 5. Motion
 
-- **Enter/exit de primitivas:** lo resuelve Rhea con `data-open` / `data-closed`
-  (`animate-in`, `fade-in-0`, `zoom-in-95`, `slide-in-from-*`), vía `tw-animate-css`. Duración ~100ms.
+- **Enter/exit de primitivas:** lo resuelve Maia con `data-open` / `data-closed`
+  (`animate-in`, `fade-in-0`, `zoom-in-95`, `slide-in-from-*`), vía `tw-animate-css`.
 - **Movimiento propio** (layout, listas, KPIs): `framer-motion`, con `layoutId` para indicadores
-  que se deslizan y `stagger` corto (~0.04s) en listas.
+  que se deslizan y `stagger` corto en listas.
 - **`prefers-reduced-motion` es obligatorio** en toda animación propia (`useReducedMotion()` o
   `motion-reduce:*`). Sin excepción.
 
@@ -101,32 +108,55 @@ La define Rhea, no nosotros:
 
 ## 6. Iconografía
 
-**Lucide**, como fija el preset. Los componentes del registry no importan iconos directamente:
-usan `ui/icon-placeholder.tsx`, un shim que resuelve el placeholder del registry a `lucide-react`
-con un **mapa explícito** (tree-shakeable). Si un componente nuevo pide un icono que no está en
-el mapa, hay que agregarlo ahí. **Sin emojis** en UI de marca.
+**HugeIcons**, vía `@hugeicons/react` + `@hugeicons/core-free-icons`. Lucide y Phosphor están
+desinstalados; no se vuelven a agregar.
+
+El patrón es distinto al de Lucide: HugeIcons expone **datos** (`IconSvgElement`), no componentes,
+y **no dimensiona por `className`** — el tamaño va en la prop `size`, en px:
+
+```tsx
+import { HugeiconsIcon } from '@hugeicons/react';
+import { ShoppingCart02Icon } from '@hugeicons/core-free-icons';
+
+<HugeiconsIcon icon={ShoppingCart02Icon} size={16} strokeWidth={2} />
+```
+
+`className` **sí** sigue sirviendo para color y demás utilidades (`className="text-destructive"`).
+
+Cuando un icono viaja como valor (una tabla de navegación, una prop `icon`), el tipo es
+`IconSvgElement` y se renderiza con `<HugeiconsIcon icon={x} />` — no `<x />`. Así lo hacen
+`stat-card.tsx` y el `NAV_GROUPS` de `admin.tsx`.
+
+El spinner de carga está centralizado en `ui/spinner.tsx`; para un botón ocupado va
+`disabled={isLoading}` + `{isLoading && <Spinner className="mr-2" />}`, no una prop `loading`.
+
+**Sin emojis** en UI de marca.
 
 ---
 
 ## 7. Componentes propios del storefront
 
-Las primitivas son de shadcn; estas piezas son **nuestras** y siguen vigentes (su contrato no
-cambia, solo se repintan con los tokens neutrales):
+Las primitivas son de shadcn; estas piezas son **nuestras** y siguen vigentes:
 
-- **`ProductCard`** — panel `bg-surface`, foto en `product-stage` con blur-up y hover-swap,
-  CTA siempre visible, dos layouts (`grid` / `list`). Si hay >1 variante abre `QuickAddSheet`.
+- **`ProductCard`** — panel `bg-card`, foto en `product-stage` con blur-up y hover-swap,
+  CTA siempre visible, dos layouts (`grid` / `list`).
 - **`Hero`** — slider de slides editables desde el admin (`heroSlides` en `app_config`).
 - **`ProductCarousel`** — scroll-snap + flechas que se deshabilitan en los extremos.
-- **`CategoryChips`** — fila scrollable; subcategorías por portal + fixed.
-- **`BrandStrip`** — wordmarks tipográficos, logo en gris → color al hover.
+- **`QueryState`** — envuelve el patrón loading/error/vacío de los listados admin. Cada estado
+  puede traer su propio fallback; si no, cae en uno genérico.
 - **PDP** — galería sticky, specs en grilla con hairlines, descripción a 65ch, CTA + WhatsApp.
 
 ---
 
 ## 8. Anti-patrones (rechazar en review)
 
-- ❌ Colores crudos de Tailwind en componentes.
+- ❌ Colores crudos de Tailwind (`text-amber-500`) o hex arbitrarios (`bg-[#25D366]`).
 - ❌ Escribir apariencia en el `.tsx` de una primitiva: va al style.
+- ❌ Importar `lucide-react` o `@phosphor-icons/react`.
+- ❌ Dimensionar un icono de HugeIcons con `h-4 w-4` en vez de `size={16}`.
+- ❌ Props custom en primitivas del registry (`<Button loading>`, `<Input options>`): el próximo
+  `shadcn add --overwrite` se las lleva. Se resuelve en el call site.
+- ❌ Dos `className` en el mismo tag: React se queda con el último y el otro se pierde en silencio.
 - ❌ Emojis en UI de marca.
 - ❌ Glow, gradient-text, glassmorphism decorativo.
 - ❌ Animaciones sin `prefers-reduced-motion`.
@@ -139,7 +169,7 @@ cambia, solo se repintan con los tokens neutrales):
 ## 9. Accesibilidad (piso, no opcional)
 
 - Contraste: cuerpo ≥4.5:1, texto grande ≥3:1.
-- Foco visible en todo interactivo (Rhea lo trae con `ring-3` + `ring-ring/30`).
+- Foco visible en todo interactivo (Maia lo trae con `ring-3` + `ring-ring/30`).
 - `prefers-reduced-motion` respetado.
 - Touch targets ≥44px.
 - `alt` significativo en fotos; decorativas `aria-hidden`.

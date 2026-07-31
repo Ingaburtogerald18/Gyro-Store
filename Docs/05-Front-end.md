@@ -9,8 +9,8 @@
 
 ## 1. Stack [se mantiene de v1 + shadcn/ui]
 Remix (React, **TypeScript**) · **Tailwind v4** · **shadcn/ui** [v2] · **Redux Toolkit + RTK Query** ·
-Framer Motion · Lucide · TanStack Table · React Hook Form + Zod · dnd-kit · Recharts · Sonner.
-Dos pieles: storefront (Editorial Dark) y admin (Obsidian/Esmeralda).
+Framer Motion · **HugeIcons** · TanStack Table · React Hook Form + Zod · dnd-kit · Recharts · Sonner.
+Sistema de diseño: preset shadcn **b3ae24HXW4** (style Maia · Emerald · Figtree + Geist) — ver `DESIGN.md`.
 
 ### Sobre shadcn/ui [v2]
 Elegí shadcn/ui porque **no impone estilo**: el CLI me copia el código de cada componente (Dialog,
@@ -100,27 +100,23 @@ Los forms extienden los schemas base de **`shared/schemas.ts`** (contrato único
 `schemas/expenses.ts`, `schemas/losses.ts`, `schemas/validators.ts`. Regla: nunca re-declarar campos
 comunes; extender la base compartida. Con todo en TS, los tipos de esos schemas fluyen al backend también.
 
-## 7. Theming [actualizado 2026-07-30: dos pieles]
-`useTheme` con toggle en `PublicSidebar`/`UserMenu`. `data-theme` en `<html>`, `data-skin` en el
-wrapper de cada zona. Oscuro por defecto; claro "Daylight" calibrado. Todo componente (incluidos los
-de shadcn/ui) consume **tokens** (`bg-bg`, `text-accent`, `border-border`) — nunca colores crudos.
+## 7. Theming [actualizado 2026-07-31: preset b3ae24HXW4]
+`useTheme` con toggle en `PublicSidebar`/`UserMenu`. `data-theme` en `<html>`; la variante `dark:`
+sigue a ese atributo, no al `prefers-color-scheme` del sistema. Oscuro por defecto. Todo componente
+(incluidos los de shadcn/ui) consume **tokens semánticos** (`bg-background`, `text-foreground`,
+`border-border`, `text-muted-foreground`) — nunca colores crudos ni hex arbitrarios.
 
-**Dos pieles sobre los mismos tokens** (`data-skin`, definidas en `app/tailwind.css`):
+La paleta es la del preset **b3ae24HXW4**: base Mist + theme **Emerald**, con los charts en la
+escala **Green**. Los tokens se definen en `app/tailwind.css`, light en `:root` y dark en
+`[data-theme="dark"]`, y se puentean a Tailwind en el bloque `@theme inline`. Ver `DESIGN.md`
+para el detalle de la paleta y de los extras propios (whatsapp, promo, success/warning/info, tone-*).
 
-| Piel | Dónde | Paleta |
-|---|---|---|
-| `store` | `root.tsx` (storefront público) | **Teal de marca** (`#2dd4bf`), identidad Gyro |
-| `admin` | `admin.tsx` (back-office) | **Neutral oficial de shadcn** (preset Rhea), escala de grises |
-
-> **Cambio de regla (2026-07-30).** Antes la regla era "el teal de marca manda en TODA la app". Ahora
-> el **back-office adopta la paleta neutra de shadcn**: se decidió que el panel se vea como el preset
-> oficial (más sobrio, estándar de la industria para herramientas internas), y que **la marca viva en
-> la tienda**, que es la cara al cliente. Los valores neutros se tomaron del repo `shadcn-ui/ui`
-> (`apps/v4/app/globals.css`, base color `neutral`).
->
-> Cómo está implementado: las rutas del admin **no cambiaron**. Como ya consumían tokens semánticos,
-> basta con redefinir los tokens bajo `[data-skin="admin"]` para repintar las ~3.500 líneas del
-> back-office sin tocar un `.tsx`. Si mañana se quiere volver al teal en el admin, se borra ese bloque.
+> **Sobre `data-skin`.** El atributo se sigue escribiendo en el markup (`store` en `root.tsx` y
+> `login.tsx`, `admin` en `admin.tsx`), pero **hoy no hay ninguna regla CSS que lo lea**: la idea de
+> dos pieles (teal en la tienda, neutral en el panel) quedó sin implementación cuando el proyecto
+> migró al preset nativo. En la práctica el storefront y el back-office comparten la misma paleta
+> Emerald. El atributo se conserva como gancho por si se quiere reintroducir la distinción; mientras
+> tanto, no asumir que pinta nada.
 >
 > Consecuencia para quien codee el admin: **`text-accent` ya no es teal ahí**, es el "primary" neutro
 > casi blanco. Los CTA planos del admin llevan texto oscuro encima.
