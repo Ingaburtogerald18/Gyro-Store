@@ -20,3 +20,8 @@ npm-debug.log*
 .DS_Store
 *.swp
 *~
+
+# ── Copia local del repo shadcn-ui/ui (referencia, NO parte de la app) ──
+# Son ~5.700 archivos / 55 MB de un monorepo ajeno. Se consulta para copiar
+# componentes y styles, pero no se versiona con el proyecto.
+ui-main/
