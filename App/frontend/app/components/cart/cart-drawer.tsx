@@ -4,9 +4,11 @@
 //
 // Construido sobre <Sheet> de shadcn/ui: el foco atrapado, el cierre con Escape
 // y el aria del diálogo vienen resueltos por Radix.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, Delete02Icon, ImageNotFound01Icon, MinusSignIcon, ShoppingBag02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import { useNavigate } from '@remix-run/react';
-import { ImageOff, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
+
 import { Button } from '~/components/ui/button';
 import {
   Sheet,
@@ -66,7 +68,7 @@ export function CartDrawer() {
             <SheetDescription className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {items.length > 0 ? (
                 <>
-                  <Sparkles aria-hidden className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <HugeiconsIcon icon={SparklesIcon} size={14} strokeWidth={2} aria-hidden className="shrink-0 text-primary" />
                   Buena elección — revisalo y finalizalo cuando quieras.
                 </>
               ) : (
@@ -79,7 +81,7 @@ export function CartDrawer() {
             {items.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
                 <div className="grid h-16 w-16 place-items-center rounded-full bg-muted text-muted-foreground">
-                  <ShoppingBag aria-hidden className="h-7 w-7" />
+                  <HugeiconsIcon icon={ShoppingBag02Icon} size={28} strokeWidth={2} aria-hidden />
                 </div>
                 <div className="space-y-1.5">
                   <p className="text-lg font-bold text-foreground">Tu carrito está vacío… por ahora</p>
@@ -103,7 +105,7 @@ export function CartDrawer() {
                           <img src={item.image} alt="" className="h-full w-full object-cover" />
                         ) : (
                           <div className="grid h-full place-items-center text-muted-foreground">
-                            <ImageOff aria-hidden className="h-5 w-5" />
+                            <HugeiconsIcon icon={ImageNotFound01Icon} size={20} strokeWidth={2} aria-hidden />
                           </div>
                         )}
                       </div>
@@ -124,7 +126,7 @@ export function CartDrawer() {
                               }
                               className="h-11 w-11 rounded-md md:h-6 md:w-6"
                             >
-                              <Minus aria-hidden className="h-3 w-3" />
+                              <HugeiconsIcon icon={MinusSignIcon} size={12} strokeWidth={2} aria-hidden />
                             </Button>
                             <span className="w-5 text-center text-sm text-foreground tabular-nums">
                               {item.quantity}
@@ -138,7 +140,7 @@ export function CartDrawer() {
                               }
                               className="h-11 w-11 rounded-md md:h-6 md:w-6"
                             >
-                              <Plus aria-hidden className="h-3 w-3" />
+                              <HugeiconsIcon icon={Add01Icon} size={12} strokeWidth={2} aria-hidden />
                             </Button>
                           </div>
                           <span className="text-sm font-semibold text-foreground tabular-nums">
@@ -154,7 +156,7 @@ export function CartDrawer() {
                         aria-label={`Eliminar ${item.name} del carrito`}
                         className="h-11 w-11 shrink-0 self-start text-muted-foreground hover:text-destructive md:h-8 md:w-8"
                       >
-                        <Trash2 aria-hidden className="h-4 w-4" />
+                        <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} aria-hidden />
                       </Button>
                     </div>
                   );
@@ -165,7 +167,7 @@ export function CartDrawer() {
                   onClick={keepShopping}
                   className="w-full justify-center gap-2 rounded-xl border border-dashed border bg-background/40 py-3 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 >
-                  <Plus aria-hidden className="h-4 w-4" />
+                  <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} aria-hidden />
                   Agregar otro producto
                 </Button>
               </>

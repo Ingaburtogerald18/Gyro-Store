@@ -1,6 +1,8 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Store01Icon } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Store } from 'lucide-react';
+
 import { useAppSelector } from '~/store/hooks';
 import { useGetConfigQuery } from '~/store/api/configApi';
 
@@ -110,7 +112,7 @@ export function BrandLoader({ text = 'Cargando…' }: { text?: string }) {
               transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
               className="text-primary"
             >
-              <Store className="size-8" aria-hidden />
+              <HugeiconsIcon icon={Store01Icon} size={32} strokeWidth={2} aria-hidden />
             </motion.span>
           )}
         </div>

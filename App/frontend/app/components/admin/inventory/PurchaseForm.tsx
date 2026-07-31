@@ -1,8 +1,10 @@
 // Formulario de registro de compra (China). Al guardar, la compra entra en estado "En tránsito".
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useForm, Controller, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2 } from "lucide-react";
+
 
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -69,7 +71,7 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <CheckCircle2 className="h-8 w-8" />
+          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} strokeWidth={2} />
         </div>
         <div>
           <h2 className="text-xl font-bold">¡Compra registrada con éxito!</h2>

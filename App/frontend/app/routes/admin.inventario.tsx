@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Alert02Icon, ArchiveIcon, Delete02Icon, File01Icon, Package01Icon, PackageAddIcon, PackageIcon, RefreshIcon } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import {
@@ -20,7 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { DatePicker } from '~/components/ui/date-picker';
-import { PackagePlus, RefreshCcw, AlertTriangle, Boxes, Archive, FileText, Trash2, Package } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
@@ -299,7 +301,7 @@ export default function AdminInventario() {
               onClick={() => setDeleteId(row.original.id)}
               className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
-              <Trash2 className="w-4 h-4" />
+              <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
             </Button>
           </div>
         );
@@ -371,10 +373,10 @@ export default function AdminInventario() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList>
             <TabsTrigger value="purchases" className={ACTIVE_TAB}>
-              <FileText className="w-4 h-4 mr-2" /> Registro de compras
+              <HugeiconsIcon icon={File01Icon} size={16} strokeWidth={2} className="mr-2" /> Registro de compras
             </TabsTrigger>
             <TabsTrigger value="inventory" className={ACTIVE_TAB}>
-              <Boxes className="w-4 h-4 mr-2" /> Inventario
+              <HugeiconsIcon icon={PackageIcon} size={16} strokeWidth={2} className="mr-2" /> Inventario
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -400,7 +402,7 @@ export default function AdminInventario() {
               <CardHeader className="pb-2">
                 <CardDescription className="font-medium">En tránsito</CardDescription>
                 <CardTitle className="text-3xl tabular-nums text-warning flex items-center gap-2">
-                  {kpis?.inTransit || 0} <AlertTriangle className="w-5 h-5" />
+                  {kpis?.inTransit || 0} <HugeiconsIcon icon={Alert02Icon} size={20} strokeWidth={2} />
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -416,7 +418,7 @@ export default function AdminInventario() {
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all active:scale-[0.98]">
-                    <PackagePlus className="w-4 h-4 mr-2" />
+                    <HugeiconsIcon icon={PackageAddIcon} size={16} strokeWidth={2} className="mr-2" />
                     Registrar entrada
                   </Button>
                 </DialogTrigger>
@@ -528,7 +530,7 @@ export default function AdminInventario() {
             <CardContent>
               {!purchases.length && !isLoadingPurchases ? (
                 <div className="text-center py-12 border border-dashed rounded-lg bg-muted/40">
-                  <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <HugeiconsIcon icon={File01Icon} size={40} strokeWidth={2} className="text-muted-foreground mx-auto mb-3 opacity-50" />
                   <p className="text-foreground font-medium">No hay compras recientes</p>
                   <p className="text-muted-foreground text-sm mt-1">El historial aparecerá aquí cuando registres entradas.</p>
                 </div>
@@ -548,10 +550,10 @@ export default function AdminInventario() {
             <Tabs value={inventoryType} onValueChange={setInventoryType} className="w-full sm:w-auto">
               <TabsList>
                 <TabsTrigger value="current" className={ACTIVE_TAB}>
-                  <Boxes className="w-4 h-4 mr-2" /> Inventario actual
+                  <HugeiconsIcon icon={PackageIcon} size={16} strokeWidth={2} className="mr-2" /> Inventario actual
                 </TabsTrigger>
                 <TabsTrigger value="migrated" className={ACTIVE_TAB}>
-                  <Archive className="w-4 h-4 mr-2" /> Inventario migrado
+                  <HugeiconsIcon icon={ArchiveIcon} size={16} strokeWidth={2} className="mr-2" /> Inventario migrado
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -566,13 +568,13 @@ export default function AdminInventario() {
                     <CardDescription>Stock recibido (listo para venta).</CardDescription>
                   </div>
                   <Button variant="outline" size="icon" onClick={refetch} disabled={isLoading} aria-label="Refrescar">
-                    <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                   </Button>
                 </CardHeader>
                 <CardContent>
                   {!inventory.length && !isLoading ? (
                     <div className="text-center py-12 border border-dashed rounded-lg bg-muted/40">
-                      <PackagePlus className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                      <HugeiconsIcon icon={PackageAddIcon} size={40} strokeWidth={2} className="text-muted-foreground mx-auto mb-3 opacity-50" />
                       <p className="text-foreground font-medium">Bodega vacía</p>
                     </div>
                   ) : (
@@ -588,7 +590,7 @@ export default function AdminInventario() {
             <TabsContent value="migrated" className="outline-none m-0">
               <Card>
                 <CardContent className="text-center py-12">
-                  <Package className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <HugeiconsIcon icon={Package01Icon} size={40} strokeWidth={2} className="text-muted-foreground mx-auto mb-3 opacity-50" />
                   <p className="text-foreground font-medium">Inventario migrado</p>
                   <p className="text-muted-foreground text-sm mt-1">Próximamente.</p>
                 </CardContent>

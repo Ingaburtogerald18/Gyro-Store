@@ -9,11 +9,13 @@
 // fotos, y cada vendedor registra su propia venta (ver server/services/
 // sales.ts). Un producto no puede repetirse en dos líneas (mismo límite del
 // backend, evita la lógica de "distribuir reservas" de v1).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, CancelCircleIcon, CheckmarkCircle01Icon, Delete02Icon, Link02Icon, Package01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
-import { CheckCircle2, Link2, Package, Plus, ShoppingCart, Trash2, XCircle } from 'lucide-react';
+
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
@@ -184,16 +186,16 @@ export default function AdminVentas() {
               onClick={() => setLinkFor(row.original)}
               title="Vincular una salida sin factura"
             >
-              <Link2 className="h-4 w-4" aria-hidden />
+              <HugeiconsIcon icon={Link02Icon} size={16} strokeWidth={2} aria-hidden />
             </Button>
             {/* Aprobar / rechazar solo admin. */}
             {isAdmin && (
               <>
                 <Button size="sm" variant="ghost" onClick={() => handleApprove(row.original.id)}>
-                  <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="text-success" aria-hidden />
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setRejectFor(row.original)}>
-                  <XCircle className="h-4 w-4 text-destructive" aria-hidden />
+                  <HugeiconsIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="text-destructive" aria-hidden />
                 </Button>
               </>
             )}
@@ -239,7 +241,7 @@ export default function AdminVentas() {
       <Tabs defaultValue="quote" className="space-y-6">
         <TabsList className="bg-card border border">
           <TabsTrigger value="quote">
-            <ShoppingCart className="w-4 h-4 mr-2" /> Cotizador / Registro
+            <HugeiconsIcon icon={ShoppingCart02Icon} size={16} strokeWidth={2} className="mr-2" /> Cotizador / Registro
           </TabsTrigger>
           <TabsTrigger value="list">Listado</TabsTrigger>
         </TabsList>
@@ -292,7 +294,7 @@ export default function AdminVentas() {
               </div>
               <div className="sm:col-span-4">
                 <Button onClick={addLine} variant="outline">
-                  <Plus className="h-4 w-4 mr-1.5" aria-hidden /> Agregar línea
+                  <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Agregar línea
                 </Button>
               </div>
             </CardContent>
@@ -317,7 +319,7 @@ export default function AdminVentas() {
                         {formatCordobas(line.quantity * line.salePrice)}
                       </span>
                       <Button size="icon-sm" variant="ghost" onClick={() => removeLine(line.productName)}>
-                        <Trash2 className="h-4 w-4 text-destructive" aria-hidden />
+                        <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} className="text-destructive" aria-hidden />
                       </Button>
                     </div>
                   ))}
@@ -398,7 +400,7 @@ export default function AdminVentas() {
 
           {lines.length === 0 && !quote && (
             <div className="rounded-lg border border-dashed border bg-muted/50 py-12 text-center">
-              <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground opacity-50" aria-hidden />
+              <HugeiconsIcon icon={Package01Icon} size={40} strokeWidth={2} className="mx-auto mb-3 text-muted-foreground opacity-50" aria-hidden />
               <p className="font-medium text-foreground">Todavía no agregaste productos.</p>
               <p className="mt-1 text-sm text-muted-foreground">Usá el formulario de arriba para armar la venta.</p>
             </div>
@@ -480,7 +482,7 @@ export default function AdminVentas() {
                       {new Date(s.salio_at).toLocaleDateString('es-NI')}
                     </span>
                   </span>
-                  <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <HugeiconsIcon icon={Link02Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground" aria-hidden />
                 </button>
               ))
             )}

@@ -2,7 +2,9 @@
 // vista por defecto NO es una grilla, son carruseles — "SuperOfertas" primero y
 // después uno por categoría. La grilla uniforme queda para los resultados de
 // búsqueda/filtro (pieza posterior del Hito 1).
-import { PackageSearch } from 'lucide-react';
+
+import { HugeiconsIcon } from "@hugeicons/react";
+import { PackageSearchIcon } from "@hugeicons/core-free-icons";
 import type { CatalogProduct } from '@shared/schemas';
 import type { StoreCategory } from '~/store/api/configApi';
 import { ProductCard } from '~/components/product/product-card';
@@ -109,7 +111,7 @@ function EmptyState({ text }: { text: string }) {
         aria-hidden
       >
         <span className="absolute inset-0 rounded-2xl bg-primary/10 blur-xl" />
-        <PackageSearch className="relative h-7 w-7" />
+        <HugeiconsIcon icon={PackageSearchIcon} size={28} strokeWidth={2} className="relative" />
       </span>
       <p className="max-w-xs text-sm text-balance text-muted-foreground">{text}</p>
     </div>

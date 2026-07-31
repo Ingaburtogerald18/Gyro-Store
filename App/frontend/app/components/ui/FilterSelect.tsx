@@ -1,8 +1,10 @@
 // Dropdown de filtro estilizado (reemplazo del <select> nativo).
 // Soporta un "punto" indicador por opción (p. ej. vendedores con ventas pendientes).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDown01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Check } from "lucide-react";
+
 import { cn } from "~/lib/utils";
 
 export interface FilterSelectOption {
@@ -92,13 +94,7 @@ export function FilterSelect({
             )}
           </span>
         </span>
-        <ChevronDown
-          className={cn(
-            "shrink-0 transition-transform duration-200",
-            variant === "ghost" ? "h-3.5 w-3.5 text-muted-foreground" : "h-4 w-4 text-muted-foreground",
-            open && "rotate-180",
-          )}
-        />
+        <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={2} className={cn( "shrink-0 transition-transform duration-200", variant === "ghost" ? "h-3.5 w-3.5 text-muted-foreground" : "h-4 w-4 text-muted-foreground", open && "rotate-180", )} />
       </button>
 
       <AnimatePresence>
@@ -128,7 +124,7 @@ export function FilterSelect({
                   {/* Reservar el ancho del punto siempre, para que los nombres queden alineados */}
                   {o.dot ? <Dot /> : <span className="h-1.5 w-1.5 shrink-0" />}
                   <span className="flex-1 truncate">{o.label}</span>
-                  {isSel && <Check className="h-3.5 w-3.5 shrink-0 text-primary-2" />}
+                  {isSel && <HugeiconsIcon icon={Tick01Icon} size={14} strokeWidth={2} className="shrink-0 text-primary-2" />}
                 </button>
               );
             })}

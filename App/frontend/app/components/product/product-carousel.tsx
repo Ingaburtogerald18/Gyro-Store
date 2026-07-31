@@ -1,10 +1,12 @@
 // Carrusel horizontal de productos. Fila con scroll-snap nativo (suave, sin
 // reflow) + flechas que se deshabilitan en los extremos y degradado de borde
 // para insinuar continuidad. Portado de la versión que corre hoy en la tienda.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon, ArrowRight01Icon, ImageNotFound01Icon } from "@hugeicons/core-free-icons";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from '@remix-run/react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+
 import type { CatalogProduct } from '@shared/schemas';
 import { ProductCard } from './product-card';
 import { Button } from '~/components/ui/button';
@@ -65,7 +67,7 @@ export function ProductCarousel({
         <div className="flex shrink-0 gap-2">
           {([-1, 1] as const).map((dir) => {
             const enabled = dir === -1 ? canPrev : canNext;
-            const Icon = dir === -1 ? ChevronLeft : ChevronRight;
+            const Icon = dir === -1 ? ArrowLeft01Icon : ArrowRight01Icon;
             return (
               <Button
                 key={dir}
@@ -80,7 +82,7 @@ export function ProductCarousel({
                   !showcase && 'bg-card text-muted-foreground hover:border-white/25 hover:text-foreground',
                 )}
               >
-                <Icon aria-hidden className="h-4 w-4 sm:h-5 sm:w-5" />
+                <HugeiconsIcon icon={Icon} size={16} strokeWidth={2} aria-hidden className="sm:size-5" />
               </Button>
             );
           })}
@@ -164,7 +166,7 @@ function ShowcaseCard({ product, index }: { product: CatalogProduct; index: numb
             />
           ) : (
             <div className="grid h-full place-items-center text-muted-foreground">
-              <ImageOff aria-hidden className="h-8 w-8" />
+              <HugeiconsIcon icon={ImageNotFound01Icon} size={32} strokeWidth={2} aria-hidden />
             </div>
           )}
         </div>

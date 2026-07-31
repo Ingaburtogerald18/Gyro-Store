@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "~/lib/utils";
-import type { LucideIcon } from "lucide-react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { CountUp } from "./CountUp";
 
 export type SpotlightCardVariant = "default" | "interactive" | "highlight";
@@ -111,7 +111,7 @@ const COLOR_MAP: Record<StatCardColor, { card: string; icon: string; label: stri
 export function StatCard({
   icon: Icon, label, value, sub, hint, accent = false, color, countTo, format, delay = 0,
 }: {
-  icon?: LucideIcon; label: string; value?: string | number; sub?: string; hint?: string; accent?: boolean; color?: StatCardColor; countTo?: number; format?: (n: number) => string; delay?: number;
+  icon?: IconSvgElement; label: string; value?: string | number; sub?: string; hint?: string; accent?: boolean; color?: StatCardColor; countTo?: number; format?: (n: number) => string; delay?: number;
 }) {
   const reduce = useReducedMotion();
   const chosenColor = color || (accent ? "indigo" : "neutral");
@@ -129,7 +129,7 @@ export function StatCard({
     >
       <SpotlightCard variant="highlight" className="p-4 shadow-none bg-transparent border-none">
         <div className="flex items-center gap-2">
-          {Icon && <Icon className={`h-4 w-4 ${theme.icon}`} />}
+          {Icon && <HugeiconsIcon icon={Icon} size={16} strokeWidth={2} className={theme.icon} />}
           <span className={`stat-card-label text-xs uppercase tracking-wide font-medium ${theme.label}`}>{label}</span>
         </div>
         <p className={`stat-card-value nums mt-2 font-heading text-2xl font-bold ${theme.value}`}>

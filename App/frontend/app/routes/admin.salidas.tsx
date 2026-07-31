@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, CancelCircleIcon, CheckmarkCircle01Icon, Link02Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { PageHeader } from '~/components/layout/PageHeader';
@@ -10,7 +12,6 @@ import { toast } from 'sonner';
 import { DataTable } from '~/components/ui/DataTable';
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { QueryState } from '~/components/ui/QueryState';
-import { Plus, CheckCircle, Search, Link2, XCircle } from 'lucide-react';
 import {
   useGetSalidasQuery,
   useRegisterSalidaMutation,
@@ -175,7 +176,7 @@ export default function AdminSalidasRoute() {
                   setIsLiquidarOpen(true);
                 }}
               >
-                <CheckCircle className="mr-2 h-4 w-4" /> Liquidar
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-2" /> Liquidar
               </Button>
             )}
             {salida.estado === 'pendiente_registro' && (
@@ -187,12 +188,12 @@ export default function AdminSalidasRoute() {
                   setIsVincularOpen(true);
                 }}
               >
-                <Link2 className="mr-2 h-4 w-4" /> Vincular
+                <HugeiconsIcon icon={Link02Icon} size={16} strokeWidth={2} className="mr-2" /> Vincular
               </Button>
             )}
             {salida.estado !== 'devuelta' && salida.estado !== 'facturada' && (
               <Button variant="ghost" size="sm" onClick={() => handleDevolver(salida)}>
-                <XCircle className="h-4 w-4 text-destructive" />
+                <HugeiconsIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="text-destructive" />
               </Button>
             )}
           </div>
@@ -206,7 +207,7 @@ export default function AdminSalidasRoute() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader title="Salidas de Tienda" description="Registro operativo de mercadería que sale físicamente." />
         <Button onClick={() => setIsRegisterOpen(true)} size="lg" className="shrink-0 font-semibold shadow-sm">
-          <Plus className="mr-2 h-5 w-5" /> Registrar Salida
+          <HugeiconsIcon icon={Add01Icon} size={20} strokeWidth={2} className="mr-2" /> Registrar Salida
         </Button>
       </div>
 

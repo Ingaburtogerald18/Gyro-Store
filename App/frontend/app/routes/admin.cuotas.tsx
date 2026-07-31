@@ -11,10 +11,11 @@
 // vinculada (server/services/installments.ts los agrega vía join). No hay
 // nextPaymentDate por cuota (no existe esa columna en v2): se muestra solo la
 // fecha de la primera cuota.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, ArrowDown01Icon, ArrowUp01Icon, CreditCardIcon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { toast } from 'sonner';
-import { ChevronDown, ChevronUp, CreditCard, Plus } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
@@ -190,7 +191,7 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
         <div className="flex items-center gap-2 pt-1">
           {plan.status === 'active' && (
             <Button size="sm" onClick={onPay}>
-              <CreditCard className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+              <HugeiconsIcon icon={CreditCardIcon} size={14} strokeWidth={2} className="mr-1.5" aria-hidden />
               Registrar pago
             </Button>
           )}
@@ -204,7 +205,7 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
             onClick={() => setExpanded((v) => !v)}
             className="ml-auto flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            {expanded ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
+            {expanded ? <HugeiconsIcon icon={ArrowUp01Icon} size={14} strokeWidth={2} aria-hidden /> : <HugeiconsIcon icon={ArrowDown01Icon} size={14} strokeWidth={2} aria-hidden />}
             {plan.payments.length} {plan.payments.length === 1 ? 'pago' : 'pagos'}
           </button>
         </div>
@@ -324,7 +325,7 @@ export default function AdminCuotas() {
             </span>
           )}
           <Button onClick={() => setPickerOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" aria-hidden /> Nuevo plan
+            <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Nuevo plan
           </Button>
         </div>
       </div>
@@ -349,7 +350,7 @@ export default function AdminCuotas() {
         }
         emptyFallback={
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border bg-muted/50 py-20 text-center">
-            <CreditCard className="h-10 w-10 text-muted-foreground opacity-40" aria-hidden />
+            <HugeiconsIcon icon={CreditCardIcon} size={40} strokeWidth={2} className="text-muted-foreground opacity-40" aria-hidden />
             <p className="text-muted-foreground">No hay planes de cuotas en esta categoría.</p>
           </div>
         }

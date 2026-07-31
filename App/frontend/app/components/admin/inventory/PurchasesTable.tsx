@@ -1,8 +1,9 @@
 // Tabla de compras (registro China) con badges de estado y acciones según estado:
 // En tránsito → Reportar llegada / Eliminar; Pendiente → Aprobar recepción.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, Delete02Icon, Edit02Icon, ShippingTruck01Icon, Store01Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Ship, Pencil, Trash2, Plus, Warehouse } from "lucide-react";
 
 import { PurchaseCommandPalette } from "./PurchaseCommandPalette";
 import { toast } from "sonner";
@@ -156,9 +157,9 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
               <div className="flex justify-end">
                 <RowActionsMenu
                   actions={[
-                    { label: "Reportar llegada", icon: <Ship className="h-4 w-4" />, onClick: () => setArrivalFor(p) },
-                    { label: "Editar", icon: <Pencil className="h-4 w-4" />, onClick: () => setEditFor(p) },
-                    { label: "Eliminar", icon: <Trash2 className="h-4 w-4" />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
+                    { label: "Reportar llegada", icon: <HugeiconsIcon icon={ShippingTruck01Icon} size={16} strokeWidth={2} />, onClick: () => setArrivalFor(p) },
+                    { label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
+                    { label: "Eliminar", icon: <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
                   ]}
                 />
               </div>
@@ -168,10 +169,10 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
             return (
               <div className="flex items-center justify-end gap-1.5">
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-2.5 py-1.5 text-xs font-semibold text-primary-2">
-                  <Warehouse className="h-3.5 w-3.5" />
+                  <HugeiconsIcon icon={Store01Icon} size={14} strokeWidth={2} />
                   Ingresado a bodega
                 </span>
-                <RowActionsMenu actions={[{ label: "Editar", icon: <Pencil className="h-4 w-4" />, onClick: () => setEditFor(p) }]} />
+                <RowActionsMenu actions={[{ label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) }]} />
               </div>
             );
           }
@@ -201,7 +202,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
             </div>
             {onOpenForm && (
               <Button onClick={onOpenForm} className="flex items-center gap-1.5 whitespace-nowrap">
-                <Plus className="h-4 w-4" />
+                <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} />
                 <span className="hidden sm:inline">Registrar compra</span>
               </Button>
             )}

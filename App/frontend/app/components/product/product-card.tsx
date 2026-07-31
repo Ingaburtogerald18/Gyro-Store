@@ -6,9 +6,11 @@
 // un QuickAddSheet para elegir. Ese componente y la ficha de producto son piezas
 // posteriores; hasta entonces se agrega la variante por defecto (el backend de
 // v2 recalcula por catalogItemId y todavía no maneja variantes en el pedido).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ImageNotFound01Icon, Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { Link } from '@remix-run/react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ImageOff, MessageCircle, ShoppingCart } from 'lucide-react';
+
 import { toast } from 'sonner';
 import type { CatalogProduct } from '@shared/schemas';
 import { Badge } from '~/components/ui/badge';
@@ -129,7 +131,7 @@ export function ProductCard({
         />
       ) : (
         <div className="grid h-full place-items-center text-muted-foreground">
-          <ImageOff aria-hidden className="h-8 w-8" />
+          <HugeiconsIcon icon={ImageNotFound01Icon} size={32} strokeWidth={2} aria-hidden />
         </div>
       )}
 
@@ -182,7 +184,7 @@ export function ProductCard({
         disabled={soldOut}
         className="h-9 flex-1 text-xs sm:h-11 sm:text-sm"
       >
-        <ShoppingCart aria-hidden className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <HugeiconsIcon icon={ShoppingCart02Icon} size={14} strokeWidth={2} aria-hidden className="sm: sm:" />
         {soldOut ? 'Agotado' : 'Agregar'}
       </Button>
       {/* Nunca se deshabilita, ni agotado: "avísame" sigue siendo un lead. */}
@@ -198,7 +200,7 @@ export function ProductCard({
         title={soldOut ? 'Avísame por WhatsApp' : 'Pedir por WhatsApp'}
         className="h-9 w-9 rounded-lg sm:h-11 sm:w-11"
       >
-        <MessageCircle aria-hidden className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
+        <HugeiconsIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
       </Button>
     </div>
   );

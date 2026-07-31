@@ -1,3 +1,5 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Add01Icon, Alert02Icon, DashboardSquare01Icon, Delete02Icon, Edit02Icon, Package01Icon, Search01Icon, SquareIcon, Tag01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { 
@@ -21,7 +23,7 @@ import { Label } from '~/components/ui/label';
 import { Switch } from '~/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
-import { Plus, Search, AlertTriangle, Tag, LayoutTemplate, BoxSelect, Package, Trash2, Edit } from 'lucide-react';
+
 import { SortableCatalogGrid } from '~/components/catalog/SortableCatalogGrid';
 import { toast } from 'sonner';
 
@@ -164,10 +166,10 @@ export default function AdminCatalogo() {
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList className="bg-card border border">
-            <TabsTrigger value="catalog" className="data-[state=active]:bg-muted"><Package className="w-4 h-4 mr-2" /> Artículos</TabsTrigger>
-            <TabsTrigger value="categories" className="data-[state=active]:bg-muted"><Tag className="w-4 h-4 mr-2" /> Categorías</TabsTrigger>
-            <TabsTrigger value="templates" className="data-[state=active]:bg-muted"><LayoutTemplate className="w-4 h-4 mr-2" /> Templates</TabsTrigger>
-            <TabsTrigger value="combos" className="data-[state=active]:bg-muted"><BoxSelect className="w-4 h-4 mr-2" /> Combos</TabsTrigger>
+            <TabsTrigger value="catalog" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={Package01Icon} size={16} strokeWidth={2} className="mr-2" /> Artículos</TabsTrigger>
+            <TabsTrigger value="categories" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={Tag01Icon} size={16} strokeWidth={2} className="mr-2" /> Categorías</TabsTrigger>
+            <TabsTrigger value="templates" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={DashboardSquare01Icon} size={16} strokeWidth={2} className="mr-2" /> Templates</TabsTrigger>
+            <TabsTrigger value="combos" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={SquareIcon} size={16} strokeWidth={2} className="mr-2" /> Combos</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -176,7 +178,7 @@ export default function AdminCatalogo() {
         <TabsContent value="catalog" className="space-y-4 outline-none">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="relative flex-1 max-w-sm w-full">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} className="absolute left-2.5 top-2.5 text-muted-foreground" />
               <Input 
                 placeholder="Buscar productos..." 
                 className="pl-9 bg-card border focus-visible:ring-ring text-foreground w-full"
@@ -185,7 +187,7 @@ export default function AdminCatalogo() {
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <Button onClick={handleOpenCreate} className="font-bold h-10">
-            <Plus className="w-4 h-4 mr-2" />
+            <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
             Nuevo Producto
           </Button>
 
@@ -287,7 +289,7 @@ export default function AdminCatalogo() {
       {isError ? (
         <Card className="bg-card border-destructive/50">
           <CardContent className="flex flex-col items-center justify-center py-12">
-             <AlertTriangle className="w-10 h-10 text-destructive mb-4" />
+             <HugeiconsIcon icon={Alert02Icon} size={40} strokeWidth={2} className="text-destructive mb-4" />
              <p className="text-destructive font-medium">No se pudo cargar el catálogo.</p>
              <p className="text-muted-foreground text-sm">Esperando que el backend conecte con la base de datos.</p>
           </CardContent>
@@ -301,7 +303,7 @@ export default function AdminCatalogo() {
       ) : catalog.length === 0 ? (
         <Card className="bg-card border border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <Tag className="w-12 h-12 text-muted-foreground mb-4" />
+            <HugeiconsIcon icon={Tag01Icon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium text-foreground">Catálogo Vacío</h3>
             <p className="text-muted-foreground text-sm mt-1 mb-4 text-center max-w-sm">No hay productos registrados. Comienza agregando tu primer artículo.</p>
             <Button onClick={handleOpenCreate}>
@@ -371,7 +373,7 @@ export default function AdminCatalogo() {
                           size="icon" 
                           onClick={() => { setEditingCategoryId(c.id); setCategoryFormData({ name: c.name, slug: c.slug }); }}
                         >
-                          <Edit className="w-4 h-4 text-muted-foreground" />
+                          <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -379,7 +381,7 @@ export default function AdminCatalogo() {
                           className="hover:bg-destructive/20 hover:text-destructive"
                           onClick={() => handleDeleteCategory(c.id)}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                         </Button>
                       </div>
                     </div>
@@ -393,7 +395,7 @@ export default function AdminCatalogo() {
         <TabsContent value="templates" className="space-y-4 outline-none">
         <Card className="bg-card border border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <LayoutTemplate className="w-12 h-12 text-muted-foreground mb-4" />
+            <HugeiconsIcon icon={DashboardSquare01Icon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium text-foreground">Templates (Próximamente)</h3>
             <p className="text-muted-foreground text-sm mt-1 text-center max-w-sm">Aquí podrás administrar las plantillas de PC y componentes.</p>
           </CardContent>
@@ -403,7 +405,7 @@ export default function AdminCatalogo() {
       <TabsContent value="combos" className="outline-none">
         <Card className="bg-card border border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <BoxSelect className="w-12 h-12 text-muted-foreground mb-4" />
+            <HugeiconsIcon icon={SquareIcon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium text-foreground">Combos (Próximamente)</h3>
             <p className="text-muted-foreground text-sm mt-1 text-center max-w-sm">Administra ofertas y agrupaciones de productos.</p>
           </CardContent>

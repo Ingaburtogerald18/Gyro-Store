@@ -1,7 +1,9 @@
 // Galería de la ficha: foto grande + miniaturas. Con una sola imagen, las
 // miniaturas no se pintan (no hay nada que elegir).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ImageNotFound01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
-import { ImageOff } from 'lucide-react';
+
 import { cn } from '~/lib/utils';
 
 export function ProductGallery({ images, name }: { images: string[]; name: string }) {
@@ -22,7 +24,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
           />
         ) : (
           <div className="grid h-full place-items-center text-muted-foreground">
-            <ImageOff aria-hidden className="h-10 w-10" />
+            <HugeiconsIcon icon={ImageNotFound01Icon} size={40} strokeWidth={2} aria-hidden />
           </div>
         )}
       </div>

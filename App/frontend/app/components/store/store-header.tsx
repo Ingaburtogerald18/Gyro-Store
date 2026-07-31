@@ -1,7 +1,9 @@
 // Header del catálogo público (Amazon-style): logo · búsqueda (próximamente) ·
 // carrito con contador animado · acceso (HeaderSettingsMenu).
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef } from 'react';
-import { ShoppingCart } from 'lucide-react';
+
 import { Link } from '@remix-run/react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
@@ -32,7 +34,7 @@ function CartButton() {
       aria-label={count > 0 ? `Abrir carrito, ${count} artículo${count === 1 ? "" : "s"}` : "Abrir carrito"}
       className="relative grid h-10 w-10 place-items-center rounded-full border bg-card text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
-      <ShoppingCart className="h-5 w-5" />
+      <HugeiconsIcon icon={ShoppingCart02Icon} size={20} strokeWidth={2} />
       <AnimatePresence>
         {count > 0 && (
           <motion.span

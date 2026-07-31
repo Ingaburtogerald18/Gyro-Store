@@ -1,8 +1,9 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft02Icon } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "@remix-run/react";
 import type { MetaFunction } from "@remix-run/node";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
@@ -90,7 +91,7 @@ export default function Login() {
       <div className="absolute left-6 top-6 z-20">
         <Button asChild variant="ghost" className="h-10 rounded-full bg-primary/20 px-4 text-primary hover:bg-primary/30 hover:text-white transition-colors">
           <Link to="/">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Volver al catálogo
+            <HugeiconsIcon icon={ArrowLeft02Icon} size={16} strokeWidth={2} className="mr-2" /> Volver al catálogo
           </Link>
         </Button>
       </div>

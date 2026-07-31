@@ -4,9 +4,11 @@
 // Sobre <Dialog> de shadcn/ui + react-hook-form. La validación usa el MISMO
 // schema Zod que valida el backend (shared/schemas.ts): una sola fuente de
 // verdad, sin reglas duplicadas que se desincronicen.
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Location01Icon, Store01Icon, TruckIcon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { MapPin, Store, Truck } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { publicOrderInputSchema, type PublicOrderInput } from '@shared/schemas';
 import { Button } from '~/components/ui/button';
@@ -167,8 +169,8 @@ export function CheckoutDialog({
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
-                  { value: 'retiro', label: 'Retiro en tienda', icon: Store },
-                  { value: 'envio', label: 'Envío a domicilio', icon: Truck },
+                  { value: 'retiro', label: 'Retiro en tienda', icon: Store01Icon },
+                  { value: 'envio', label: 'Envío a domicilio', icon: TruckIcon },
                 ] as const
               ).map(({ value, label, icon: Icon }) => (
                 <label
@@ -186,7 +188,7 @@ export function CheckoutDialog({
                     className="sr-only"
                     {...register('deliveryMethod')}
                   />
-                  <Icon aria-hidden className="h-4 w-4" />
+                  <HugeiconsIcon icon={Icon} size={16} strokeWidth={2} aria-hidden />
                   {label}
                 </label>
               ))}
@@ -211,7 +213,7 @@ export function CheckoutDialog({
                 disabled={geoLoading}
                 className="w-full justify-center gap-2"
               >
-                <MapPin aria-hidden className="h-4 w-4" />
+                <HugeiconsIcon icon={Location01Icon} size={16} strokeWidth={2} aria-hidden />
                 {locationUrl
                   ? 'Ubicación agregada — tocá para actualizar'
                   : geoLoading
