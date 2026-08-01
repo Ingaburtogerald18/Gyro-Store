@@ -13,6 +13,7 @@ import {
   registerSaleInputSchema,
   rejectSaleInputSchema,
   settleBalanceInputSchema,
+  updateSaleInputSchema,
 } from '../../shared/schemas';
 import {
   listSellableProducts,
@@ -21,6 +22,8 @@ import {
   approveSale,
   rejectSale,
   listSales,
+  updateSale,
+  deleteSale,
 } from '../services/sales';
 import {
   getSellerSummary,
@@ -47,7 +50,17 @@ router.post(
   '/quote',
   asyncHandler(async (req, res) => {
     const data = quoteInputSchema.parse(req.body);
-    res.json(await quoteSale(data.items));
+    const result = await quoteSale(data.items);
+
+    if (!isAdminLike(req.user!.roles)) {
+      result.lines = result.lines.map((line) => {
+        const { costeFinalSnap, utilidadBruta, salary, utilidadNeta, gananciaTienda, ...rest } = line as any;
+        return rest;
+      });
+      delete (result as any).totalGananciaTienda;
+    }
+
+    res.json(result);
   }),
 );
 
@@ -145,6 +158,29 @@ router.post(
     res.json({ ok: true });
   }),
 );
+
+router.put(
+  '/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = parseUuidParam(req.params.id, 'Venta no encontrada.');
+    const data = updateSaleInputSchema.parse(req.body);
+    const sale = await updateSale(id, data, { uid: req.user!.uid, email: req.user!.email, roles: req.user!.roles });
+    res.json(sale);
+  })
+);
+
+router.delete(
+  '/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = parseUuidParam(req.params.id, 'Venta no encontrada.');
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason : '';
+    await deleteSale(id, reason, { uid: req.user!.uid, email: req.user!.email, roles: req.user!.roles });
+    res.json({ ok: true });
+  })
+);
+
 
 const statusFilterSchema = z.enum(['pending_approval', 'approved', 'paid', 'rejected']);
 

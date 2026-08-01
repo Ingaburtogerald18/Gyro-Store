@@ -908,6 +908,32 @@ export async function releaseReservations(orderId: string): Promise<{ released: 
   return { released: reservations.length };
 }
 
+export async function releaseConsumedReservations(orderId: string): Promise<{ released: number }> {
+  const { data, error } = await db
+    .from('stock_reservations')
+    .select('id, purchase_id, quantity')
+    .eq('order_id', orderId)
+    .eq('status', 'consumed');
+  if (error) throw error;
+
+  const reservations = (data ?? []) as unknown as { id: string; purchase_id: string; quantity: number }[];
+  if (!reservations.length) return { released: 0 };
+
+  const releasePromises = reservations.map(reservation => 
+    releaseFifoLot(reservation.purchase_id, 'quantity_sold', reservation.quantity)
+  );
+  await Promise.all(releasePromises);
+
+  const reservationIds = reservations.map(r => r.id);
+  const { error: markError } = await db
+    .from('stock_reservations')
+    .update({ status: 'released' })
+    .in('id', reservationIds);
+  if (markError) throw markError;
+
+  return { released: reservations.length };
+}
+
 // ============================================================================
 // ── Vínculo con el catálogo: disponibilidad por código de lote ──
 // ============================================================================

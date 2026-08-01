@@ -28,10 +28,12 @@ import {
   reserveForItems,
   consumeReservation,
   releaseReservations,
+  releaseConsumedReservations,
   type InventoryRow,
 } from './inventory';
-import type { SaleLineInput, RegisterSaleInput } from '../../shared/schemas';
+import type { SaleLineInput, RegisterSaleInput, UpdateSaleInput } from '../../shared/schemas';
 import { firstOfEmbed } from '../utils/firstOfEmbed';
+import { recordCommissionAdjustment } from './sellerPayments';
 
 // ── Semana ISO (doc 03 B.4: orders.week_of agrupa pagos de comisión) ──
 // Reciclado tal cual de v1 (getISOWeekString): algoritmo puro, sin Firebase.
@@ -115,23 +117,24 @@ export interface QuoteLine {
   productName: string;
   quantity: number;
   precioUnit: number;
-  costeFinalSnap: number;
-  utilidadBruta: number;
-  salary: number;
-  utilidadNeta: number;
+  costeFinalSnap?: number;
+  utilidadBruta?: number;
+  salary?: number;
+  utilidadNeta?: number;
   comision: number;
   comisionPercent: number;
-  gananciaTienda: number;
+  gananciaTienda?: number;
   wholesale: { discountPercent: number; warning: boolean };
   available: number;
   insufficientStock: boolean;
+  belowMinMargin?: boolean;
 }
 
 export interface QuoteResult {
   lines: QuoteLine[];
   total: number;
   totalComision: number;
-  totalGananciaTienda: number;
+  totalGananciaTienda?: number;
 }
 
 export async function quoteSale(items: SaleLineInput[]): Promise<QuoteResult> {
@@ -165,6 +168,7 @@ export async function quoteSale(items: SaleLineInput[]): Promise<QuoteResult> {
       wholesale: snapshot.wholesale,
       available: estimate.available,
       insufficientStock: estimate.available < item.quantity,
+      belowMinMargin: snapshot.precioUnit < round(snapshot.costeFinalSnap * (config.minMarginMultiplier ?? 1.15), 2),
     };
   });
 
@@ -197,17 +201,34 @@ export async function registerSale(
   input: RegisterSaleInput,
   seller: { uid: string; email: string },
 ): Promise<RegisteredSale> {
-  const config = await getFinancialConfig();
+  const [config, availableRows] = await Promise.all([getFinancialConfig(), getAvailableInventory()]);
+  const minMargin = config.minMarginMultiplier ?? 1.15;
 
   // Precio final por línea (con mayoreo ya aplicado si corresponde): es lo
   // que se congela en order_items.precio_unit y lo que usa la cadena de
   // comisión al aprobar — el mayoreo no se vuelve a evaluar después.
   const pricedLines = input.items.map((item) => {
-    const wholesale =
-      item.applyWholesale ?? true
-        ? applyWholesaleDiscount(item.salePrice, item.quantity, config.wholesaleDiscounts)
-        : { price: round(item.salePrice, 2), discountPercent: 0, warning: false };
-    return { productName: item.productName, quantity: item.quantity, precioUnit: wholesale.price };
+    const estimate = estimateLineCost(item.productName, item.quantity, availableRows);
+    const snapshot = computeOrderLineSnapshot(
+      {
+        sku: item.productName,
+        quantity: item.quantity,
+        basePrice: item.salePrice,
+        costeFinal: estimate.costeFinal,
+        costoFU: estimate.costoFU,
+        applyWholesale: item.applyWholesale,
+      },
+      config,
+    );
+
+    const minPrice = round(snapshot.costeFinalSnap * minMargin, 2);
+    if (snapshot.precioUnit < minPrice) {
+      throw new BadRequestError(
+        `El precio de venta para "${item.productName}" está por debajo del margen mínimo. El mínimo aceptable es C$ ${minPrice.toFixed(2)}.`,
+      );
+    }
+
+    return { productName: item.productName, quantity: item.quantity, precioUnit: snapshot.precioUnit };
   });
 
   const total = round(
@@ -433,4 +454,168 @@ export async function listSales(filters: { sellerEmail?: string; status?: string
     total: row.total ?? 0,
     createdAt: row.created_at,
   }));
+}
+
+// ── Modificación y Anulación ──
+
+export async function updateSale(
+  orderId: string,
+  input: UpdateSaleInput,
+  user: { uid: string; email: string; roles: string[] },
+): Promise<RegisteredSale> {
+  const { data: order, error: orderError } = await db.from('orders').select('*').eq('id', orderId).maybeSingle();
+  if (orderError) throw orderError;
+  if (!order) throw new BadRequestError('Venta no encontrada.');
+
+  if (!['pending_approval', 'approved', 'paid'].includes(order.status)) {
+    throw new BadRequestError(`No se puede editar una venta en estado ${order.status}.`);
+  }
+  if (order.status !== 'pending_approval' && !input.reason) {
+    throw new BadRequestError('El motivo de edición es obligatorio para ventas ya procesadas.');
+  }
+
+  const [config, availableRows] = await Promise.all([getFinancialConfig(), getAvailableInventory()]);
+  const minMargin = config.minMarginMultiplier ?? 1.15;
+
+  const pricedLines = input.items.map((item) => {
+    const estimate = estimateLineCost(item.productName, item.quantity, availableRows);
+    const snapshot = computeOrderLineSnapshot(
+      {
+        sku: item.productName,
+        quantity: item.quantity,
+        basePrice: item.salePrice,
+        costeFinal: estimate.costeFinal,
+        costoFU: estimate.costoFU,
+        applyWholesale: item.applyWholesale,
+      },
+      config,
+    );
+
+    const minPrice = round(snapshot.costeFinalSnap * minMargin, 2);
+    if (snapshot.precioUnit < minPrice) {
+      throw new BadRequestError(
+        `El precio de venta para "${item.productName}" está por debajo del margen mínimo. El mínimo aceptable es C$ ${minPrice.toFixed(2)}.`,
+      );
+    }
+    return { productName: item.productName, quantity: item.quantity, precioUnit: snapshot.precioUnit };
+  });
+
+  const newTotal = round(
+    pricedLines.reduce((sum, line) => sum + line.precioUnit * line.quantity, 0),
+    2,
+  );
+
+  let oldComision = 0;
+  if (order.status === 'paid') {
+    const { data: oldItems } = await db.from('order_items').select('comision').eq('order_id', orderId);
+    oldComision = (oldItems || []).reduce((sum, it) => sum + (Number(it.comision) || 0), 0);
+  }
+
+  if (order.status === 'pending_approval') {
+    await releaseReservations(orderId);
+  } else {
+    await releaseConsumedReservations(orderId);
+  }
+
+  const { error: updError } = await db
+    .from('orders')
+    .update({ total: newTotal, phone: input.phone ?? null, status: 'pending_approval' })
+    .eq('id', orderId);
+  if (updError) throw updError;
+
+  await db.from('order_items').delete().eq('order_id', orderId);
+
+  const { error: itemsError } = await db.from('order_items').insert(
+    pricedLines.map((line) => ({
+      order_id: orderId,
+      sku: line.productName,
+      quantity: line.quantity,
+      precio_unit: line.precioUnit,
+    })),
+  );
+  if (itemsError) throw itemsError;
+
+  try {
+    await reserveForItems(
+      orderId,
+      pricedLines.map((line) => ({ productName: line.productName, quantity: line.quantity })),
+    );
+  } catch (err) {
+    throw err;
+  }
+
+  if (order.status === 'approved' || order.status === 'paid') {
+    await approveSale(orderId);
+
+    if (order.status === 'paid') {
+      await db.from('orders').update({ status: 'paid' }).eq('id', orderId);
+      const { data: newItems } = await db.from('order_items').select('comision').eq('order_id', orderId);
+      const newComision = (newItems || []).reduce((sum, it) => sum + (Number(it.comision) || 0), 0);
+
+      await recordCommissionAdjustment({
+        sellerEmail: order.seller_email,
+        sellerUid: order.seller_uid,
+        orderId: orderId,
+        comisionVieja: oldComision,
+        comisionNueva: newComision,
+        reason: input.reason || 'Edición post-pago',
+        createdBy: user.uid,
+      });
+    }
+  }
+
+  await db.from('audit_logs').insert({
+    entity: 'orders',
+    entity_id: orderId,
+    action: 'sale_updated',
+    reason: input.reason || 'Edición de venta',
+    author_uid: user.uid,
+  });
+
+  return { id: orderId, status: order.status === 'pending_approval' ? 'pending_approval' : order.status, total: newTotal };
+}
+
+export async function deleteSale(orderId: string, reason: string, user: { uid: string; email: string; roles: string[] }) {
+  const { data: order, error: orderError } = await db.from('orders').select('*').eq('id', orderId).maybeSingle();
+  if (orderError) throw orderError;
+  if (!order) throw new BadRequestError('Venta no encontrada.');
+
+  // TODO: Hito futuro: chequear existencia de factura para bloquear anulación
+
+  if (order.status === 'pending_approval') {
+    await releaseReservations(orderId);
+  } else {
+    await releaseConsumedReservations(orderId);
+  }
+
+  let oldComision = 0;
+  if (order.status === 'paid') {
+    const { data: oldItems } = await db.from('order_items').select('comision').eq('order_id', orderId);
+    oldComision = (oldItems || []).reduce((sum, it) => sum + (Number(it.comision) || 0), 0);
+  }
+
+  await db.from('order_items').delete().eq('order_id', orderId);
+  await db.from('orders').delete().eq('id', orderId);
+
+  if (order.status === 'paid') {
+    await recordCommissionAdjustment({
+      sellerEmail: order.seller_email,
+      sellerUid: order.seller_uid,
+      orderId: orderId,
+      comisionVieja: oldComision,
+      comisionNueva: 0,
+      reason: reason || 'Venta eliminada',
+      createdBy: user.uid,
+    });
+  }
+
+  await db.from('audit_logs').insert({
+    entity: 'orders',
+    entity_id: orderId,
+    action: 'sale_deleted',
+    reason: reason || 'Venta anulada',
+    author_uid: user.uid,
+  });
+
+  return true;
 }

@@ -23,23 +23,24 @@ export interface QuoteLine {
   productName: string;
   quantity: number;
   precioUnit: number;
-  costeFinalSnap: number;
-  utilidadBruta: number;
-  salary: number;
-  utilidadNeta: number;
+  costeFinalSnap?: number;
+  utilidadBruta?: number;
+  salary?: number;
+  utilidadNeta?: number;
   comision: number;
   comisionPercent: number;
-  gananciaTienda: number;
+  gananciaTienda?: number;
   wholesale: { discountPercent: number; warning: boolean };
   available: number;
   insufficientStock: boolean;
+  belowMinMargin?: boolean;
 }
 
 export interface QuoteResult {
   lines: QuoteLine[];
   total: number;
   totalComision: number;
-  totalGananciaTienda: number;
+  totalGananciaTienda?: number;
 }
 
 export interface RegisterSaleInput {

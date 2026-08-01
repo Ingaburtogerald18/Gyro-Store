@@ -425,6 +425,7 @@ export const wholesaleDiscountItemSchema = z.object({
 export const financialConfigSchema = z.object({
   exchangeRate: z.number().positive('Debe ser mayor a 0'),
   salaryPercentage: z.number().min(0).max(1),
+  minMarginMultiplier: z.number().min(1).default(1.15),
   costoFUScale: z.array(costoFUScaleItemSchema).min(1, 'Se requiere al menos un tramo'),
   pozos: pozosSchema,
   marginScale: z.array(marginScaleItemSchema).min(1, 'Se requiere al menos un tramo'),
@@ -536,6 +537,13 @@ export const registerSaleInputSchema = z.object({
     }),
 });
 export type RegisterSaleInput = z.infer<typeof registerSaleInputSchema>;
+
+export const updateSaleInputSchema = z.object({
+  phone: z.string().optional(),
+  items: z.array(saleLineInputSchema).min(1, 'Selecciona al menos un producto.').max(50),
+  reason: z.string().optional(),
+});
+export type UpdateSaleInput = z.infer<typeof updateSaleInputSchema>;
 
 export const rejectSaleInputSchema = z.object({
   reason: z.string().min(1, 'El motivo de rechazo es obligatorio.').max(500),
