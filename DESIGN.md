@@ -40,6 +40,24 @@ campo — típicamente un modal de edición que abre con los campos en blanco.
 Cada `shadcn add --overwrite` sobre estos tres archivos se lleva el `forwardRef`. Hay que
 volver a ponerlo, o migrar el proyecto a React 19.
 
+### La otra excepción: el estado activo de `Tabs`
+
+`tabs.tsx` pinta la pestaña activa como un **pill lleno con `--primary`**, no con el
+`bg-background` / `dark:bg-input/30` del registry. El default no se veía:
+
+| | activo vs. su contenedor |
+|---|---|
+| Registry, oscuro (`bg-input/30` sobre `bg-muted`) | **1.62:1** |
+| Registry, claro (`bg-background` sobre `bg-muted`) | **1.11:1** |
+| Pill lleno, claro | **4.82:1** |
+
+En oscuro el borde del pill queda en 1.96:1, pero ahí el peso lo carga el texto:
+`--primary-foreground` sobre `--primary` da **7.2:1**. El estado nunca se apoya solo en
+color — también cambia el `font-weight` (§8).
+
+Esto además unifica los dos sistemas de tabs del panel: `AnimatedTabs` (el propio, con
+indicador deslizante) ya usaba un pill `bg-primary`, así que ahora los dos hablan igual.
+
 `style-maia.css` se carga con un `@import "./style-maia.css"` desde `tailwind.css`, y la clase
 `.style-maia` la pone `root.tsx` en el `<html>`. **Las dos cosas hacen falta**: sin el import, la
 clase no tiene CSS detrás y el style entero queda sin aplicar (le pasó al `style-rhea` anterior).

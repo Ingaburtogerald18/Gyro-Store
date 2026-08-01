@@ -203,10 +203,22 @@ export function computeOrderLineSnapshot(
   input: OrderLineSnapshotInput,
   config: FinancialConfig,
 ): OrderLineSnapshot {
+  // El precio que manda es EL DEL FORMULARIO. El mayoreo es una herramienta del
+  // cotizador (doc 11 §5), no automático: hay que pedirlo explícitamente con
+  // `applyWholesale: true`.
+  //
+  // Antes el default era `?? true` y el frontend nunca manda el flag, así que un
+  // pedido de 5 unidades se cotizaba con un 5% de descuento que nadie pidió: el
+  // vendedor escribía C$380 y la cadena financiera corría sobre C$361. El
+  // desglose no cuadraba con el precio tipeado y la comisión salía más baja.
+  //
+  // El `warning` se calcula igual aunque no se aplique el descuento: que la
+  // cantidad califique para mayoreo es información útil por sí sola.
+  const tiered = applyWholesaleDiscount(input.basePrice, input.quantity, config.wholesaleDiscounts);
   const wholesale =
-    input.applyWholesale ?? true
-      ? applyWholesaleDiscount(input.basePrice, input.quantity, config.wholesaleDiscounts)
-      : { price: round(input.basePrice, 2), discountPercent: 0, warning: false };
+    input.applyWholesale === true
+      ? tiered
+      : { price: round(input.basePrice, 2), discountPercent: 0, warning: tiered.warning };
 
   const commission = computeLineCommission(
     {

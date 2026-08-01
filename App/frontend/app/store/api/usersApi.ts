@@ -17,11 +17,21 @@ export interface UserProfile {
   isProtected?: boolean;
 }
 
+export interface UserPerformance {
+  pendingApproval: { count: number; comision: number };
+  approvedUnpaid: { count: number; comision: number };
+  paid: { count: number; comision: number };
+  balance: number;
+}
+
 export const usersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<UserProfile[], void>({
       query: () => '/admin/users',
       providesTags: ['Config'], // Reuse Config tag for now, or we can add 'Users' later
+    }),
+    getUserPerformance: builder.query<UserPerformance, string>({
+      query: (id) => `/admin/users/${encodeURIComponent(id)}/performance`,
     }),
     updateUserRoles: builder.mutation<UserProfile, { email: string; roles: AppRole[] }>({
       query: ({ email, roles }) => ({
@@ -73,6 +83,7 @@ export const usersApi = baseApi.injectEndpoints({
 
 export const {
   useGetUsersQuery,
+  useGetUserPerformanceQuery,
   useUpdateUserRolesMutation,
   useCreateUserMutation,
   useDeleteUserMutation,

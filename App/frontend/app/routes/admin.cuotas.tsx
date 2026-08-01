@@ -333,7 +333,7 @@ export default function AdminCuotas() {
       </div>
 
       <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-        <TabsList className="bg-card border border">
+        <TabsList className="bg-card border">
           <TabsTrigger value="active">Activas</TabsTrigger>
           <TabsTrigger value="all">Todas</TabsTrigger>
           <TabsTrigger value="completed">Completadas</TabsTrigger>

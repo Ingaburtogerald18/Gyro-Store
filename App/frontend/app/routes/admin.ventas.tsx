@@ -211,7 +211,7 @@ export default function AdminVentas() {
 
       <div className="space-y-4">
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-          <TabsList className="bg-muted border border">
+          <TabsList className="bg-muted border">
             {STATUS_TABS.map((t) => (
               <TabsTrigger key={t.value} value={t.value}>
                 {t.label}

@@ -4,6 +4,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
 import { db } from '../supabase';
 import { config, VALID_ROLES, type AppRole } from '../config';
+import { getSellerSummary } from '../services/sellerPayments';
 
 const router = Router();
 
@@ -280,6 +281,33 @@ router.patch(
 
     if (error) throw error;
     res.json({ message: 'Perfil actualizado', data });
+  })
+);
+
+// GET /api/admin/users/:id/performance
+router.get(
+  '/:id/performance',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const userId = req.params.id as string;
+    if (!userId) {
+      res.status(400).json({ error: 'ID requerido.' });
+      return;
+    }
+
+    const { data: profile, error } = await db
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (error || !profile?.email) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    const summary = await getSellerSummary(profile.email);
+    res.json(summary);
   })
 );
 
