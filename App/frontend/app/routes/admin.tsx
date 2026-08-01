@@ -25,6 +25,7 @@ import {
 } from '~/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import { Separator } from '~/components/ui/separator';
+import { NotificationsBell } from '~/components/admin/NotificationsBell';
 import {
   Sidebar,
   SidebarContent,
@@ -363,6 +364,8 @@ export default function AdminLayout() {
           </Breadcrumb>
 
           <div className="ml-auto flex items-center gap-2">
+            <NotificationsBell />
+
             <Button variant="ghost" size="sm" asChild className="hidden text-muted-foreground sm:flex">
               <a href="/" target="_blank" rel="noreferrer">
                 <HugeiconsIcon icon={SparklesIcon} size={16} strokeWidth={2} aria-hidden className="mr-2" />

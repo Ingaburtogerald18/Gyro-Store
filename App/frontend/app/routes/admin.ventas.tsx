@@ -12,6 +12,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, CancelCircleIcon, CheckmarkCircle01Icon, Delete02Icon, Link02Icon, Package01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
+import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
@@ -67,7 +68,18 @@ export default function AdminVentas() {
   const [approveSale] = useApproveSaleMutation();
   const [rejectSale, { isLoading: rejecting }] = useRejectSaleMutation();
 
-  const [statusFilter, setStatusFilter] = useState('pending_approval');
+  // El filtro vive en la URL para que la campana de notificaciones pueda
+  // enlazar directo al estado que anuncia ("3 ventas esperan tu aprobación").
+  // Con estado local a secas el enlace llegaba a la pestaña equivocada.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = searchParams.get('status') ?? 'pending_approval';
+
+  function setStatusFilter(next: string) {
+    // `replace` para no llenar el historial con cada cambio de pestaña: volver
+    // atrás debería salir de Ventas, no recorrer los filtros que se probaron.
+    setSearchParams(next === 'pending_approval' ? {} : { status: next }, { replace: true });
+  }
+
   const {
     data: sales = [],
     isLoading: loadingSales,
