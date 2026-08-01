@@ -35,7 +35,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { activo } = req.body;
-    const account = await toggleAccountStatus(id!, Boolean(activo));
+    const account = await toggleAccountStatus(id as string, Boolean(activo));
     res.json(account);
   })
 );
@@ -57,7 +57,7 @@ router.post(
   '/movimientos',
   asyncHandler(async (req, res) => {
     const data = registerMovementInputSchema.parse(req.body);
-    const userId = req.user!.id;
+    const userId = req.user!.uid;
     const movement = await registerMovement(data, userId);
     res.status(201).json(movement);
   })

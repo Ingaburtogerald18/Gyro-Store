@@ -15,6 +15,7 @@ import { Input } from '~/components/ui/input';
 import { Spinner } from '~/components/ui/spinner';
 import { Switch } from '~/components/ui/switch';
 import { Textarea } from '~/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { errMsg, formatCordobas } from '~/lib/formatters';
 import {
   useGetSellableProductsQuery,
@@ -26,6 +27,11 @@ import {
   type SaleWithItems,
   type SellableProduct,
 } from '~/store/api/salesApi';
+
+import { useAppSelector } from '~/store/hooks';
+import { selectIsAdmin, selectIsGlobalAdmin } from '~/store/slices/authSlice';
+import { useGetUsersQuery } from '~/store/api/usersApi';
+import { useLazyLookupInvoiceQuery, type Invoice } from '~/store/api/invoicesApi';
 
 import { SaleLinesTable, newEditorLine, type EditorLine } from './SaleLinesTable';
 import { QuoteSummary } from './QuoteSummary';
@@ -39,11 +45,16 @@ export function SaleEditor({
   onDone?: () => void;
 } = {}) {
   const isEdit = !!sale;
+  const isAdmin = useAppSelector(selectIsAdmin);
+
+  // `getUsers` responde el array directo (`UserProfile[]`), no `{ data }`.
+  const { data: users = [] } = useGetUsersQuery(undefined, { skip: !isAdmin });
 
   const { data: products = [] } = useGetSellableProductsQuery();
   const [quoteSale, { isLoading: quoting }] = useQuoteSaleMutation();
   const [registerSale, { isLoading: registering }] = useRegisterSaleMutation();
   const [updateSale, { isLoading: updating }] = useUpdateSaleMutation();
+  const [lookupInvoice, { isFetching: lookupLoading }] = useLazyLookupInvoiceQuery();
 
   const [lines, setLines] = useState<EditorLine[]>(() =>
     sale?.items?.length
@@ -63,6 +74,14 @@ export function SaleEditor({
   const [editReason, setEditReason] = useState('');
   const [result, setResult] = useState<QuoteResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const isGlobalAdmin = useAppSelector(selectIsGlobalAdmin);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [useInvoice, setUseInvoice] = useState(!isGlobalAdmin);
+
+  const [isRegisteredSeller, setIsRegisteredSeller] = useState(!!sale?.sellerUid || !sale);
+  const [selectedSellerId, setSelectedSellerId] = useState<string>(sale?.sellerUid || '');
+  const [externalSellerName, setExternalSellerName] = useState<string>(!sale?.sellerUid && sale?.sellerEmail ? sale.sellerEmail : '');
 
   // En modo edición la venta YA tiene su stock reservado, así que sus productos
   // aparecerían agotados y no se podrían volver a seleccionar. Se les "devuelve"
@@ -133,17 +152,19 @@ export function SaleEditor({
   // UNA sola razón visible a la vez, en orden de prioridad: el botón
   // deshabilitado SIEMPRE explica por qué.
   const disabledReason =
-    validLines.length === 0
-      ? 'Agrega al menos un producto con cantidad y precio.'
-      : duplicateNames.size > 0
-        ? 'Hay un producto repetido: juntá las unidades en una sola línea.'
-        : hasOverStock
-          ? 'Hay líneas que exceden el stock disponible.'
-          : belowMinMarginNames.length > 0
-            ? `Hay líneas por debajo del margen mínimo (${belowMinMarginNames.join(', ')}).`
-            : isEdit && sale?.status !== 'pending_approval' && !editReason.trim()
-              ? 'Escribe el motivo de la edición para habilitar el guardado.'
-              : null;
+    (!isEdit && useInvoice && !invoiceNumber)
+      ? 'Falta el número de factura obligatoria.'
+      : (validLines.length === 0 && !(useInvoice && invoiceNumber))
+        ? 'Agrega al menos un producto con cantidad y precio.'
+        : duplicateNames.size > 0
+          ? 'Hay un producto repetido: juntá las unidades en una sola línea.'
+          : hasOverStock
+            ? 'Hay líneas que exceden el stock disponible.'
+            : belowMinMarginNames.length > 0
+              ? `Hay líneas por debajo del margen mínimo (${belowMinMarginNames.join(', ')}).`
+              : isEdit && sale?.status !== 'pending_approval' && !editReason.trim()
+                ? 'Escribe el motivo de la edición para habilitar el guardado.'
+                : null;
 
   // ── Cotización en vivo ──
   // La dependencia es el JSON de las líneas VÁLIDAS, no el array: así no se
@@ -176,11 +197,29 @@ export function SaleEditor({
     return () => clearTimeout(timer);
   }, [linesKey, quoteSale]);
 
+  async function handleLookupInvoice() {
+    if (!invoiceNumber || Number.isNaN(Number(invoiceNumber))) return;
+    try {
+      const inv = await lookupInvoice(Number(invoiceNumber)).unwrap();
+      if (inv.status === 'linked') {
+        toast.error('Esta factura ya está vinculada a otra venta.');
+        return;
+      }
+      toast.success(`Factura #${inv.invoiceNumber} encontrada. Los productos se cargarán automáticamente al registrar la venta.`);
+    } catch (err) {
+      toast.error(errMsg(err, 'Factura no encontrada.'));
+    }
+  }
+
   function resetEditor() {
     setLines([newEditorLine()]);
     setIncludeCustomer(false);
     setCustomerName('');
     setPhone('');
+    setIsRegisteredSeller(true);
+    setSelectedSellerId('');
+    setExternalSellerName('');
+    setInvoiceNumber('');
     setResult(null);
     setErrorMsg('');
   }
@@ -189,6 +228,11 @@ export function SaleEditor({
     if (disabledReason) return;
 
     try {
+      const overridePayload = isAdmin ? {
+        overrideSellerId: isRegisteredSeller ? selectedSellerId || undefined : undefined,
+        overrideSellerName: !isRegisteredSeller ? externalSellerName.trim() || undefined : undefined,
+      } : {};
+
       if (isEdit && sale) {
         await updateSale({
           id: sale.id,
@@ -196,6 +240,7 @@ export function SaleEditor({
           phone: includeCustomer ? phone.trim() || undefined : '',
           items: validLines,
           reason: editReason.trim() || undefined,
+          ...overridePayload
         }).unwrap();
         toast.success('Venta actualizada.');
         onDone?.();
@@ -205,7 +250,9 @@ export function SaleEditor({
       await registerSale({
         customerName: includeCustomer ? customerName.trim() || undefined : undefined,
         phone: includeCustomer ? phone.trim() || undefined : undefined,
-        items: validLines 
+        items: validLines,
+        invoiceNumber: useInvoice ? Number(invoiceNumber) : undefined,
+        ...overridePayload
       }).unwrap();
       toast.success('Venta registrada. Pendiente de aprobación.');
       resetEditor();
@@ -263,6 +310,106 @@ export function SaleEditor({
             </div>
           )}
         </section>
+
+        {!isEdit && (
+          <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon icon={Alert02Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+                <h3 className="text-sm font-semibold text-foreground">Factura (Ticket)</h3>
+              </div>
+              {isGlobalAdmin && (
+                <Switch
+                  id="use-invoice"
+                  checked={useInvoice}
+                  onCheckedChange={setUseInvoice}
+                  disabled={busy}
+                />
+              )}
+            </div>
+            
+            {useInvoice && (
+              <div className="pt-2">
+                <Field>
+                  <FieldLabel htmlFor="invoice-number">N° de Factura del Ticket</FieldLabel>
+                  <div className="flex gap-2">
+                    <Input
+                      id="invoice-number"
+                      type="number"
+                      value={invoiceNumber}
+                      onChange={(e) => setInvoiceNumber(e.target.value)}
+                      placeholder="Ej. 12345"
+                      disabled={busy}
+                      className="max-w-[200px]"
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleLookupInvoice} 
+                      disabled={!invoiceNumber || lookupLoading}
+                    >
+                      {lookupLoading ? <Spinner /> : 'Verificar'}
+                    </Button>
+                  </div>
+                  <FieldDescription>
+                    Registrar esta venta enlazará la factura al sistema de inventario automáticamente. No es necesario añadir los productos abajo si la factura ya los tiene (el sistema los copiará de la factura).
+                  </FieldDescription>
+                </Field>
+              </div>
+            )}
+          </section>
+        )}
+
+        {isAdmin && (
+          <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+                <h3 className="text-sm font-semibold text-foreground">Asignar vendedor</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground select-none">Registrado en el sistema</span>
+                <Switch
+                  id="is-registered-seller"
+                  checked={isRegisteredSeller}
+                  onCheckedChange={setIsRegisteredSeller}
+                  disabled={busy}
+                  aria-label="Vendedor registrado en el sistema"
+                />
+              </div>
+            </div>
+            
+            <div className="pt-3">
+              {isRegisteredSeller ? (
+                <Field>
+                  <FieldLabel htmlFor="sale-seller-id" className="sr-only">Seleccionar vendedor</FieldLabel>
+                  <Select value={selectedSellerId} onValueChange={setSelectedSellerId} disabled={busy}>
+                    <SelectTrigger id="sale-seller-id">
+                      <SelectValue placeholder="Usuario actual (por defecto)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Usuario actual (por defecto)</SelectItem>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="sale-external-seller" className="sr-only">Nombre del vendedor</FieldLabel>
+                  <Input
+                    id="sale-external-seller"
+                    value={externalSellerName}
+                    onChange={(e) => setExternalSellerName(e.target.value)}
+                    placeholder="Nombre del vendedor esporádico..."
+                    disabled={busy}
+                  />
+                </Field>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-2">

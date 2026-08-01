@@ -19,18 +19,19 @@
 // pertenece sin ambigüedad a un solo order_item — no hace falta esa
 // distribución.
 import { db } from '../supabase';
+import { round, computeCosteFinal } from './finance';
 import { getFinancialConfig } from './appConfig';
-import { computeCosteFinal, round } from './finance';
-import { BadRequestError } from '../utils/httpError';
-import { applyWholesaleDiscount, computeLineCommission, computeOrderLineSnapshot } from './commission';
-import {
-  getAvailableInventory,
+import { 
+  getAvailableInventory, 
   reserveForItems,
   consumeReservation,
   releaseReservations,
   releaseConsumedReservations,
   type InventoryRow,
 } from './inventory';
+import { linkInvoiceToSale } from './invoice';
+import { BadRequestError } from '../utils/httpError';
+import { applyWholesaleDiscount, computeLineCommission, computeOrderLineSnapshot } from './commission';
 import type { SaleLineInput, RegisterSaleInput, UpdateSaleInput } from '../../shared/schemas';
 import { firstOfEmbed } from '../utils/firstOfEmbed';
 import { recordCommissionAdjustment } from './sellerPayments';
@@ -217,15 +218,55 @@ export interface RegisteredSale {
 
 export async function registerSale(
   input: RegisterSaleInput,
-  seller: { uid: string; email: string },
+  seller: { uid: string; email: string; isAdmin?: boolean, isGlobalAdmin?: boolean },
 ): Promise<RegisteredSale> {
   const [config, availableRows] = await Promise.all([getFinancialConfig(), getAvailableInventory()]);
   const minMargin = config.minMarginMultiplier ?? 1.15;
 
+  if (!input.invoiceNumber && !seller.isGlobalAdmin) {
+    throw new BadRequestError('El número de factura es obligatorio para registrar la venta (excepción: global_admin).');
+  }
+
+  let finalItems = input.items;
+  let finalCustomerName = input.customerName;
+  let finalPhone = input.phone;
+  let invoiceIdToLink: number | null = null;
+
+  if (input.invoiceNumber) {
+    const { data: existing, error: invError } = await db
+      .from('invoices')
+      .select('id, status, customer_name, phone')
+      .eq('invoice_number', input.invoiceNumber)
+      .maybeSingle();
+
+    if (invError) throw invError;
+    if (!existing) throw new BadRequestError('Factura no encontrada.');
+    if (existing.status !== 'unlinked') throw new BadRequestError('Esta factura ya está vinculada o anulada.');
+
+    invoiceIdToLink = input.invoiceNumber;
+    finalCustomerName = existing.customer_name || input.customerName;
+    finalPhone = existing.phone || input.phone;
+
+    const { data: invItems, error: itemsError } = await db
+      .from('invoice_items')
+      .select('sku, quantity, unit_price')
+      .eq('invoice_id', existing.id);
+
+    if (itemsError) throw itemsError;
+    if (!invItems || invItems.length === 0) throw new BadRequestError('La factura no tiene productos.');
+
+    finalItems = invItems.map((item) => ({
+      productName: item.sku!,
+      quantity: item.quantity,
+      salePrice: item.unit_price!,
+      applyWholesale: false,
+    }));
+  }
+
   // Precio final por línea (con mayoreo ya aplicado si corresponde): es lo
   // que se congela en order_items.precio_unit y lo que usa la cadena de
   // comisión al aprobar — el mayoreo no se vuelve a evaluar después.
-  const pricedLines = input.items.map((item) => {
+  const pricedLines = finalItems.map((item) => {
     const estimate = estimateLineCost(item.productName, item.quantity, availableRows);
     const snapshot = computeOrderLineSnapshot(
       {
@@ -255,21 +296,37 @@ export async function registerSale(
   );
 
   let contactId: string | null = null;
-  if (input.customerName || input.phone) {
-    if (input.phone) {
+  if (finalCustomerName || finalPhone) {
+    if (finalPhone) {
       const { data, error } = await db
         .from('contacts')
-        .upsert({ phone: input.phone, name: input.customerName || null }, { onConflict: 'phone' })
+        .upsert({ phone: finalPhone, name: finalCustomerName || null }, { onConflict: 'phone' })
         .select('id')
         .single();
       if (!error && data) contactId = data.id;
-    } else if (input.customerName) {
+    } else if (finalCustomerName) {
       const { data, error } = await db
         .from('contacts')
-        .insert({ name: input.customerName })
+        .insert({ name: finalCustomerName })
         .select('id')
         .single();
       if (!error && data) contactId = data.id;
+    }
+  }
+
+  let finalSellerUid: string | null = seller.uid;
+  let finalSellerEmail: string = seller.email;
+
+  if (seller.isAdmin) {
+    if (input.overrideSellerId) {
+      const { data } = await db.from('profiles').select('email').eq('id', input.overrideSellerId).maybeSingle();
+      if (data) {
+        finalSellerUid = input.overrideSellerId;
+        finalSellerEmail = data.email;
+      }
+    } else if (input.overrideSellerName) {
+      finalSellerUid = null;
+      finalSellerEmail = input.overrideSellerName;
     }
   }
 
@@ -278,9 +335,9 @@ export async function registerSale(
     .insert({
       status: 'pending_approval',
       sale_origin: 'native',
-      seller_uid: seller.uid,
-      seller_email: seller.email,
-      phone: input.phone ?? null,
+      seller_uid: finalSellerUid,
+      seller_email: finalSellerEmail,
+      phone: finalPhone ?? null,
       contact_id: contactId,
       total,
     })
@@ -311,6 +368,10 @@ export async function registerSale(
     await releaseReservations(order.id);
     await db.from('orders').delete().eq('id', order.id);
     throw err;
+  }
+
+  if (invoiceIdToLink) {
+    await linkInvoiceToSale(invoiceIdToLink, order.id);
   }
 
   return { id: order.id, status: order.status, total: order.total };
@@ -578,14 +639,33 @@ export async function updateSale(
      }
   }
 
+  const isAdmin = user.roles.includes('admin') || user.roles.includes('global_admin');
+  
+  // Si no es admin, mantenemos los valores originales de la base de datos (por eso no incluimos los campos en el update).
+  // Si es admin, evaluamos los overrides.
+  const updatePayload: any = {
+    total: newTotal,
+    phone: input.phone || null,
+    contact_id: contactId,
+    status: 'pending_approval',
+  };
+
+  if (isAdmin) {
+    if (input.overrideSellerId) {
+      const { data } = await db.from('profiles').select('email').eq('id', input.overrideSellerId).maybeSingle();
+      if (data) {
+        updatePayload.seller_uid = input.overrideSellerId;
+        updatePayload.seller_email = data.email;
+      }
+    } else if (input.overrideSellerName) {
+      updatePayload.seller_uid = null;
+      updatePayload.seller_email = input.overrideSellerName;
+    }
+  }
+
   const { error: updError } = await db
     .from('orders')
-    .update({ 
-      total: newTotal, 
-      phone: input.phone || null, 
-      contact_id: contactId,
-      status: 'pending_approval' 
-    })
+    .update(updatePayload)
     .eq('id', orderId);
   if (updError) throw updError;
 
@@ -646,7 +726,11 @@ export async function deleteSale(orderId: string, reason: string, user: { uid: s
   if (orderError) throw orderError;
   if (!order) throw new BadRequestError('Venta no encontrada.');
 
-  // TODO: Hito futuro: chequear existencia de factura para bloquear anulación
+  // La venta puede tener una factura asociada (sale_id en invoices). 
+  // Al anular o borrar la venta, idealmente deberíamos bloquear o dejar 
+  // la factura huérfana. Como la tabla invoices tiene la FK con set null, 
+  // al borrar la orden la factura quedará unlinked de nuevo (o deberíamos anularla).
+  // TODO: Decidir si al borrar la venta se anula también la factura en cadena.
 
   if (order.status === 'pending_approval') {
     await releaseReservations(orderId);

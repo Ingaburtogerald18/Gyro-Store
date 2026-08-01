@@ -16,6 +16,7 @@ import adminUsersRouter from './routes/adminUsers';
 import inventoryRouter from './routes/inventory';
 import salesRouter from './routes/sales';
 import invoicesRouter from './routes/invoices';
+import discountCodesRouter from './routes/discountCodes';
 import installmentsRouter from './routes/installments';
 import uploadRouter from './routes/upload';
 
@@ -79,6 +80,7 @@ app.use('/api/admin/config', adminConfigRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/sales', salesRouter);
 app.use('/api/invoices', invoicesRouter);
+app.use('/api/discount-codes', discountCodesRouter);
 app.use('/api/installments', installmentsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/combos', combosRouter);
@@ -102,7 +104,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api', notFoundHandler);
 app.use(errorHandler);
 
-app.listen(config.port, () => {
+app.listen(Number(config.port), '0.0.0.0', () => {
   logger.info(`Gyro Store API arriba en puerto ${config.port}`, { env: config.env });
   
   // Iniciar tareas en segundo plano

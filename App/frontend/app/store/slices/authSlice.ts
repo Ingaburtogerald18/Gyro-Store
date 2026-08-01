@@ -60,6 +60,7 @@ const authSlice = createSlice({
       state.user?.role != null && state.user.role !== 'customer',
     selectEditMode: (state) => state.editMode,
     selectIsAdmin: (state) => state.user?.role === 'admin' || state.user?.role === 'global_admin',
+    selectIsGlobalAdmin: (state) => state.user?.role === 'global_admin',
     // Cadena vacía → null, para que el `??` del call site caiga al fallback.
     selectUserPhoto: (state) => state.user?.photoURL || null,
   },
@@ -72,6 +73,7 @@ export const {
   selectIsStaff,
   selectEditMode,
   selectIsAdmin,
+  selectIsGlobalAdmin,
   selectUserPhoto,
 } = authSlice.selectors;
 export const authReducer = authSlice.reducer;

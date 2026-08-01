@@ -1,26 +1,62 @@
-// Facturación (Hito 3 admin). Contrato exacto de server/routes/invoices.ts —
-// modelo delgado: numera una venta ya aprobada, sin líneas/cliente propios
-// (ver server/services/invoice.ts).
 import { baseApi } from './baseApi';
 
 export interface Invoice {
   id: string;
-  saleId: string;
+  saleId: string | null;
   invoiceNumber: number;
   status: string;
   method: string | null;
   deliveryFee: number;
   total: number;
   createdAt: string;
+  customerName?: string | null;
+  phone?: string | null;
+  subtotal?: number;
+  discount?: number;
+  deliveryName?: string | null;
+}
+
+export interface InvoiceItemInput {
+  productName: string;
+  quantity: number;
+  unitPrice: number;
 }
 
 export interface CreateInvoiceInput {
-  orderId: string;
+  customerName?: string;
+  phone?: string;
   method: 'efectivo' | 'transferencia' | 'tarjeta';
   deliveryFee?: number;
+  deliveryName?: string;
+  discount?: number;
+  /** Código de descuento opcional; el servidor lo canjea al crear la factura. */
+  discountCode?: string;
+  items: InvoiceItemInput[];
 }
 
 export type InvoiceStatus = 'unlinked' | 'linked' | 'void';
+
+export interface TicketData {
+  ticketNumber: number;
+  createdAt: string;
+  customer: {
+    name: string;
+    phone?: string;
+  };
+  sellerName?: string;
+  items: {
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }[];
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  deliveryName?: string;
+  total: number;
+  method: string;
+}
 
 export const invoicesApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -31,9 +67,13 @@ export const invoicesApi = baseApi.injectEndpoints({
       }),
       providesTags: ['Invoice'],
     }),
+    getInvoiceTicket: build.query<TicketData, string>({
+      query: (id) => `invoices/${encodeURIComponent(id)}/ticket`,
+      providesTags: ['Invoice'],
+    }),
     createInvoice: build.mutation<Invoice, CreateInvoiceInput>({
       query: (body) => ({ url: 'invoices', method: 'POST', body }),
-      invalidatesTags: ['Invoice', 'Sale'],
+      invalidatesTags: ['Invoice', 'Sale', 'DiscountCode'],
     }),
     // Búsqueda por el número impreso en el papel, que es lo que el cliente trae
     // cuando vuelve al mostrador.
@@ -58,6 +98,7 @@ export const invoicesApi = baseApi.injectEndpoints({
 
 export const {
   useGetInvoicesQuery,
+  useGetInvoiceTicketQuery,
   useCreateInvoiceMutation,
   useLookupInvoiceQuery,
   useLazyLookupInvoiceQuery,

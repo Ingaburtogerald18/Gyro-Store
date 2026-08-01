@@ -36,6 +36,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true,
     // Monolito híbrido (doc 02): en dev el front corre en 5173 y proxya /api al
     // Express de :3000. En prod Express sirve el build de Remix y no hay proxy.
     proxy: {

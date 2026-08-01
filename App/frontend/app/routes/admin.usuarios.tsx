@@ -10,6 +10,8 @@ import {
   UserSettings01Icon,
 } from "@hugeicons/core-free-icons";
 import { useState, useMemo, useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { MetaFunction } from "@remix-run/node";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
@@ -28,6 +30,14 @@ import {
 } from "~/store/api/usersApi";
 import { useAppSelector } from "~/store/hooks";
 import { selectIsAdmin } from "~/store/slices/authSlice";
+import {
+  PAYOUT_BANKS,
+  PAYOUT_BANK_LABELS,
+  PAYOUT_CURRENCIES,
+  PAYOUT_CURRENCY_LABELS,
+  updateProfileSchema,
+  type UpdateProfileInput,
+} from "@shared/schemas";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -51,7 +61,7 @@ import {
 } from "~/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Input } from "~/components/ui/input";
-import { Field, FieldLabel } from "~/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -80,11 +90,14 @@ const ROLE_LABELS: Record<AppRole, string> = {
 
 const isProtectedUser = (user: UserProfile) => user.isProtected === true;
 
-const PENDING_FIELDS = [
-  { id: "correo-personal", label: "Correo Personal", type: "email", placeholder: "usuario@gmail.com" },
-  { id: "numero", label: "Número de Teléfono", type: "text", placeholder: "+505 0000 0000" },
-  { id: "cuenta-bancaria", label: "Cuenta Bancaria (Pagos)", type: "text", placeholder: "Ej. BAC 123456789" },
-] as const;
+// Formulario vacío del modal de edición. `bank_account` arranca en null: un
+// empleado sin cuenta cargada no debe mostrar un banco elegido por defecto.
+const EMPTY_PROFILE_FORM: UpdateProfileInput = {
+  name: "",
+  phone: "",
+  personal_email: "",
+  bank_account: null,
+};
 
 function getInitials(name: string): string {
   return name
@@ -334,16 +347,53 @@ export default function AdminUsuarios() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [detailTab, setDetailTab] = useState("editar");
 
-  // Estado controlado del modal de edición
-  const [editName, setEditName] = useState("");
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState<AppRole>("seller");
   const [currentTab, setCurrentTab] = useState("activos");
 
+  // ── Formulario de edición de perfil ──
+  // La validación sale de `updateProfileSchema` (App/shared/schemas.ts), el
+  // mismo contrato que aplica el backend: la regla de Ficohsa se evalúa acá y
+  // allá, así que un request fuera del panel tampoco la puede saltar.
+  const profileForm = useForm<UpdateProfileInput>({
+    resolver: zodResolver(updateProfileSchema),
+    defaultValues: EMPTY_PROFILE_FORM,
+  });
+  const {
+    control: profileControl,
+    register: registerProfile,
+    handleSubmit: handleProfileSubmit,
+    reset: resetProfile,
+    watch: watchProfile,
+    setValue: setProfileValue,
+    formState: { errors: profileErrors },
+  } = profileForm;
+
   useEffect(() => {
-    setEditName(selectedUser?.name ?? "");
-  }, [selectedUser]);
+    resetProfile(
+      selectedUser
+        ? {
+            name: selectedUser.name ?? "",
+            phone: selectedUser.phone ?? "",
+            personal_email: selectedUser.personal_email ?? "",
+            bank_account: selectedUser.bank_account ?? null,
+          }
+        : EMPTY_PROFILE_FORM,
+    );
+  }, [selectedUser, resetProfile]);
+
+  // Ficohsa solo opera cuentas en dólares: al elegirlo se fuerza la moneda y se
+  // deshabilita Córdobas. El schema lo respalda del lado del servidor.
+  const selectedBank = watchProfile("bank_account.bank");
+  const bankAccount = watchProfile("bank_account");
+  const isFicohsa = selectedBank === "ficohsa";
+
+  useEffect(() => {
+    if (isFicohsa) {
+      setProfileValue("bank_account.currency", "USD", { shouldValidate: true });
+    }
+  }, [isFicohsa, setProfileValue]);
 
   // ── Handlers ──
   const handleCreate = async (e: React.FormEvent) => {
@@ -419,27 +469,24 @@ export default function AdminUsuarios() {
     }
   };
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = handleProfileSubmit(async (values) => {
     if (!selectedUser) return;
-
-    const nameVal = editName.trim();
-    if (!nameVal) {
-      toast.error("El nombre no puede estar vacío");
-      return;
-    }
-    // Sin cambios no hay nada que guardar: se cierra sin tocar el endpoint.
-    if (nameVal === selectedUser.name) {
-      setSelectedUser(null);
-      return;
-    }
     try {
-      await updateProfile({ id: selectedUser.id, name: nameVal }).unwrap();
+      await updateProfile({
+        id: selectedUser.id,
+        name: values.name,
+        phone: values.phone,
+        personal_email: values.personal_email,
+        // El schema ya normalizó la cuenta; `undefined` y `null` significan lo
+        // mismo acá: limpiar lo guardado.
+        bank_account: values.bank_account ?? null,
+      }).unwrap();
       toast.success("Perfil actualizado correctamente");
       setSelectedUser(null);
     } catch (error: any) {
       toast.error(error?.data?.error || "Error al actualizar el perfil");
     }
-  };
+  });
 
   function openDetail(user: UserProfile, tab: "editar" | "rendimiento") {
     setSelectedUser(user);
@@ -646,8 +693,12 @@ export default function AdminUsuarios() {
 
       {/* ── Diálogo de detalle con tabs ── */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        {/* El formulario es más alto que la ventana: el diálogo scrollea SOLO
+            en el cuerpo y el pie con «Guardar» queda fijo. Con el scroll en el
+            contenedor entero había que bajar hasta el final para encontrarlo —
+            y si la ventana era baja, no se alcanzaba nunca. */}
+        <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="shrink-0 border-b px-6 py-4 pr-14">
             <DialogTitle>Información del Empleado</DialogTitle>
             <DialogDescription>
               Consulta y edita los datos del empleado o revisa su rendimiento de ventas.
@@ -655,19 +706,25 @@ export default function AdminUsuarios() {
           </DialogHeader>
 
           {selectedUser && (
-            <Tabs value={detailTab} onValueChange={setDetailTab}>
-              <TabsList className="w-full">
-                <TabsTrigger value="editar" className="flex-1">
-                  Editar
-                </TabsTrigger>
-                <TabsTrigger value="rendimiento" className="flex-1">
-                  Rendimiento
-                </TabsTrigger>
-              </TabsList>
+            <Tabs
+              value={detailTab}
+              onValueChange={setDetailTab}
+              className="flex min-h-0 flex-1 flex-col gap-0"
+            >
+              <div className="shrink-0 px-6 pt-4">
+                <TabsList className="w-full">
+                  <TabsTrigger value="editar" className="flex-1">
+                    Editar
+                  </TabsTrigger>
+                  <TabsTrigger value="rendimiento" className="flex-1">
+                    Rendimiento
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               {/* ── Tab Editar ── */}
-              <TabsContent value="editar">
-                <div className="flex flex-col gap-6 py-4">
+              <TabsContent value="editar" className="flex min-h-0 flex-1 flex-col">
+                <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-4">
                   {/* Avatar centrado */}
                   <div className="flex flex-col items-center gap-2">
                     <Avatar className="size-20">
@@ -683,13 +740,17 @@ export default function AdminUsuarios() {
 
                   {/* Campos */}
                   <div className="grid gap-4">
-                    <Field>
-                      <FieldLabel htmlFor="edit-display-name">Display Name</FieldLabel>
+                    <Field data-invalid={!!profileErrors.name}>
+                      <FieldLabel htmlFor="edit-display-name" required>
+                        Display Name
+                      </FieldLabel>
                       <Input
                         id="edit-display-name"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
+                        aria-required
+                        aria-invalid={!!profileErrors.name}
+                        {...registerProfile("name")}
                       />
+                      <FieldError errors={[profileErrors.name]} />
                     </Field>
                     <Field>
                       <FieldLabel htmlFor="edit-correo">Correo Corporativo</FieldLabel>
@@ -724,30 +785,140 @@ export default function AdminUsuarios() {
                       </Select>
                     </Field>
 
-                    {PENDING_FIELDS.map((field) => (
-                      <Field key={field.id}>
-                        <FieldLabel htmlFor={field.id} className="flex items-center gap-2">
-                          {field.label}
-                          <Badge variant="outline" className="text-[10px] font-normal">
-                            Próximamente
-                          </Badge>
-                        </FieldLabel>
-                        <Input
-                          id={field.id}
-                          type={field.type}
-                          placeholder={field.placeholder}
-                          disabled
-                        />
-                      </Field>
-                    ))}
-                    <p className="text-xs text-muted-foreground">
-                      Estos campos todavía no tienen dónde guardarse en la base de datos, así que
-                      quedan deshabilitados hasta que exista la columna.
-                    </p>
-                  </div>
+                    <Field data-invalid={!!profileErrors.personal_email}>
+                      <FieldLabel htmlFor="edit-personal-email">Correo Personal</FieldLabel>
+                      <Input
+                        id="edit-personal-email"
+                        type="email"
+                        placeholder="usuario@gmail.com"
+                        aria-invalid={!!profileErrors.personal_email}
+                        {...registerProfile("personal_email")}
+                      />
+                      <FieldError errors={[profileErrors.personal_email]} />
+                    </Field>
 
-                  {/* Acciones */}
-                  <div className="mt-auto flex flex-col gap-3 border-t border-border pt-4">
+                    <Field data-invalid={!!profileErrors.phone}>
+                      <FieldLabel htmlFor="edit-phone">Número de Teléfono</FieldLabel>
+                      <Input
+                        id="edit-phone"
+                        placeholder="+505 0000 0000"
+                        aria-invalid={!!profileErrors.phone}
+                        {...registerProfile("phone")}
+                      />
+                      <FieldError errors={[profileErrors.phone]} />
+                    </Field>
+
+                    {/* ── Cuenta bancaria (pagos) ── */}
+                    <fieldset className="grid gap-4 rounded-card border bg-muted/40 p-3">
+                      <legend className="px-1 text-xs font-semibold text-foreground">
+                        Cuenta bancaria (pagos)
+                      </legend>
+
+                      <Field data-invalid={!!profileErrors.bank_account?.bank}>
+                        <FieldLabel htmlFor="edit-bank">Banco</FieldLabel>
+                        <Controller
+                          control={profileControl}
+                          name="bank_account.bank"
+                          render={({ field }) => (
+                            <Select
+                              value={field.value ?? ""}
+                              onValueChange={(v) => {
+                                field.onChange(v);
+                                // Primera vez que se elige banco: la cuenta pasa
+                                // de null a objeto, así que hay que sembrar la
+                                // moneda o quedaría `undefined` y el schema la
+                                // rechazaría sin decir por qué.
+                                if (!bankAccount?.currency) {
+                                  setProfileValue(
+                                    "bank_account.currency",
+                                    v === "ficohsa" ? "USD" : "NIO",
+                                  );
+                                }
+                              }}
+                            >
+                              <SelectTrigger id="edit-bank">
+                                <SelectValue placeholder="Elegí el banco" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PAYOUT_BANKS.map((b) => (
+                                  <SelectItem key={b} value={b}>
+                                    {PAYOUT_BANK_LABELS[b]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        <FieldError errors={[profileErrors.bank_account?.bank]} />
+                      </Field>
+
+                      <Field data-invalid={!!profileErrors.bank_account?.currency}>
+                        <FieldLabel htmlFor="edit-currency">Moneda</FieldLabel>
+                        <Controller
+                          control={profileControl}
+                          name="bank_account.currency"
+                          render={({ field }) => (
+                            <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                              <SelectTrigger id="edit-currency">
+                                <SelectValue placeholder="Elegí la moneda" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PAYOUT_CURRENCIES.map((c) => (
+                                  <SelectItem
+                                    key={c}
+                                    value={c}
+                                    // Ficohsa no maneja córdobas: la opción se
+                                    // deshabilita en vez de dejar elegirla y
+                                    // fallar después.
+                                    disabled={isFicohsa && c !== "USD"}
+                                  >
+                                    {PAYOUT_CURRENCY_LABELS[c]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {isFicohsa && (
+                          <FieldDescription>
+                            Ficohsa solo maneja cuentas en dólares.
+                          </FieldDescription>
+                        )}
+                        <FieldError errors={[profileErrors.bank_account?.currency]} />
+                      </Field>
+
+                      <Field data-invalid={!!profileErrors.bank_account?.number}>
+                        <FieldLabel htmlFor="edit-account-number">Número de cuenta</FieldLabel>
+                        <Input
+                          id="edit-account-number"
+                          inputMode="numeric"
+                          placeholder="1234567890"
+                          aria-invalid={!!profileErrors.bank_account?.number}
+                          {...registerProfile("bank_account.number")}
+                        />
+                        <FieldError errors={[profileErrors.bank_account?.number]} />
+                      </Field>
+
+                      {bankAccount?.bank && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="justify-self-start text-muted-foreground"
+                          onClick={() =>
+                            setProfileValue("bank_account", null, { shouldValidate: true })
+                          }
+                        >
+                          Quitar cuenta bancaria
+                        </Button>
+                      )}
+                    </fieldset>
+                  </div>
+                </div>
+
+                {/* Pie FIJO: fuera del área que scrollea, para que «Guardar»
+                    esté siempre a la vista sin importar cuánto crezca el form. */}
+                <div className="flex shrink-0 flex-col gap-2 border-t border-border px-6 py-4">
                     <Button
                       variant="default"
                       className="w-full"
@@ -791,14 +962,14 @@ export default function AdminUsuarios() {
                       </Button>
                     )}
                   </div>
-                </div>
               </TabsContent>
 
               {/* ── Tab Rendimiento ── */}
-              <TabsContent value="rendimiento">
-                <div className="py-4">
-                  {detailTab === "rendimiento" && <PerformanceTab userId={selectedUser.id} />}
-                </div>
+              <TabsContent
+                value="rendimiento"
+                className="min-h-0 flex-1 overflow-y-auto px-6 py-4"
+              >
+                {detailTab === "rendimiento" && <PerformanceTab userId={selectedUser.id} />}
               </TabsContent>
             </Tabs>
           )}

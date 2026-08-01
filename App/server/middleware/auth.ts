@@ -43,6 +43,37 @@ export function invalidateProfileCache(uid: string) {
   profileCache.delete(uid);
 }
 
+// Cada cuánto se refresca `profiles.last_login`. El dato sirve para detectar
+// cuentas inactivas, así que la precisión al minuto no aporta nada: escribir en
+// cada request sería una escritura por llamada a la API.
+const LAST_LOGIN_THROTTLE_MS = 15 * 60_000;
+
+/**
+ * Marca la última conexión del staff. NO se espera (`void`, sin await): es
+ * telemetría, y hacer que cada request pague una escritura a Postgres antes de
+ * responder degradaría la latencia de toda la API por un dato que a nadie le
+ * urge. Si falla, se ignora — no vale romper una sesión válida por esto.
+ *
+ * Muta `profile.last_login` en el objeto CACHEADO para que las llamadas
+ * siguientes vean el valor nuevo y no vuelvan a escribir dentro de la ventana.
+ */
+function touchLastLogin(uid: string, profile: { last_login?: string | null } | null) {
+  if (!profile) return;
+
+  const previous = profile.last_login ? Date.parse(profile.last_login) : 0;
+  if (Number.isFinite(previous) && Date.now() - previous < LAST_LOGIN_THROTTLE_MS) return;
+
+  const nowIso = new Date().toISOString();
+  profile.last_login = nowIso;
+  void db
+    .from('profiles')
+    .update({ last_login: nowIso })
+    .eq('id', uid)
+    .then(({ error }) => {
+      if (error) console.warn('[last_login] No se pudo registrar la última conexión:', error.message);
+    });
+}
+
 // Lee el perfil por id de auth. Si no existe, lo crea (primer login).
 // Tolera que la tabla `profiles` aún no exista (durante el Hito 0): captura y
 // devuelve null, para que la whitelist por env siga funcionando.
@@ -50,13 +81,14 @@ async function fetchProfile(supaUser: any) {
   const now = Date.now();
   const cached = profileCache.get(supaUser.id);
   if (cached && now - cached.cachedAt < 30_000) {
+    touchLastLogin(supaUser.id, cached.data);
     return cached.data;
   }
 
   try {
     const { data, error } = await db
       .from('profiles')
-      .select('roles, status, deleted_at, name, avatar_url')
+      .select('roles, status, deleted_at, name, avatar_url, last_login')
       .eq('id', supaUser.id)
       .maybeSingle();
       
@@ -72,6 +104,7 @@ async function fetchProfile(supaUser: any) {
       }
       
       profileCache.set(supaUser.id, { data, cachedAt: now });
+      touchLastLogin(supaUser.id, data);
       return data;
     }
 
@@ -88,11 +121,12 @@ async function fetchProfile(supaUser: any) {
         name,
         avatar_url
       })
-      .select('roles, status, deleted_at, name, avatar_url')
+      .select('roles, status, deleted_at, name, avatar_url, last_login')
       .single();
 
     if (insertError) return null;
     profileCache.set(supaUser.id, { data: newProfile, cachedAt: now });
+    touchLastLogin(supaUser.id, newProfile);
     return newProfile;
   } catch {
     return null;

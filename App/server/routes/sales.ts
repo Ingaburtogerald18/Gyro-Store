@@ -83,7 +83,12 @@ router.post(
   '/',
   asyncHandler(async (req, res) => {
     const data = registerSaleInputSchema.parse(req.body);
-    const sale = await registerSale(data, { uid: req.user!.uid, email: req.user!.email });
+    const sale = await registerSale(data, { 
+      uid: req.user!.uid, 
+      email: req.user!.email,
+      isAdmin: isAdminLike(req.user!.roles),
+      isGlobalAdmin: req.user!.roles.includes('global_admin')
+    });
     res.status(201).json(sale);
   }),
 );
@@ -180,7 +185,11 @@ router.put(
   asyncHandler(async (req, res) => {
     const id = parseUuidParam(req.params.id, 'Venta no encontrada.');
     const data = updateSaleInputSchema.parse(req.body);
-    const sale = await updateSale(id, data, { uid: req.user!.uid, email: req.user!.email, roles: req.user!.roles });
+    const sale = await updateSale(id, data, { 
+      uid: req.user!.uid, 
+      email: req.user!.email, 
+      roles: req.user!.roles 
+    });
     res.json(sale);
   })
 );

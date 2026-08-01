@@ -326,17 +326,103 @@ export type CatalogItem = z.infer<typeof catalogItemSchema>;
 export type Combo = z.infer<typeof comboSchema>;
 
 // ============================================================================
-// ── SCHEMAS DEL DOMINIO: CHECKOUT PÚBLICO ──
+// ── SCHEMAS DEL DOMINIO: PERSONAL (ADMIN) ──
 // ============================================================================
-
-// ── Checkout público (doc 04 §6, doc 12: server SIEMPRE recalcula el
-// precio, nunca confía en lo que manda el cliente) ──
 
 // Teléfono nicaragüense o internacional: 8 a 15 dígitos, con `+` opcional.
 // El límite de 15 es el máximo de E.164. Sin esta regex, `phone` aceptaba
 // cualquier string (incluido un payload de 5 MB o texto para inyectar en el
 // mensaje de WhatsApp que se arma después).
-const PHONE_RE = /^\+?\d{8,15}$/;
+//
+// Vive acá arriba y no en la sección de checkout porque la usan las dos: los
+// schemas se evalúan en orden al cargar el módulo, así que declararla más abajo
+// haría que este archivo reventara por TDZ al importarse.
+export const PHONE_RE = /^\+?\d{8,15}$/;
+
+// ── Cuenta bancaria de pago ──
+//
+// FUENTE ÚNICA de bancos y monedas: el dropdown del panel se arma desde estas
+// listas, así que agregar un banco es tocar UN lugar. Duplicar la lista en el
+// componente es cómo se llega a un select que ofrece una opción que el backend
+// rechaza.
+export const PAYOUT_BANKS = ['lafise', 'ficohsa', 'bac', 'banpro'] as const;
+export const PAYOUT_CURRENCIES = ['NIO', 'USD'] as const;
+
+export type PayoutBank = (typeof PAYOUT_BANKS)[number];
+export type PayoutCurrency = (typeof PAYOUT_CURRENCIES)[number];
+
+export const PAYOUT_BANK_LABELS: Record<PayoutBank, string> = {
+  lafise: 'Lafise',
+  ficohsa: 'Ficohsa',
+  bac: 'BAC',
+  banpro: 'Banpro',
+};
+
+export const PAYOUT_CURRENCY_LABELS: Record<PayoutCurrency, string> = {
+  NIO: 'Córdobas (NIO)',
+  USD: 'Dólares (USD)',
+};
+
+export const bankAccountSchema = z.object({
+  bank: z.enum(PAYOUT_BANKS),
+  currency: z.enum(PAYOUT_CURRENCIES),
+  // Techo de 34: es el largo máximo de un IBAN. El mínimo de 4 descarta un
+  // tecleo accidental sin rechazar formatos locales cortos.
+  number: z
+    .string()
+    .trim()
+    .min(4, 'El número de cuenta es demasiado corto.')
+    .max(34, 'El número de cuenta es demasiado largo.'),
+});
+export type BankAccount = z.infer<typeof bankAccountSchema>;
+
+// Edición del perfil de un empleado desde el panel (PATCH /api/admin/users/:id/
+// profile, requireAdmin). El correo CORPORATIVO no está acá a propósito: lo
+// administra Entra ID, no nosotros — cambiarlo desde este panel dejaría el
+// perfil desalineado con la identidad que realmente autentica.
+//
+// `phone` y `personal_email` admiten `''` además de `undefined`: el formulario
+// manda el input vacío cuando el admin borra el dato, y eso significa "limpiar",
+// no "no tocar". `.optional()` a secas rechazaría el string vacío. La cuenta
+// bancaria usa `null` para lo mismo, porque es un objeto y no un string.
+export const updateProfileSchema = z
+  .object({
+    name: z.string().min(1, 'El nombre no puede estar vacío.').max(80),
+    phone: z
+      .string()
+      .max(20, 'El teléfono es demasiado largo.')
+      .regex(PHONE_RE, 'Ingresá un teléfono válido: 8 a 15 dígitos, con + opcional.')
+      .optional()
+      .or(z.literal('')),
+    personal_email: z
+      .string()
+      .email('Correo personal inválido.')
+      .max(120)
+      .optional()
+      .or(z.literal('')),
+    bank_account: bankAccountSchema.nullable().optional(),
+  })
+  // Regla de negocio, no de formulario: Ficohsa solo opera cuentas en dólares.
+  // Vive acá y no en el componente para que el backend la rechace igual aunque
+  // el request no venga del panel.
+  .superRefine((data, ctx) => {
+    if (data.bank_account && data.bank_account.bank === 'ficohsa' && data.bank_account.currency !== 'USD') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['bank_account', 'currency'],
+        message: 'Ficohsa solo maneja cuentas en dólares (USD).',
+      });
+    }
+  });
+export type UpdateProfileInput = z.input<typeof updateProfileSchema>;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: CHECKOUT PÚBLICO ──
+// ============================================================================
+
+// ── Checkout público (doc 04 §6, doc 12: server SIEMPRE recalcula el
+// precio, nunca confía en lo que manda el cliente) ──
 
 export const publicOrderItemInputSchema = z.object({
   catalogItemId: z.uuid(),
@@ -365,6 +451,9 @@ export const publicOrderInputSchema = z.object({
   // Link de Google Maps con el pin del cliente (opcional, lo llena el botón GPS).
   locationUrl: z.string().max(300).optional(),
   note: z.string().max(500).optional(),
+  // Código de descuento opcional (incentivo por reseña). El servidor lo canjea
+  // atómicamente y recalcula el total: nunca se confía en el monto del cliente.
+  discountCode: z.string().max(30).optional(),
   // Techo de líneas por pedido: acota el trabajo que un request anónimo puede
   // pedirle a la DB (el service consulta y luego inserta una fila por ítem).
   items: z
@@ -527,21 +616,28 @@ export const quoteInputSchema = z.object({
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
 
 export const registerSaleInputSchema = z.object({
+  invoiceNumber: z.number().int().positive().optional(),
   customerName: z.string().max(100).optional(),
   phone: z.string().max(20).optional(),
+  overrideSellerId: z.string().uuid().optional(),
+  overrideSellerName: z.string().max(100).optional(),
   items: z
     .array(saleLineInputSchema)
-    .min(1, 'La venta necesita al menos un producto.')
     .max(50)
     .refine((items) => new Set(items.map((i) => i.productName)).size === items.length, {
       message: 'No repitas el mismo producto en dos líneas: sumá la cantidad en una sola.',
     }),
+}).refine((data) => data.invoiceNumber || (data.items && data.items.length > 0), {
+  message: 'La venta necesita al menos un producto o un número de factura.',
+  path: ['items'],
 });
 export type RegisterSaleInput = z.infer<typeof registerSaleInputSchema>;
 
 export const updateSaleInputSchema = z.object({
   customerName: z.string().max(100).optional(),
   phone: z.string().optional(),
+  overrideSellerId: z.string().uuid().optional(),
+  overrideSellerName: z.string().max(100).optional(),
   items: z.array(saleLineInputSchema).min(1, 'Selecciona al menos un producto.').max(50),
   reason: z.string().optional(),
 });
@@ -600,10 +696,24 @@ export type SettleBalanceInput = z.infer<typeof settleBalanceInputSchema>;
 // (server/services/sales.ts) — no tiene líneas propias, esas viven en
 // order_items. `invoiceNumber` nunca lo manda el cliente: lo asigna el
 // `nextval()` de la secuencia en server/services/invoice.ts.
+export const invoiceItemInputSchema = z.object({
+  productName: z.string().min(1, 'El producto es obligatorio.').max(160),
+  quantity: z.number().int().positive('La cantidad debe ser mayor a 0.'),
+  unitPrice: z.number().min(0),
+});
+export type InvoiceItemInput = z.infer<typeof invoiceItemInputSchema>;
+
 export const createInvoiceInputSchema = z.object({
-  orderId: z.uuid(),
+  customerName: z.string().max(100).optional(),
+  phone: z.string().max(20).optional(),
   method: z.enum(['efectivo', 'transferencia', 'tarjeta']),
   deliveryFee: z.number().min(0).optional(),
+  deliveryName: z.string().max(100).optional(),
+  discount: z.number().min(0).optional(),
+  // Código de descuento opcional: el servidor lo canjea y suma su monto al
+  // descuento manual (topado al subtotal). Ver server/services/discountCode.ts.
+  discountCode: z.string().max(30).optional(),
+  items: z.array(invoiceItemInputSchema).min(1, 'La factura necesita al menos un producto.'),
 });
 export type CreateInvoiceInput = z.infer<typeof createInvoiceInputSchema>;
 
@@ -621,6 +731,40 @@ export const updateInvoiceInputSchema = z.object({
   deliveryFee: z.number().min(0).max(9_999_999).optional(),
 });
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;
+
+// ============================================================================
+// ── SCHEMAS DEL DOMINIO: CÓDIGOS DE DESCUENTO (ADMIN + PÚBLICO) ──
+// ============================================================================
+// Portado de v1 (server/utils/validators.js → discountCodeSchema). El admin
+// emite el código; el canje real (que consume un uso) lo hace el servidor
+// atómicamente en server/services/discountCode.ts. `maxUses = 0` = ilimitado.
+export const DISCOUNT_TYPES = ['percent', 'fixed'] as const;
+
+export const discountCodeSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .min(3, 'Mínimo 3 caracteres')
+      .max(30, 'Máximo 30 caracteres')
+      .regex(/^[a-zA-Z0-9-]+$/, 'Solo letras, números y guiones'),
+    type: z.enum(DISCOUNT_TYPES),
+    value: z.number().positive('Debe ser mayor a 0'),
+    maxUses: z.number().int().nonnegative().optional().default(1), // 0 = ilimitado
+    expiresAt: z.string().optional().or(z.literal('')), // yyyy-mm-dd o vacío = sin vencimiento
+    note: z.string().max(200).optional().default(''),
+  })
+  .refine((d) => d.type !== 'percent' || d.value <= 100, {
+    message: 'Un descuento por porcentaje no puede superar 100%',
+    path: ['value'],
+  });
+export type DiscountCodeInput = z.infer<typeof discountCodeSchema>;
+
+// Preview público (no consume uso): solo se valida que el código exista/sirva.
+export const validateDiscountCodeSchema = z.object({
+  code: z.string().min(1, 'Código requerido').max(30),
+});
+export type ValidateDiscountCodeInput = z.infer<typeof validateDiscountCodeSchema>;
 
 // ============================================================================
 // ── SCHEMAS DEL DOMINIO: CUOTAS (ADMIN) ──

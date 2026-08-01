@@ -58,8 +58,11 @@ export interface QuoteResult {
 }
 
 export interface RegisterSaleInput {
+  invoiceNumber?: number;
   customerName?: string;
   phone?: string;
+  overrideSellerId?: string;
+  overrideSellerName?: string;
   items: SaleLineInput[];
 }
 
@@ -76,6 +79,8 @@ export interface UpdateSaleInput {
   id: string;
   customerName?: string;
   phone?: string;
+  overrideSellerId?: string;
+  overrideSellerName?: string;
   items: SaleLineInput[];
   reason?: string;
 }

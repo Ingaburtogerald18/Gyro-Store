@@ -1,43 +1,40 @@
-// Facturación (MVP Hito 3, doc 09 ítem 61): numera una venta YA aprobada
-// (server/services/sales.ts). Modelo delgado — sin capa fiscal (doc 15 sigue
-// apagado hasta que el negocio se inscriba: sin IVA, sin régimen, sin RUC en
-// el documento). Sin líneas propias (viven en order_items), sin flujo
-// "ticket que precede a la venta" ni estado `void` — la tabla `invoices` de
-// v2 no tiene esas columnas/valor de enum; ver el plan acordado antes de
-// escribir este archivo.
-//
-// Reciclaje de v1 (server/services/invoice.js + routes/invoices.js): se
-// recicla la idea de un correlativo atómico, pero NO el mecanismo — v1
-// llevaba su propio contador transaccional en Firestore porque no tenía
-// sequences; v2 ya tiene `invoice_number_seq` (Postgres, doc 09 ítem 8), así
-// que se usa esa en vez de reimplementar un contador. `computeTotals` y el
-// `buildTicket` (resolver productos, reservar FIFO, regla no-mezcla) no
-// aplican: eso ya lo hizo `sales.ts` al registrar/aprobar la venta.
 import { db } from '../supabase';
 import { round } from './finance';
 import { BadRequestError } from '../utils/httpError';
 import type { CreateInvoiceInput } from '../../shared/schemas';
+import { listSellableProducts } from './sales';
+import { redeemDiscountCode, computeCodeDiscount, checkDiscountCode } from './discountCode';
 
 export interface Invoice {
   id: string;
-  saleId: string;
+  saleId: string | null;
   invoiceNumber: number;
   status: string;
   method: string | null;
   deliveryFee: number;
   total: number;
   createdAt: string;
+  customerName?: string | null;
+  phone?: string | null;
+  subtotal?: number;
+  discount?: number;
+  deliveryName?: string | null;
 }
 
 interface InvoiceRow {
   id: string;
-  sale_id: string;
+  sale_id: string | null;
   invoice_number: number;
   status: string;
   method: string | null;
   delivery_fee: number | null;
   total: number | null;
   created_at: string;
+  customer_name: string | null;
+  phone: string | null;
+  subtotal: number | null;
+  discount: number | null;
+  delivery_name: string | null;
 }
 
 function toInvoice(row: InvoiceRow): Invoice {
@@ -50,63 +47,130 @@ function toInvoice(row: InvoiceRow): Invoice {
     deliveryFee: row.delivery_fee ?? 0,
     total: row.total ?? 0,
     createdAt: row.created_at,
+    customerName: row.customer_name,
+    phone: row.phone,
+    subtotal: row.subtotal ?? 0,
+    discount: row.discount ?? 0,
+    deliveryName: row.delivery_name,
   };
 }
 
-const INVOICE_COLUMNS = 'id, sale_id, invoice_number, status, method, delivery_fee, total, created_at';
+const INVOICE_COLUMNS = 'id, sale_id, invoice_number, status, method, delivery_fee, total, created_at, customer_name, phone, subtotal, discount, delivery_name';
 
-// Emite la factura de una venta aprobada. Todo lo que puede rechazar la
-// emisión (venta inexistente, no aprobada, ya facturada) se valida ANTES del
-// INSERT: así el nextval() de invoice_number (columna, default) solo se
-// dispara cuando la factura realmente se va a crear — el correlativo no
-// "gasta" números en intentos fallidos. No es una garantía absoluta ante un
-// fallo de red a mitad del INSERT mismo (eso pediría una función de Postgres
-// con la secuencia adentro de la misma transacción, diferido igual que el
-// FIFO — doc 09 dice "TX SQL"); el UNIQUE de la migración 0009 es la última
-// defensa contra duplicados.
+// Emite la factura como documento independiente (unlinked).
 export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
-  const { data: order, error: orderError } = await db
-    .from('orders')
-    .select('id, status, total')
-    .eq('id', input.orderId)
-    .maybeSingle();
-  if (orderError) throw orderError;
-  if (!order) {
-    throw new BadRequestError('Venta no encontrada.');
-  }
-  if (order.status !== 'approved') {
-    throw new BadRequestError('Solo se factura una venta aprobada.');
-  }
-
-  const { data: existing, error: existingError } = await db
-    .from('invoices')
-    .select('id')
-    .eq('sale_id', input.orderId)
-    .maybeSingle();
-  if (existingError) throw existingError;
-  if (existing) {
-    throw new BadRequestError('Esta venta ya tiene una factura emitida.');
+  // Validar productos (que existan). No verificamos stock riguroso acá, 
+  // ya que la venta final (orders) será la que haga la reserva y baje inventario.
+  const sellables = await listSellableProducts();
+  const validProducts = new Set(sellables.map(s => s.productName));
+  
+  let subtotal = 0;
+  for (const item of input.items) {
+    if (!validProducts.has(item.productName)) {
+      throw new BadRequestError(`El producto "${item.productName}" no está en el catálogo disponible.`);
+    }
+    subtotal += item.quantity * item.unitPrice;
   }
 
+  subtotal = round(subtotal, 2);
+
+  // Código de descuento (opcional): primero preview (solo validamos)
+  let discountCode: string | null = null;
+  let codeDiscount = 0;
+  if (input.discountCode) {
+    const checked = await checkDiscountCode(input.discountCode);
+    codeDiscount = round(computeCodeDiscount(checked.type, checked.value, subtotal), 2);
+    discountCode = checked.code;
+  }
+
+  const manualDiscount = input.discount ?? 0;
+  const discount = round(Math.min(manualDiscount + codeDiscount, subtotal), 2); // No descontar más del subtotal
   const deliveryFee = round(input.deliveryFee ?? 0, 2);
-  const total = round((order.total ?? 0) + deliveryFee, 2);
+  const total = round(subtotal - discount + deliveryFee, 2);
 
   const { data: invoice, error: invoiceError } = await db
     .from('invoices')
     .insert({
-      sale_id: input.orderId,
-      // Nace 'linked': a diferencia de v1, siempre está atada a una venta
-      // real desde que existe — no hay una fase "ticket sin venta todavía".
-      status: 'linked',
+      status: 'unlinked',
       method: input.method,
       delivery_fee: deliveryFee,
       total,
+      customer_name: input.customerName || null,
+      phone: input.phone || null,
+      subtotal,
+      discount,
+      discount_code: discountCode,
+      delivery_name: input.deliveryName || null,
     })
     .select(INVOICE_COLUMNS)
     .single();
+    
   if (invoiceError) throw invoiceError;
 
+  // Canje real del código de descuento
+  if (discountCode) {
+    try {
+      await redeemDiscountCode(discountCode, {
+        source: 'invoice',
+        referenceId: invoice.id,
+        referenceLabel: 'Factura #' + invoice.invoice_number,
+        method: input.method,
+        amount: codeDiscount,
+        redeemedBy: null, // Si tuvieramos usuario, se pasaría aquí
+      });
+    } catch (err) {
+      await db.from('invoices').delete().eq('id', invoice.id);
+      throw err;
+    }
+  }
+
+  // Insertar líneas (invoice_items)
+  const itemsToInsert = input.items.map(item => ({
+    invoice_id: invoice.id,
+    sku: item.productName,
+    quantity: item.quantity,
+    unit_price: item.unitPrice,
+    line_total: round(item.quantity * item.unitPrice, 2)
+  }));
+
+  const { error: itemsError } = await db
+    .from('invoice_items')
+    .insert(itemsToInsert);
+
+  if (itemsError) throw itemsError;
+
   return toInvoice(invoice as unknown as InvoiceRow);
+}
+
+// Liga una factura existente a una venta aprobada.
+export async function linkInvoiceToSale(invoiceNumber: number, saleId: string): Promise<Invoice> {
+  const { data: existing, error: findError } = await db
+    .from('invoices')
+    .select('id, status')
+    .eq('invoice_number', invoiceNumber)
+    .maybeSingle();
+    
+  if (findError) throw findError;
+  if (!existing) {
+    throw new BadRequestError('El número de factura no existe.');
+  }
+
+  if (existing.status !== 'unlinked') {
+    throw new BadRequestError('Esta factura ya está vinculada a una venta o está anulada.');
+  }
+
+  const { data: updated, error: updateError } = await db
+    .from('invoices')
+    .update({
+      sale_id: saleId,
+      status: 'linked'
+    })
+    .eq('id', existing.id)
+    .select(INVOICE_COLUMNS)
+    .single();
+    
+  if (updateError) throw updateError;
+  return toInvoice(updated as unknown as InvoiceRow);
 }
 
 export async function listInvoices(filters: { status?: string } = {}): Promise<Invoice[]> {
@@ -118,8 +182,6 @@ export async function listInvoices(filters: { status?: string } = {}): Promise<I
   return ((data ?? []) as unknown as InvoiceRow[]).map(toInvoice);
 }
 
-// Búsqueda por número de factura — lo que el cajero tiene a mano cuando el
-// cliente vuelve con el papel. Portado de `GET /invoices/lookup` de v1.
 export async function findInvoiceByNumber(invoiceNumber: number): Promise<Invoice | null> {
   const { data, error } = await db
     .from('invoices')
@@ -130,15 +192,6 @@ export async function findInvoiceByNumber(invoiceNumber: number): Promise<Invoic
   return data ? toInvoice(data as unknown as InvoiceRow) : null;
 }
 
-// Anula una factura emitida por error.
-//
-// NO se borra: el correlativo no puede tener huecos. El número sigue existiendo,
-// marcado como anulado y con constancia de quién y por qué.
-//
-// La venta asociada NO se toca. Anular el documento y revertir la venta son dos
-// decisiones distintas: puede que la venta esté bien y solo el papel salió mal
-// (método de pago equivocado, delivery mal cobrado). Revertir la venta es
-// `rejectSale`, y se decide aparte.
 export async function voidInvoice(
   id: string,
   reason: string,
@@ -171,38 +224,30 @@ export async function voidInvoice(
   return toInvoice(data as unknown as InvoiceRow);
 }
 
-// Corrección de los datos de cobro. El monto de la venta no se toca acá —
-// `total` se recalcula desde el total de la orden más el delivery.
+// Corrección de los datos de cobro. Solo para facturas unlinked.
 export async function updateInvoice(
   id: string,
   input: { method?: string; deliveryFee?: number },
 ): Promise<Invoice | null> {
   const { data: existing, error: findError } = await db
     .from('invoices')
-    .select('id, status, sale_id')
+    .select('id, status, subtotal, discount')
     .eq('id', id)
     .maybeSingle();
   if (findError) throw findError;
   if (!existing) return null;
 
-  if (existing.status === 'void') {
-    throw new BadRequestError('No se puede editar una factura anulada.');
+  if (existing.status !== 'unlinked') {
+    throw new BadRequestError('Solo se pueden editar los datos de facturas huérfanas (unlinked).');
   }
 
   const patch: Record<string, unknown> = {};
   if (input.method !== undefined) patch.method = input.method;
 
   if (input.deliveryFee !== undefined) {
-    const { data: order, error: orderError } = await db
-      .from('orders')
-      .select('total')
-      .eq('id', existing.sale_id)
-      .maybeSingle();
-    if (orderError) throw orderError;
-
     const deliveryFee = round(input.deliveryFee, 2);
     patch.delivery_fee = deliveryFee;
-    patch.total = round((order?.total ?? 0) + deliveryFee, 2);
+    patch.total = round((existing.subtotal ?? 0) - (existing.discount ?? 0) + deliveryFee, 2);
   }
 
   if (Object.keys(patch).length === 0) {
@@ -219,4 +264,90 @@ export async function updateInvoice(
     .single();
   if (error) throw error;
   return toInvoice(data as unknown as InvoiceRow);
+}
+
+export interface TicketData {
+  ticketNumber: number;
+  createdAt: string;
+  customer: {
+    name: string;
+    phone?: string;
+  };
+  sellerName?: string;
+  items: {
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }[];
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  deliveryName?: string;
+  total: number;
+  method: string;
+}
+
+export async function getInvoiceTicket(invoiceId: string): Promise<TicketData | null> {
+  const { data: invoice, error: invoiceError } = await db
+    .from('invoices')
+    .select('id, invoice_number, method, delivery_fee, total, created_at, sale_id, customer_name, phone, subtotal, discount, delivery_name')
+    .eq('id', invoiceId)
+    .maybeSingle();
+  if (invoiceError) throw invoiceError;
+  if (!invoice) return null;
+
+  const { data: invoiceItems, error: itemsError } = await db
+    .from('invoice_items')
+    .select('sku, quantity, unit_price, line_total')
+    .eq('invoice_id', invoice.id);
+  if (itemsError) throw itemsError;
+
+  let sellerName = 'Caja'; // Por defecto, porque nace unlinked
+
+  // Si ya está ligada, podemos sacar info adicional (ej. vendedor que la registró)
+  if (invoice.sale_id) {
+    const { data: order, error: orderError } = await db
+      .from('orders')
+      .select('seller_email, seller_uid')
+      .eq('id', invoice.sale_id)
+      .maybeSingle();
+    
+    if (!orderError && order) {
+      if (order.seller_uid) {
+        const { data: profile } = await db
+          .from('profiles')
+          .select('name')
+          .eq('id', order.seller_uid)
+          .maybeSingle();
+        if (profile?.name) sellerName = profile.name;
+      } else if (order.seller_email) {
+        sellerName = order.seller_email;
+      }
+    }
+  }
+
+  const items = (invoiceItems || []).map((item) => ({
+    productName: item.sku || 'Producto',
+    quantity: item.quantity,
+    unitPrice: item.unit_price ?? 0,
+    lineTotal: item.line_total ?? 0,
+  }));
+
+  return {
+    ticketNumber: invoice.invoice_number,
+    createdAt: invoice.created_at,
+    customer: {
+      name: invoice.customer_name || 'Cliente General',
+      phone: invoice.phone || undefined,
+    },
+    sellerName,
+    items,
+    subtotal: invoice.subtotal || 0,
+    discount: invoice.discount || 0,
+    deliveryFee: invoice.delivery_fee || 0,
+    deliveryName: invoice.delivery_name || undefined,
+    total: invoice.total || 0,
+    method: invoice.method || 'efectivo',
+  };
 }

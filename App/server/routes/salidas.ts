@@ -25,7 +25,7 @@ router.post(
   '/',
   asyncHandler(async (req, res) => {
     const data = registerSalidaInputSchema.parse(req.body);
-    const userId = req.user!.id;
+    const userId = req.user!.uid;
     const salida = await createSalida(data, userId);
     res.status(201).json(salida);
   })
@@ -36,7 +36,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = liquidarSalidaInputSchema.parse(req.body);
-    const salida = await liquidarSalida(id!, data);
+    const salida = await liquidarSalida(id as string, data);
     res.json(salida);
   })
 );
@@ -50,7 +50,7 @@ router.patch(
       res.status(400).json({ error: 'orderId es requerido' });
       return;
     }
-    const salida = await linkToSale(id!, orderId);
+    const salida = await linkToSale(id as string, orderId);
     res.json(salida);
   })
 );
@@ -59,7 +59,7 @@ router.patch(
   '/:id/devolver',
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const salida = await markAsDevuelta(id!);
+    const salida = await markAsDevuelta(id as string);
     res.json(salida);
   })
 );

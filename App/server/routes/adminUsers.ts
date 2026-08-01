@@ -5,6 +5,7 @@ import { requireAdmin } from '../middleware/auth';
 import { db } from '../supabase';
 import { config, VALID_ROLES, type AppRole } from '../config';
 import { getSellerSummary } from '../services/sellerPayments';
+import { updateProfileSchema } from '../../shared/schemas';
 
 const router = Router();
 
@@ -266,18 +267,30 @@ router.patch(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const userId = req.params.id as string;
-    const { name } = req.body;
-    
+
     if (!userId) {
       res.status(400).json({ error: 'ID requerido.' });
       return;
     }
 
+    const input = updateProfileSchema.parse(req.body);
+
+    // El string vacío significa "borrar el dato", no "no tocar": se guarda como
+    // NULL para que la columna quede realmente vacía y no con un '' que después
+    // se muestra como si hubiera algo. La cuenta bancaria usa `null` para lo
+    // mismo (es un objeto jsonb, no un string).
+    const blankToNull = (v: string | undefined) => (v === undefined || v === '' ? null : v);
+
     const { data, error } = await db
       .from('profiles')
-      .update({ name })
+      .update({
+        name: input.name,
+        phone: blankToNull(input.phone),
+        personal_email: blankToNull(input.personal_email),
+        bank_account: input.bank_account ?? null,
+      })
       .eq('id', userId)
-      .select();
+      .select('id, email, name, roles, avatar_url, status, deleted_at, created_at, phone, personal_email, bank_account, last_login');
 
     if (error) throw error;
     res.json({ message: 'Perfil actualizado', data });

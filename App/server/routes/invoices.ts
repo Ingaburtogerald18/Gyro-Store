@@ -17,6 +17,7 @@ import {
   listInvoices,
   updateInvoice,
   voidInvoice,
+  getInvoiceTicket,
 } from '../services/invoice';
 
 const router = Router();
@@ -91,6 +92,19 @@ router.post(
       return;
     }
     res.json(voided);
+  }),
+);
+
+router.get(
+  '/:id/ticket',
+  asyncHandler(async (req, res) => {
+    const id = parseUuidParam(req.params.id, 'Factura no encontrada.');
+    const ticket = await getInvoiceTicket(id);
+    if (!ticket) {
+      res.status(404).json({ error: 'Factura no encontrada.' });
+      return;
+    }
+    res.json(ticket);
   }),
 );
 

@@ -1,5 +1,7 @@
 import { db } from '../supabase';
 import { config } from '../config';
+import { round } from './finance';
+import { redeemDiscountCode, computeCodeDiscount, checkDiscountCode } from './discountCode';
 import type { PublicOrderInput } from '../../shared/schemas';
 
 export interface CreatedPublicOrder {
@@ -30,6 +32,7 @@ function buildWhatsappMessage(
   input: PublicOrderInput,
   lines: MessageLine[],
   total: number,
+  discount?: { code: string; amount: number } | null,
 ): string {
   const money = (n: number) => `${config.currency}${Number(n || 0).toLocaleString('es-NI')}`;
   const div = '━━━━━━━━━━━━━━━';
@@ -57,6 +60,9 @@ function buildWhatsappMessage(
   }
 
   msg += `${div}\n`;
+  if (discount && discount.amount > 0) {
+    msg += `🎟️ Código ${discount.code}:  -${money(discount.amount)}\n`;
+  }
   msg += `💰 *TOTAL:  ${money(total)}*\n`;
   msg += `${div}\n`;
   msg += '_¡Gracias! Quedo atento(a) para coordinar el pago._ 🙌';
@@ -120,18 +126,55 @@ export async function createPublicOrder(input: PublicOrderInput): Promise<Create
     });
   }
 
-  // 6. Calcular el total sumando unitPrice * quantity
-  const total = orderItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
+  // 6. Calcular el subtotal sumando unitPrice * quantity
+  const subtotal = round(
+    orderItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0),
+    2,
+  );
+
+  // 6b. Validar (preview) el código de descuento (si vino).
+  // Solo leemos el código para calcular el descuento antes de crear la orden.
+  let discountCode: string | null = null;
+  let codeDiscount = 0;
+  if (input.discountCode) {
+    const checked = await checkDiscountCode(input.discountCode);
+    codeDiscount = round(computeCodeDiscount(checked.type, checked.value, subtotal), 2);
+    discountCode = checked.code;
+  }
+  const total = round(subtotal - codeDiscount, 2);
 
   // 7. Insertar en public_orders
   const { data: order, error: orderError } = await db
     .from('public_orders')
-    .insert({ phone: input.phone, total, status: 'new' })
+    .insert({
+      phone: input.phone,
+      total,
+      status: 'new',
+      discount_code: discountCode,
+      code_discount: codeDiscount,
+    })
     .select('id, phone, total, status')
     .single();
 
   if (orderError) {
     throw orderError;
+  }
+
+  // 7b. Canje real del código de descuento (ahora que tenemos referenceId).
+  // Si el canje falla (alguien más lo usó en este ms), borramos la orden y abortamos.
+  if (discountCode) {
+    try {
+      await redeemDiscountCode(discountCode, {
+        source: 'checkout',
+        referenceId: order.id,
+        referenceLabel: 'Pedido web',
+        method: null,
+        amount: codeDiscount,
+      });
+    } catch (err) {
+      await db.from('public_orders').delete().eq('id', order.id);
+      throw err;
+    }
   }
 
   // 8. Insertar en public_order_items
@@ -164,6 +207,7 @@ export async function createPublicOrder(input: PublicOrderInput): Promise<Create
         lineTotal: item.unitPrice * item.quantity,
       })),
       total,
+      discountCode ? { code: discountCode, amount: codeDiscount } : null,
     ),
   };
 }

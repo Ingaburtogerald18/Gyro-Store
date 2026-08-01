@@ -48,7 +48,8 @@ export function BrandLoader({ text = 'Cargando…' }: { text?: string }) {
   }, [config]);
 
   const logoAnimated = config?.images?.logoAnimated || cachedLogo;
-  const isVideo = logoAnimated?.match(/\.(webm|mp4|mov)($|\?)/i);
+  // Si la URL no tiene extensión clara, asumimos que puede ser video si contiene "video", o usamos un chequeo más laxo
+  const isVideo = logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || logoAnimated?.includes('video');
 
   return (
     <motion.div
