@@ -451,7 +451,6 @@ export type FinancialConfig = z.infer<typeof financialConfigSchema>;
 export const newPurchaseInputSchema = z.object({
   purchaseDate: z.iso.date(),
   lot: z.string().min(1, 'El lote es obligatorio.').max(40),
-  code: z.string().max(40).optional(),
   productName: z.string().min(1, 'El nombre del producto es obligatorio.').max(160),
   category: z.string().min(1, 'La categoría es obligatoria.').max(80),
   // >0: una compra de 0 unidades no tiene sentido y dividiría por cero en

@@ -1,6 +1,6 @@
 // Modal para editar los datos base de una compra en tránsito (China).
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -11,6 +11,7 @@ import { useUpdatePurchaseMutation, useGetPurchasesQuery, type Purchase } from "
 import { Input } from "~/components/ui/input";
 import { formatUsd } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
+import { DatePicker } from "~/components/ui/date-picker";
 
 export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
   const [updatePurchase, { isLoading }] = useUpdatePurchaseMutation();
@@ -27,8 +28,8 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
       reset({
         purchaseDate: purchase.purchaseDate || "",
         lot: purchase.lot || "",
-        code: purchase.code || "",
         productName: purchase.productName || "",
+        category: purchase.category || "",
         quantity: purchase.quantity,
         costUnit: purchase.costUnit,
         taxUnit: purchase.taxUnit,
@@ -46,7 +47,6 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
   async function onSubmit(data: PurchaseFormInput) {
     if (!purchase) return;
     data.lot = data.lot.toUpperCase();
-    data.code = data.code.toUpperCase();
     try {
       await updatePurchase({ id: purchase.id, body: data }).unwrap();
       toast.success("Compra modificada correctamente.");
@@ -69,7 +69,17 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
           {/* Fila 1: Fecha + Lote */}
           <Field data-invalid={!!errors.purchaseDate}>
             <FieldLabel htmlFor="edit-purchase-date" required>Fecha de compra</FieldLabel>
-            <Input id="edit-purchase-date" type="date" aria-required aria-invalid={!!errors.purchaseDate} {...register("purchaseDate")} />
+          <Controller
+            control={control}
+            name="purchaseDate"
+            render={({ field }) => (
+              <DatePicker
+                id="edit-purchase-date"
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
             <FieldError errors={[errors.purchaseDate]} />
           </Field>
           <Field data-invalid={!!errors.lot}>
@@ -78,44 +88,18 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
             <FieldError errors={[errors.lot]} />
           </Field>
 
-          {/* Fila 2: Código — media columna */}
-          <Field data-invalid={!!errors.code}>
-            <FieldLabel htmlFor="edit-purchase-code" required>Código</FieldLabel>
-            {(() => {
-              const { onBlur: rhfBlur, onChange: rhfChange, ...codeReg } = register("code");
-              return (
-                <Input
-                    id="edit-purchase-code"
-                    aria-required
-                    aria-invalid={!!errors.code}
-                    {...codeReg}
-                    onChange={(e) => { rhfChange(e); setCodeWarn(null); }}
-                    onBlur={(e) => {
-                      rhfBlur(e);
-                      const val = e.target.value.trim().toUpperCase();
-                      const isDuplicate = purchases.some(
-                        (p) => p.code.toUpperCase() === val && p.id !== purchase?.id
-                      );
-                      if (val && isDuplicate) {
-                        setCodeWarn(`El código "${val}" ya está en uso por otra compra.`);
-                      } else {
-                        setCodeWarn(null);
-                      }
-                    }}
-                />
-              );
-            })()}
-            <FieldError errors={[errors.code]} />
-            {/* Aviso, no error: el backend acepta el código duplicado y el admin
-                decide. Por eso convive con FieldError en vez de reemplazarlo. */}
-            {codeWarn && <FieldDescription className="text-warning">{codeWarn}</FieldDescription>}
-          </Field>
-
           {/* Fila 3: Nombre — ancho completo */}
           <Field className="sm:col-span-2" data-invalid={!!errors.productName}>
             <FieldLabel htmlFor="edit-purchase-name" required>Nombre del producto</FieldLabel>
             <Input id="edit-purchase-name" aria-required {...register("productName")} aria-invalid={!!errors.productName} />
             <FieldError errors={[errors.productName]} />
+          </Field>
+          
+          {/* Fila 4: Categoría */}
+          <Field data-invalid={!!errors.category}>
+            <FieldLabel htmlFor="edit-purchase-category" required>Categoría</FieldLabel>
+            <Input id="edit-purchase-category" aria-required {...register("category")} aria-invalid={!!errors.category} />
+            <FieldError errors={[errors.category]} />
           </Field>
         </div>
 

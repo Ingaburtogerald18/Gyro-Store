@@ -331,15 +331,15 @@ export async function getInventoryKpis(period?: string): Promise<InventoryKpis> 
   let totalEnviosUsd = 0;
 
   for (const row of rows) {
-    if (row.status === 'received') received += 1;
-    else inTransit += 1;
+    if (row.status === 'received') received += row.quantity;
+    else inTransit += row.quantity;
     subtotalInvertidoUsd += (row.costo_china_usd ?? 0) * row.quantity;
     totalImpuestosUsd += (row.impuesto_unit_usd ?? 0) * row.quantity;
     totalEnviosUsd += (row.envio_unit_usd ?? 0) * row.quantity;
   }
 
   return {
-    totalPurchases: rows.length,
+    totalPurchases: rows.reduce((acc, r) => acc + r.quantity, 0),
     inTransit,
     received,
     subtotalInvertidoUsd: round(subtotalInvertidoUsd, 4),

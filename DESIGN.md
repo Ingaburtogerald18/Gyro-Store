@@ -94,6 +94,12 @@ Viven en `tailwind.css` junto a los del preset, con valor por tema:
 2. Nada de segundo acento decorativo. La jerarquía se hace con peso, tamaño y espacio.
 3. `border` es utilidad de *grosor*, no de color: `border/50` no genera nada. El color con
    alfa se escribe entero — `border-border/50`, `border-warning/30`.
+4. **Semántica de color en tarjetas de KPI (`StatCard`)**: El color (`tone-*`) debe indicar el tipo de dato, de forma consistente en todo el módulo. La convención es:
+   - `indigo`: Conteos de unidades, cantidades y stock.
+   - `sky`: Costos, egresos e impuestos (salidas de dinero esperadas).
+   - `emerald`: Ingresos, valores totales con envío y ganancias.
+   - `rose`: Alertas, métricas críticas o negativos (ej. artículos agotados).
+   Nunca usar dos colores para el mismo tipo de dato. Evitar usar todos los colores disponibles (ej. `amber`, `purple`, `red`) si no aportan un significado distinto; un esquema de 4 colores consolida y ordena la vista.
 
 ---
 
@@ -106,7 +112,9 @@ Dos familias, servidas localmente con `@fontsource-variable` (sin Google Fonts):
 
 Ambas se registran en `@theme inline`; registrar `--font-heading` ahí es justamente lo que hace
 que Tailwind genere la clase `font-heading`. Cifras (precios, stock, contadores) siempre
-`tabular-nums` / `.nums`.
+`tabular-nums` / `.nums`. En `DataTable`, las celdas con `meta.align === "right"` aplican
+automáticamente `tabular-nums` para alinear columnas numéricas. Si se requiere más carácter
+en las tablas, se puede sumar `font-heading` a esa misma regla.
 
 ### Formato de cifras — una sola puerta
 

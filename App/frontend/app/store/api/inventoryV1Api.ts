@@ -59,7 +59,7 @@ export interface InventoryKpis {
 export interface NewPurchase {
   purchaseDate: string;
   lot: string;
-  code: string;
+  code?: string;
   productName: string;
   category: string;
   quantity: number;

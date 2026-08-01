@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
+import { Combobox } from '~/components/ui/combobox';
 import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
 import { QueryState } from '~/components/ui/QueryState';
@@ -269,21 +270,16 @@ export default function AdminVentas() {
             <CardContent className="grid gap-3 sm:grid-cols-4">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Producto</Label>
-                <Input
+                <Combobox
                   value={productName}
-                  onChange={(e) => {
-                    setProductName(e.target.value);
-                    const match = products.find((p) => p.productName === e.target.value);
+                  onChange={(value) => {
+                    setProductName(value);
+                    const match = products.find((p) => p.productName === value);
                     if (match) setSalePrice(match.price);
                   }}
-                  list="sale-product-options"
+                  options={productNames}
                   placeholder="Nombre del producto"
                 />
-                <datalist id="sale-product-options">
-                  {productNames.map((opt) => (
-                    <option key={opt} value={opt} />
-                  ))}
-                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Cantidad</Label>

@@ -1,17 +1,19 @@
 // Modal para editar los datos de recepción de una compra (flete, categoría, fecha de ingreso).
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
-import { useUpdatePurchaseMutation, type Purchase } from "~/store/api/inventoryV1Api";
+import { useUpdatePurchaseMutation, useSimulateCostMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
+import { formatCordobas } from "~/lib/formatters";
 import { Input } from "~/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { Spinner } from "~/components/ui/spinner";
+import { DatePicker } from "~/components/ui/date-picker";
 
 export function EditArrivalModal({
   purchase,
@@ -22,13 +24,16 @@ export function EditArrivalModal({
 }) {
   const { data: config } = useGetConfigQuery();
   const [updatePurchase, { isLoading }] = useUpdatePurchaseMutation();
+  const [simulateCost] = useSimulateCostMutation();
+  const [simulatedPrice, setSimulatedPrice] = useState<number | null>(null);
 
   const {
     register,
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    setValue,
+    formState: { errors, dirtyFields },
   } = useForm<ArrivalFormValues, any, ArrivalFormInput>({
     resolver: zodResolver(arrivalFormSchema),
   });
@@ -39,11 +44,37 @@ export function EditArrivalModal({
       reset({
         arrivalDate: purchase.arrivalDate || "",
         shippingUnit: purchase.shippingUnit,
-        category: purchase.category || "",
         suggestedPrice: purchase.suggestedPrice ?? undefined,
       });
     }
   }, [purchase, reset]);
+
+  const shippingUnit = useWatch({ control, name: "shippingUnit" });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (purchase && shippingUnit !== undefined && String(shippingUnit) !== "") {
+        const val = Number(shippingUnit);
+        if (val >= 0 && !isNaN(val)) {
+          simulateCost({ id: purchase.id, shippingUnit: val })
+            .unwrap()
+            .then(res => {
+              setSimulatedPrice(res.precioSugerido);
+              if (!dirtyFields.suggestedPrice) {
+                setValue("suggestedPrice", res.precioSugerido, { shouldValidate: true });
+              }
+            })
+            .catch(err => {
+              console.error("Error simulando costo:", err);
+              setSimulatedPrice(null);
+            });
+        }
+      } else {
+        setSimulatedPrice(null);
+      }
+    }, 400); // 400ms debounce
+    return () => clearTimeout(timer);
+  }, [shippingUnit, purchase, simulateCost, setValue, dirtyFields.suggestedPrice]);
 
   async function onSubmit(data: ArrivalFormInput) {
     if (!purchase) return;
@@ -55,7 +86,6 @@ export function EditArrivalModal({
         ...purchase,
         arrivalDate: data.arrivalDate,
         shippingUnit: data.shippingUnit,
-        category: data.category,
         suggestedPrice: data.suggestedPrice,
       };
       await updatePurchase({ id: purchase.id, body }).unwrap();
@@ -75,7 +105,17 @@ export function EditArrivalModal({
       <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-4">
         <Field data-invalid={!!errors.arrivalDate}>
           <FieldLabel htmlFor="edit-arrival-date" required>Fecha de ingreso a Nicaragua</FieldLabel>
-          <Input id="edit-arrival-date" type="date" aria-required aria-invalid={!!errors.arrivalDate} {...register("arrivalDate")} />
+          <Controller
+            control={control}
+            name="arrivalDate"
+            render={({ field }) => (
+              <DatePicker
+                id="edit-arrival-date"
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
           <FieldError errors={[errors.arrivalDate]} />
         </Field>
 
@@ -85,6 +125,18 @@ export function EditArrivalModal({
           <FieldError errors={[errors.shippingUnit]} />
         </Field>
 
+        {simulatedPrice !== null && (
+          <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+            <p className="text-sm text-foreground">
+              <span className="font-semibold">Precio sugerido calculado:</span>{' '}
+              <span className="nums">{formatCordobas(simulatedPrice, 'C$', 2)}</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Si dejás el campo de abajo vacío, este será el precio que se asigne automáticamente.
+            </p>
+          </div>
+        )}
+
         <Field data-invalid={!!errors.suggestedPrice}>
           <FieldLabel htmlFor="edit-arrival-price">Precio de venta (C$)</FieldLabel>
           <Input id="edit-arrival-price" type="number" step="1" min={0} placeholder="Precio al que se vende" {...register("suggestedPrice")} aria-invalid={!!errors.suggestedPrice} />
@@ -92,20 +144,6 @@ export function EditArrivalModal({
           <FieldError errors={[errors.suggestedPrice]} />
         </Field>
 
-        <Field data-invalid={!!errors.category}>
-          <FieldLabel htmlFor="edit-arrival-category" required>Categoría</FieldLabel>
-          <NativeSelect id="edit-arrival-category" className="w-full" defaultValue="" aria-required aria-invalid={!!errors.category} {...register("category")}>
-            <NativeSelectOption value="" disabled>
-              Selecciona una categoría
-            </NativeSelectOption>
-            {config?.categories.map((c) => (
-              <NativeSelectOption key={c.id} value={c.id}>
-                {c.icon} {c.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <FieldError errors={[errors.category]} />
-        </Field>
 
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">

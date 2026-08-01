@@ -18,8 +18,11 @@ import {
   type MigratedItem,
 } from "~/store/api/inventoryV1Api";
 import { Input } from "~/components/ui/input";
+import { Combobox } from "~/components/ui/combobox";
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { formatUsd, formatCordobas } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
+import { DatePicker } from "~/components/ui/date-picker";
 
 const RATE = 37; // USD → C$ (igual que el server)
 
@@ -148,7 +151,17 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
 
       <Field data-invalid={!!errors.purchaseDate}>
         <FieldLabel htmlFor="migrated-date" required>Fecha</FieldLabel>
-        <Input id="migrated-date" type="date" aria-required {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
+        <Controller
+          control={control}
+          name="purchaseDate"
+          render={({ field }) => (
+            <DatePicker
+              id="migrated-date"
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
         <FieldError errors={[errors.purchaseDate]} />
       </Field>
       <Field data-invalid={!!errors.lot}>
@@ -157,23 +170,14 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
           control={control}
           name="lot"
           render={({ field }) => (
-            <>
-              <Input
-                id="migrated-lot"
-                type="text"
-                list="migrated-lot-options"
-                value={field.value || ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                aria-invalid={!!errors.lot}
-              />
-              <datalist id="migrated-lot-options">
-                {Array.from(new Set(existingItems.map((i) => i.lot).filter(Boolean))).map((opt) => (
-                  <option key={opt} value={opt} />
-                ))}
-              </datalist>
-            </>
+            <Combobox
+              id="migrated-lot"
+              value={field.value || ""}
+              onChange={field.onChange}
+              options={Array.from(new Set(existingItems.map((i) => i.lot).filter(Boolean))) as string[]}
+              placeholder="Seleccionar o crear lote..."
+              aria-invalid={!!errors.lot}
+            />
           )}
         />
         <FieldError errors={[errors.lot]} />
@@ -190,24 +194,14 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
           control={control}
           name="productName"
           render={({ field }) => (
-            <>
-              <Input
-                id="migrated-product-name"
-                type="text"
-                list="migrated-product-name-options"
-                value={field.value || ""}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                name={field.name}
-                aria-required
-                aria-invalid={!!errors.productName}
-              />
-              <datalist id="migrated-product-name-options">
-                {Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean))).map((opt) => (
-                  <option key={opt} value={opt} />
-                ))}
-              </datalist>
-            </>
+            <Combobox
+              id="migrated-product-name"
+              value={field.value || ""}
+              onChange={field.onChange}
+              options={Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean))) as string[]}
+              placeholder="Seleccionar o escribir producto..."
+              aria-invalid={!!errors.productName}
+            />
           )}
         />
         <FieldError errors={[errors.productName]} />

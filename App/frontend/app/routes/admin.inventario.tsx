@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "@remix-run/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { PackageIcon, ArchiveIcon, Calendar02Icon, File01Icon } from "@hugeicons/core-free-icons";
+import { PackageIcon, ArchiveIcon, Calendar02Icon, File01Icon, PackageRemoveIcon } from "@hugeicons/core-free-icons";
 import type { MetaFunction } from "@remix-run/node";
 
 import { InventoryKpis } from "~/components/admin/inventory/InventoryKpis";
@@ -24,7 +24,7 @@ export const meta: MetaFunction = () => {
 };
 
 type MainTab = "purchases" | "inventory";
-type InvType = "current" | "migrated";
+type InvType = "current" | "migrated" | "outOfStock";
 
 const MAIN_TABS = [
   { value: "purchases", label: "Registro de compras", icon: File01Icon },
@@ -33,6 +33,7 @@ const MAIN_TABS = [
 
 const INV_TYPES = [
   { value: "current", label: "Inventario actual", icon: PackageIcon },
+  { value: "outOfStock", label: "Inventario agotado", icon: PackageRemoveIcon },
   { value: "migrated", label: "Inventario migrado", icon: ArchiveIcon },
 ];
 
@@ -60,7 +61,8 @@ export default function AdminInventario() {
   const { data: purchases = [] } = useGetPurchasesQuery();
 
   const tab: MainTab = searchParams.get("tab") === "inventory" ? "inventory" : "purchases";
-  const type: InvType = searchParams.get("type") === "migrated" ? "migrated" : "current";
+  const typeParam = searchParams.get("type");
+  const type: InvType = (typeParam === "migrated" || typeParam === "outOfStock") ? typeParam : "current";
   const period = searchParams.get("period") || "all";
 
   const effectiveView = tab === "purchases" ? "purchases" : type;
@@ -171,7 +173,11 @@ export default function AdminInventario() {
             </div>
 
             <TabsContent value="current" className="outline-none m-0">
-              <CurrentInventoryTable period={period} />
+              <CurrentInventoryTable period={period} mode="inStock" />
+            </TabsContent>
+
+            <TabsContent value="outOfStock" className="outline-none m-0">
+              <CurrentInventoryTable period={period} mode="outOfStock" />
             </TabsContent>
 
             <TabsContent value="migrated" className="outline-none m-0">

@@ -13,14 +13,15 @@ import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } f
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
+import { Combobox } from "~/components/ui/combobox";
 import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { formatUsd } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
+import { DatePicker } from "~/components/ui/date-picker";
 
 const EMPTY_PURCHASE = {
   purchaseDate: "",
   lot: "",
-  code: "",
   productName: "",
   category: "",
   quantity: "",
@@ -32,7 +33,6 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   const [createPurchase, { isLoading }] = useCreatePurchaseMutation();
   const { data: purchases = [] } = useGetPurchasesQuery();
   const { data: config } = useGetConfigQuery();
-  const [codeError, setCodeError] = useState<string | null>(null);
   const [showSuccessPrompt, setShowSuccessPrompt] = useState(false);
   const {
     register,
@@ -47,6 +47,24 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
     mode: "onBlur",
   });
 
+  const usedNumbers = purchases
+    .map((p) => {
+      const match = p.code?.match(/^GS-IN-(\d+)$/i);
+      return match ? parseInt(match[1], 10) : NaN;
+    })
+    .filter((n) => !isNaN(n))
+    .sort((a, b) => a - b);
+
+  let nextCodeNumber = 1;
+  for (const n of usedNumbers) {
+    if (n === nextCodeNumber) {
+      nextCodeNumber++;
+    } else if (n > nextCodeNumber) {
+      break;
+    }
+  }
+  const nextCode = `GS-IN-${nextCodeNumber}`;
+
   const cost = Number(watch("costUnit")) || 0;
   const tax = Number(watch("taxUnit")) || 0;
   const qty = Number(watch("quantity")) || 0;
@@ -57,11 +75,9 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   async function onSubmit(data: PurchaseFormInput) {
     // Normalizar a mayúsculas antes de guardar
     data.lot = data.lot.toUpperCase();
-    data.code = data.code.toUpperCase();
     try {
       await createPurchase(data).unwrap();
       toast.success("Compra registrada (En tránsito).");
-      setCodeError(null);
       setShowSuccessPrompt(true);
     } catch (err: any) {
       toast.error(err?.data?.error || "No se pudo registrar la compra.");
@@ -99,7 +115,17 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
         {/* Fila 1: Fecha + Lote */}
         <Field data-invalid={!!errors.purchaseDate}>
           <FieldLabel htmlFor="purchase-date" required>Fecha de compra</FieldLabel>
-          <Input id="purchase-date" type="date" aria-required {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
+          <Controller
+            control={control}
+            name="purchaseDate"
+            render={({ field }) => (
+              <DatePicker
+                id="purchase-date"
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
           <FieldError errors={[errors.purchaseDate]} />
         </Field>
         <Field data-invalid={!!errors.lot}>
@@ -108,57 +134,24 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
             control={control}
             name="lot"
             render={({ field }) => (
-              <>
-                <Input
-                  id="purchase-lot"
-                  type="text"
-                  list="lot-options"
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  aria-required
-                  aria-invalid={!!errors.lot}
-                />
-                <datalist id="lot-options">
-                  {Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean))).map((opt: string) => (
-                    <option key={opt} value={opt} />
-                  ))}
-                </datalist>
-              </>
+              <Combobox
+                id="purchase-lot"
+                value={field.value || ""}
+                onChange={field.onChange}
+                options={Array.from(new Set(purchases.map((p) => p.lot).filter(Boolean))) as string[]}
+                placeholder="Seleccionar o crear lote..."
+                aria-invalid={!!errors.lot}
+              />
             )}
           />
           <FieldError errors={[errors.lot]} />
         </Field>
 
         {/* Fila 1 cont. (lg): Código */}
-        <Field data-invalid={!!errors.code}>
-          <FieldLabel htmlFor="purchase-code" required>Código</FieldLabel>
-          {(() => {
-            const { onBlur: rhfBlur, onChange: rhfChange, ...codeReg } = register("code");
-            return (
-              <Input
-                id="purchase-code"
-                aria-required
-                aria-invalid={!!errors.code}
-                {...codeReg}
-                onChange={(e) => { rhfChange(e); setCodeError(null); }}
-                onBlur={(e) => {
-                  rhfBlur(e);
-                  const val = e.target.value.trim().toUpperCase();
-                  if (val && purchases.some((p) => p.code.toUpperCase() === val)) {
-                    setCodeError(`El código "${val}" ya está en uso.`);
-                  } else {
-                    setCodeError(null);
-                  }
-                }}
-              />
-            );
-          })()}
-          <FieldError errors={[errors.code]} />
-          {/* Aviso, no error de validación: el código repetido no bloquea el
-              guardado (lo resuelve el backend), pero conviene verlo antes. */}
-          {codeError && <FieldDescription className="text-warning">{codeError}</FieldDescription>}
+        <Field>
+          <FieldLabel htmlFor="purchase-code">Código</FieldLabel>
+          <Input id="purchase-code" value={nextCode} disabled className="bg-muted text-muted-foreground font-mono" />
+          <FieldDescription>Siguiente asignación automática</FieldDescription>
         </Field>
 
         {/* Fila 2: Nombre del producto — ancho completo */}
@@ -168,24 +161,14 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
             control={control}
             name="productName"
             render={({ field }) => (
-              <>
-                <Input
-                  id="purchase-product-name"
-                  type="text"
-                  list="product-name-options"
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  aria-required
-                  aria-invalid={!!errors.productName}
-                />
-                <datalist id="product-name-options">
-                  {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => (
-                    <option key={opt} value={opt} />
-                  ))}
-                </datalist>
-              </>
+              <Combobox
+                id="purchase-product-name"
+                value={field.value || ""}
+                onChange={field.onChange}
+                options={Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))) as string[]}
+                placeholder="Seleccionar o escribir producto..."
+                aria-invalid={!!errors.productName}
+              />
             )}
           />
           <FieldError errors={[errors.productName]} />

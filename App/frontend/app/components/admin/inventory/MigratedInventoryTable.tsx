@@ -18,10 +18,12 @@ import {
 } from "~/store/api/inventoryV1Api";
 import { formatUsd, formatCordobas } from "~/lib/formatters";
 import { CodeCell } from "~/components/ui/cells";
+import { useGetConfigQuery } from "~/store/api/configApi";
 
 export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenForm?: () => void; period?: string }) {
   const { data: items = [], isLoading } = useGetMigratedInventoryQuery(period);
   const [del, { isLoading: deleting }] = useDeleteMigratedItemMutation();
+  const { data: config } = useGetConfigQuery();
   const [deleteFor, setDeleteFor] = useState<MigratedItem | null>(null);
   const [editFor, setEditFor] = useState<MigratedItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<MigratedItem | null>(null);
@@ -64,6 +66,21 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
       { accessorKey: "code", header: "Código", cell: (c) => <CodeCell value={c.getValue()} /> },
       { accessorKey: "productName", header: "Producto" },
       {
+        accessorKey: "category",
+        header: "Categoría",
+        cell: (c) => {
+          const val = c.getValue() as string;
+          if (!val) return <span className="text-muted-foreground">—</span>;
+          const cat = config?.categories?.find((cat: any) => cat.id === val);
+          return (
+            <div className="flex items-center gap-1.5 whitespace-nowrap bg-muted px-2 py-0.5 rounded-full w-fit">
+              <span className="text-sm">{cat?.icon}</span>
+              <span className="text-xs font-medium text-foreground">{cat?.name || val}</span>
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: "quantity",
         header: "Compradas",
         meta: { align: "right" },
@@ -82,17 +99,13 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         meta: { align: "right" },
         cell: (c) => <span className="nums font-bold text-info bg-info/15 px-2 py-0.5 rounded-full">{c.getValue()}</span>
       },
-      // USD a 2 decimales visibles; precisión completa en el tooltip.
-      { accessorKey: "priceBaseUsd", header: "P. Base", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
-      // Envío unitario: 4 decimales visibles (precisión clave para el control de inventario).
-      { accessorKey: "shippingUnitUsd", header: "Envío Unit.", meta: { align: "right" }, cell: (c) => formatUsd(c.getValue(), 4, 4) },
-      { accessorKey: "priceUnitFinalUsd", header: "P. Unit. Final", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
+      { accessorKey: "priceUnitFinalUsd", header: "Coste ($USD)", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
       { id: "preTotalUsd", header: "Pre-Total", meta: { align: "right" }, cell: ({ row }) => formatUsd((row.original.priceBaseUsd || 0) * (row.original.quantity || 0)) },
       { id: "totalUsd", header: "Total", meta: { align: "right" }, cell: ({ row }) => <span className="font-semibold">{formatUsd((row.original.priceUnitFinalUsd || 0) * (row.original.quantity || 0))}</span> },
-      { accessorKey: "costRealUnitCordobas", header: "Coste", meta: { align: "right" }, cell: (c) => formatCordobas(c.getValue()) },
-      { accessorKey: "suggestedPrice", header: "P. Sugerido", meta: { align: "right" }, cell: (c) => formatCordobas(c.getValue()) },
+      { accessorKey: "costRealUnitCordobas", header: "Coste (C$)", meta: { align: "right" }, cell: (c) => formatCordobas(c.getValue()) },
+      { accessorKey: "suggestedPrice", header: "Precio de venta", meta: { align: "right" }, cell: (c) => formatCordobas(c.getValue()) },
     ],
-    [],
+    [config],
   );
 
   if (isLoading) {

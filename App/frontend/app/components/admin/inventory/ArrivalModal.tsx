@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
+import { DatePicker } from "~/components/ui/date-picker";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useReportArrivalMutation, useSimulateCostMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
@@ -92,7 +93,17 @@ export function ArrivalModal({
         
         <Field data-invalid={!!errors.arrivalDate}>
           <FieldLabel htmlFor="arrival-date" required>Fecha de ingreso a Nicaragua</FieldLabel>
-          <Input id="arrival-date" type="date" aria-required aria-invalid={!!errors.arrivalDate} {...register("arrivalDate")} />
+          <Controller
+            control={control}
+            name="arrivalDate"
+            render={({ field }) => (
+              <DatePicker
+                id="arrival-date"
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
           <FieldError errors={[errors.arrivalDate]} />
         </Field>
 
@@ -102,20 +113,6 @@ export function ArrivalModal({
           <FieldError errors={[errors.shippingUnit]} />
         </Field>
 
-        <Field data-invalid={!!errors.category}>
-          <FieldLabel htmlFor="arrival-category" required>Categoría</FieldLabel>
-          <NativeSelect id="arrival-category" className="w-full" defaultValue="" aria-required aria-invalid={!!errors.category} {...register("category")}>
-            <NativeSelectOption value="" disabled>
-              Selecciona una categoría
-            </NativeSelectOption>
-            {config?.categories.map((c) => (
-              <NativeSelectOption key={c.id} value={c.id}>
-                {c.icon} {c.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <FieldError errors={[errors.category]} />
-        </Field>
 
         {simulatedPrice !== null && (
           <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
