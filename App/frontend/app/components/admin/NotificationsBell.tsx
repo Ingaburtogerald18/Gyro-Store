@@ -29,6 +29,7 @@ import { useGetSalesQuery, type SaleListItem, type SaleStatus } from '~/store/ap
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin, selectUser } from '~/store/slices/authSlice';
 import { cn } from '~/lib/utils';
+import { formatCordobas } from '~/lib/formatters';
 
 const SEEN_KEY = 'gyro.seenSaleNotifs';
 
@@ -61,8 +62,7 @@ const STATE_META: Record<
   },
 };
 
-const money = (value: number) =>
-  `C$ ${value.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (value: number) => formatCordobas(value, 'C$', 2);
 
 export function NotificationsBell() {
   const isAdmin = useAppSelector(selectIsAdmin);

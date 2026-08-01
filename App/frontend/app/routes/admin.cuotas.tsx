@@ -23,6 +23,7 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Badge } from '~/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { QueryState } from '~/components/ui/QueryState';
 import { errMsg, formatCordobas, withoutIds } from "~/lib/formatters";
@@ -107,15 +108,16 @@ function PaymentDialog({ plan, onClose }: { plan: InstallmentPlan | null; onClos
             </div>
             <div className="space-y-1.5">
               <Label>Método de pago</Label>
-              <select
-                className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={method}
-                onChange={(e) => setMethod(e.target.value as typeof method)}
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="tarjeta">Tarjeta</option>
-              </select>
+              <Select value={method} onValueChange={(v) => setMethod(v as typeof method)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo">Efectivo</SelectItem>
+                  <SelectItem value="transferencia">Transferencia</SelectItem>
+                  <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Notas (opcional)</Label>

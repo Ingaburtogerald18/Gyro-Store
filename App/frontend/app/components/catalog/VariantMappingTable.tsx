@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover
 import { Spinner } from '~/components/ui/spinner';
 import type { InventoryLot } from '~/store/api/catalogAdminApi';
 import { cn } from '~/lib/utils';
+import { formatCordobas } from '~/lib/formatters';
 
 // Techo de combinaciones a renderizar. 6 ejes de 4 opciones son 4096 filas: el
 // navegador se arrodilla y la pantalla es inusable. Se corta y se avisa.
@@ -122,7 +123,7 @@ export function VariantMappingTable({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-foreground">{mappedCount}</span>/{allRows.length} variantes
-          vinculadas · el resto se muestra <span className="font-semibold text-amber-600">Agotado</span>.
+          vinculadas · el resto se muestra <span className="font-semibold text-warning">Agotado</span>.
         </p>
         {isLoading && (
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -132,7 +133,7 @@ export function VariantMappingTable({
       </div>
 
       {combinations.length > MAX_ROWS && (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+        <p className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
           Esta combinación de ejes genera {combinations.length} variantes. Se muestran las primeras{' '}
           {MAX_ROWS}: apagá opciones en «Opciones del producto» para reducirlas.
         </p>
@@ -188,7 +189,7 @@ function VariantRow({
       className={cn(
         'rounded-2xl border p-3 transition-colors',
         isOrphan
-          ? 'border-amber-500/40 bg-amber-500/5'
+          ? 'border-warning/40 bg-warning/5'
           : hasLots
             ? 'border-primary/25 bg-card'
             : 'border-border bg-card',
@@ -197,7 +198,7 @@ function VariantRow({
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span
-            className={cn('size-2 shrink-0 rounded-full', stock > 0 ? 'bg-primary' : 'bg-amber-500')}
+            className={cn('size-2 shrink-0 rounded-full', stock > 0 ? 'bg-primary' : 'bg-warning')}
             aria-hidden
           />
           {parts.map((part) => (
@@ -206,7 +207,7 @@ function VariantRow({
             </Badge>
           ))}
           {isOrphan && (
-            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            <span className="text-[11px] font-medium text-warning">
               · ya no existe entre las opciones activas
             </span>
           )}
@@ -214,7 +215,7 @@ function VariantRow({
 
         <Badge
           variant={stock > 0 ? 'default' : 'outline'}
-          className={cn('shrink-0 text-[10px] font-bold', stock === 0 && 'text-amber-600 dark:text-amber-400')}
+          className={cn('shrink-0 text-[10px] font-bold', stock === 0 && 'text-warning')}
         >
           {!hasLots ? 'Sin vincular' : stock > 0 ? `${stock} uds` : 'Agotado'}
         </Badge>
@@ -272,7 +273,7 @@ function VariantRow({
               min={0}
               step="0.01"
               className="h-8 w-32 text-xs"
-              placeholder={`C$ ${basePrice}`}
+              placeholder={formatCordobas(basePrice)}
               value={price ?? ''}
               onChange={(e) => {
                 const raw = e.target.value;

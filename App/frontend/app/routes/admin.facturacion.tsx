@@ -24,6 +24,7 @@ import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
 import { QueryState } from '~/components/ui/QueryState';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { errMsg, formatCordobas, withoutIds } from "~/lib/formatters";
 import { useCreateInvoiceMutation, useGetInvoicesQuery, type Invoice } from '~/store/api/invoicesApi';
 import { useGetSalesQuery, type SaleListItem } from '~/store/api/salesApi';
@@ -136,7 +137,7 @@ export default function AdminFacturacion() {
             empty={pendingSales.length === 0}
             loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-muted" />}
             emptyFallback={
-              <div className="rounded-lg border border-dashed border bg-muted/50 py-10 text-center">
+              <div className="rounded-lg border border-dashed bg-muted/50 py-10 text-center">
                 <HugeiconsIcon icon={File01Icon} size={36} strokeWidth={2} className="mx-auto mb-3 text-muted-foreground opacity-50" aria-hidden />
                 <p className="font-medium text-foreground">No hay ventas pendientes de facturar.</p>
               </div>
@@ -183,17 +184,18 @@ export default function AdminFacturacion() {
               </div>
               <div className="space-y-1.5">
                 <Label>Método de pago</Label>
-                <select
-                  className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value as typeof method)}
-                >
-                  {METHODS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+                <Select value={method} onValueChange={(v) => setMethod(v as typeof method)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {METHODS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Costo de envío (opcional, C$)</Label>

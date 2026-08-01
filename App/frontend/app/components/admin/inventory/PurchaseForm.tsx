@@ -8,11 +8,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
+import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { formatUsd } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
 
@@ -96,24 +97,27 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
       {/* ── Bloque 1: Datos del ítem ── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* Fila 1: Fecha + Lote */}
-        <div className="grid gap-2">
-  <Label>Fecha de compra</Label>
-          <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
-        </div>
-        <div className="grid gap-2">
-  <Label>Lote</Label>
+        <Field data-invalid={!!errors.purchaseDate}>
+          <FieldLabel htmlFor="purchase-date" required>Fecha de compra</FieldLabel>
+          <Input id="purchase-date" type="date" aria-required {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
+          <FieldError errors={[errors.purchaseDate]} />
+        </Field>
+        <Field data-invalid={!!errors.lot}>
+          <FieldLabel htmlFor="purchase-lot" required>Lote</FieldLabel>
           <Controller
             control={control}
             name="lot"
             render={({ field }) => (
               <>
                 <Input
+                  id="purchase-lot"
                   type="text"
                   list="lot-options"
                   value={field.value || ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
                   name={field.name}
+                  aria-required
                   aria-invalid={!!errors.lot}
                 />
                 <datalist id="lot-options">
@@ -124,100 +128,110 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
               </>
             )}
           />
-        </div>
+          <FieldError errors={[errors.lot]} />
+        </Field>
 
         {/* Fila 1 cont. (lg): Código */}
-        <div className="grid gap-2">
-  <Label>Código</Label>
+        <Field data-invalid={!!errors.code}>
+          <FieldLabel htmlFor="purchase-code" required>Código</FieldLabel>
           {(() => {
             const { onBlur: rhfBlur, onChange: rhfChange, ...codeReg } = register("code");
             return (
-              <>
-                <input
-                  className="input"
-                  {...codeReg}
-                  onChange={(e) => { rhfChange(e); setCodeError(null); }}
-                  onBlur={(e) => {
-                    rhfBlur(e);
-                    const val = e.target.value.trim().toUpperCase();
-                    if (val && purchases.some((p) => p.code.toUpperCase() === val)) {
-                      setCodeError(`El código "${val}" ya está en uso.`);
-                      toast.warning(`El código "${val}" ya está registrado en el inventario.`);
-                    } else {
-                      setCodeError(null);
-                    }
-                  }}
-                />
-                {codeError && <span className="mt-1 block text-xs text-warning">⚠ {codeError}</span>}
-              </>
+              <Input
+                id="purchase-code"
+                aria-required
+                aria-invalid={!!errors.code}
+                {...codeReg}
+                onChange={(e) => { rhfChange(e); setCodeError(null); }}
+                onBlur={(e) => {
+                  rhfBlur(e);
+                  const val = e.target.value.trim().toUpperCase();
+                  if (val && purchases.some((p) => p.code.toUpperCase() === val)) {
+                    setCodeError(`El código "${val}" ya está en uso.`);
+                  } else {
+                    setCodeError(null);
+                  }
+                }}
+              />
             );
           })()}
-        </div>
+          <FieldError errors={[errors.code]} />
+          {/* Aviso, no error de validación: el código repetido no bloquea el
+              guardado (lo resuelve el backend), pero conviene verlo antes. */}
+          {codeError && <FieldDescription className="text-warning">{codeError}</FieldDescription>}
+        </Field>
 
         {/* Fila 2: Nombre del producto — ancho completo */}
-        <div className="sm:col-span-2 lg:col-span-3">
-          <div className="grid gap-2">
-  <Label>Nombre del producto</Label>
-            <Controller
-              control={control}
-              name="productName"
-              render={({ field }) => (
-                <>
-                  <Input
-                    type="text"
-                    list="product-name-options"
-                    value={field.value || ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    aria-invalid={!!errors.productName}
-                  />
-                  <datalist id="product-name-options">
-                    {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => (
-                      <option key={opt} value={opt} />
-                    ))}
-                  </datalist>
-                </>
-              )}
-            />
-          </div>
-        </div>
+        <Field className="sm:col-span-2 lg:col-span-3" data-invalid={!!errors.productName}>
+          <FieldLabel htmlFor="purchase-product-name" required>Nombre del producto</FieldLabel>
+          <Controller
+            control={control}
+            name="productName"
+            render={({ field }) => (
+              <>
+                <Input
+                  id="purchase-product-name"
+                  type="text"
+                  list="product-name-options"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  aria-required
+                  aria-invalid={!!errors.productName}
+                />
+                <datalist id="product-name-options">
+                  {Array.from(new Set(purchases.map((p) => p.productName).filter(Boolean))).map((opt: string) => (
+                    <option key={opt} value={opt} />
+                  ))}
+                </datalist>
+              </>
+            )}
+          />
+          <FieldError errors={[errors.productName]} />
+        </Field>
       </div>
 
       {/* Categoría: obligatoria en el backend al registrar la compra. */}
-      <div className="grid gap-2">
-        <Label>Categoría</Label>
-        <select
-          className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+      <Field data-invalid={!!errors.category}>
+        <FieldLabel htmlFor="purchase-category" required>Categoría</FieldLabel>
+        <NativeSelect
+          id="purchase-category"
+          className="w-full"
           defaultValue=""
+          aria-required
           aria-invalid={!!errors.category}
           {...register("category")}
         >
-          <option value="" disabled>
+          <NativeSelectOption value="" disabled>
             Selecciona una categoría
-          </option>
+          </NativeSelectOption>
           {config?.categories.map((c) => (
-            <option key={c.id} value={c.id}>
+            <NativeSelectOption key={c.id} value={c.id}>
               {c.icon} {c.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
-      </div>
+        </NativeSelect>
+        <FieldError errors={[errors.category]} />
+      </Field>
 
       {/* ── Bloque 2: Datos financieros ── */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="grid gap-2">
-  <Label>Cantidad</Label>
-          <input type="number" min={1} className="input h-10" {...register("quantity")} />
-        </div>
-        <div className="grid gap-2">
-  <Label>Precio base (USD)</Label>
-          <input type="number" step="0.01" min={0} className="input h-10" {...register("costUnit")} />
-        </div>
-        <div className="grid gap-2">
-  <Label>Imp. unitario (USD)</Label>
-          <input type="number" step="0.0001" min={0} className="input h-10" {...register("taxUnit")} />
-        </div>
+        <Field data-invalid={!!errors.quantity}>
+          <FieldLabel htmlFor="purchase-qty" required>Cantidad</FieldLabel>
+          <Input id="purchase-qty" type="number" min={1} aria-required {...register("quantity")} aria-invalid={!!errors.quantity} />
+          <FieldError errors={[errors.quantity]} />
+        </Field>
+        <Field data-invalid={!!errors.costUnit}>
+          <FieldLabel htmlFor="purchase-cost" required>Precio base (USD)</FieldLabel>
+          <Input id="purchase-cost" type="number" step="0.01" min={0} aria-required {...register("costUnit")} aria-invalid={!!errors.costUnit} />
+          <FieldError errors={[errors.costUnit]} />
+        </Field>
+        <Field data-invalid={!!errors.taxUnit}>
+          <FieldLabel htmlFor="purchase-tax" required>Imp. unitario (USD)</FieldLabel>
+          <Input id="purchase-tax" type="number" step="0.0001" min={0} aria-required {...register("taxUnit")} aria-invalid={!!errors.taxUnit} />
+          <FieldError errors={[errors.taxUnit]} />
+        </Field>
 
         {/* Tarjeta de totales estilo ticket */}
         <div className="col-span-3 flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4">

@@ -20,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { AdminProduct } from '@shared/schemas';
 import { Card, CardContent } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
+import { formatCordobas } from '~/lib/formatters';
 
 interface SortableCatalogGridProps {
   items: AdminProduct[];
@@ -143,9 +144,9 @@ function SortableCard({ item, onEdit, onDelete }: SortableCardProps) {
           {item.name}
         </h3>
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-lg font-bold text-primary">C$ {item.price}</span>
+          <span className="nums text-lg font-bold text-primary-2">{formatCordobas(item.price)}</span>
           {item.basePrice && item.basePrice > item.price && (
-            <span className="text-xs text-muted-foreground line-through">C$ {item.basePrice}</span>
+            <span className="nums text-xs text-muted-foreground line-through">{formatCordobas(item.basePrice)}</span>
           )}
         </div>
       </CardContent>

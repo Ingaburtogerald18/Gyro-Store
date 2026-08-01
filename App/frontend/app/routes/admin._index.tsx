@@ -158,7 +158,7 @@ export default function AdminDashboard() {
   
   const { data: kpis, isLoading, isError } = useGetKpisQuery(queryParams);
 
-  const formatMoney = (n: number) => `C$ ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatMoney = (n: number) => formatCordobas(n, 'C$', 2);
   
   const tabs = [
     { id: 'today', label: 'Hoy' },

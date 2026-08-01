@@ -13,9 +13,18 @@ import {
   Edit02Icon,
 } from '@hugeicons/core-free-icons';
 import { useEffect, useState } from 'react';
+import {
+  Controller,
+  useFieldArray,
+  useForm,
+  type Control,
+  type FieldError as RhfFieldError,
+  type FieldErrors,
+} from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 
-import type { AdminTemplate, Category, SpecRow, TemplateAxis, TemplateInput } from '@shared/schemas';
+import { templateInputSchema, type AdminTemplate, type Category, type TemplateInput } from '@shared/schemas';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent } from '~/components/ui/card';
@@ -27,8 +36,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '~/components/ui/field';
 import { Input } from '~/components/ui/input';
-import { Label } from '~/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { Spinner } from '~/components/ui/spinner';
 import { Switch } from '~/components/ui/switch';
@@ -39,6 +53,7 @@ import {
   useGetTemplatesQuery,
   useUpdateTemplateMutation,
 } from '~/store/api/catalogAdminApi';
+import { cn } from '~/lib/utils';
 import { ToneDot } from './ToneDot';
 
 export function TemplatesPanel({ categories }: { categories: Category[] }) {
@@ -191,11 +206,24 @@ function TemplateEditorDialog({
 }) {
   const [createTemplate, { isLoading: creating }] = useCreateTemplateMutation();
   const [updateTemplate, { isLoading: updating }] = useUpdateTemplateMutation();
-  const [form, setForm] = useState<TemplateInput>(EMPTY);
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<TemplateInput>({
+    resolver: zodResolver(templateInputSchema),
+    defaultValues: EMPTY,
+  });
+
+  const axes = useFieldArray({ control, name: 'axes' });
+  const specs = useFieldArray({ control, name: 'specs' });
 
   useEffect(() => {
     if (!open) return;
-    setForm(
+    reset(
       template
         ? {
             name: template.name,
@@ -206,41 +234,18 @@ function TemplateEditorDialog({
           }
         : EMPTY,
     );
-  }, [open, template]);
+  }, [open, template, reset]);
 
-  function patchAxis(index: number, changes: Partial<TemplateAxis>) {
-    setForm((prev) => ({
-      ...prev,
-      axes: prev.axes.map((axis, i) => (i === index ? { ...axis, ...changes } : axis)),
-    }));
-  }
-
-  function patchSpec(index: number, changes: Partial<SpecRow>) {
-    setForm((prev) => ({
-      ...prev,
-      specs: prev.specs.map((spec, i) => (i === index ? { ...spec, ...changes } : spec)),
-    }));
-  }
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-
-    // El backend descarta los ejes incompletos, pero avisar acá evita que el
-    // admin crea que guardó un eje que en realidad se tiró.
-    const incomplete = form.axes.filter(
-      (axis) => !axis.label.trim() || axis.options.every((o) => !o.trim()),
-    );
-    if (incomplete.length > 0) {
-      toast.error('Hay ejes sin etiqueta o sin opciones. Completalos o eliminalos.');
-      return;
-    }
-
+  // Los ejes incompletos ya no se avisan por toast: `templateAxisSchema` exige
+  // label y al menos una opción no vacía, así que el error sale en el campo que
+  // lo causa. El toast queda para el resultado de la operación.
+  async function onSubmit(values: TemplateInput) {
     try {
       if (template) {
-        await updateTemplate({ id: template.id, data: form }).unwrap();
+        await updateTemplate({ id: template.id, data: values }).unwrap();
         toast.success('Plantilla actualizada.');
       } else {
-        await createTemplate(form).unwrap();
+        await createTemplate(values).unwrap();
         toast.success('Plantilla creada.');
       }
       onOpenChange(false);
@@ -262,53 +267,65 @@ function TemplateEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="template-name">Nombre</Label>
+            <Field data-invalid={!!errors.name}>
+              <FieldLabel htmlFor="template-name" required>
+                Nombre
+              </FieldLabel>
               <Input
                 id="template-name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Ej. Audífonos KZ"
-                required
+                aria-required
+                aria-invalid={!!errors.name}
+                {...register('name')}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="template-category">Categoría</Label>
-              <Select
-                value={form.categoryId ?? 'none'}
-                onValueChange={(v) => setForm({ ...form, categoryId: v === 'none' ? null : v })}
-              >
-                <SelectTrigger id="template-category">
-                  <SelectValue placeholder="Sin categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    <ToneDot />
-                    Sin categoría
-                  </SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <ToneDot toneKey={c.id} />
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <FieldError errors={[errors.name]} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="template-category">Categoría</FieldLabel>
+              <Controller
+                control={control}
+                name="categoryId"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? 'none'}
+                    onValueChange={(v) => field.onChange(v === 'none' ? null : v)}
+                  >
+                    <SelectTrigger id="template-category">
+                      <SelectValue placeholder="Sin categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <ToneDot />
+                        Sin categoría
+                      </SelectItem>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <ToneDot toneKey={c.id} />
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldError errors={[errors.categoryId]} />
+            </Field>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="template-description">Nota interna</Label>
+          <Field data-invalid={!!errors.description}>
+            <FieldLabel htmlFor="template-description">Nota interna</FieldLabel>
             <Textarea
               id="template-description"
               rows={2}
-              value={form.description ?? ''}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Para qué sirve esta plantilla…"
+              aria-invalid={!!errors.description}
+              {...register('description')}
             />
-          </div>
+            <FieldDescription>Solo la ve el equipo; no sale al catálogo público.</FieldDescription>
+            <FieldError errors={[errors.description]} />
+          </Field>
 
           {/* ── Ejes ── */}
           <div className="space-y-3">
@@ -322,15 +339,9 @@ function TemplateEditorDialog({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  setForm((prev) => ({
-                    ...prev,
-                    axes: [
-                      ...prev.axes,
-                      // `key` se genera acá y no se vuelve a tocar: es la llave
-                      // con la que cada producto guarda su recorte de opciones.
-                      { key: `eje_${Date.now()}`, label: '', options: [''], isColor: false },
-                    ],
-                  }))
+                  // `key` se genera acá y no se vuelve a tocar: es la llave con
+                  // la que cada producto guarda su recorte de opciones.
+                  axes.append({ key: `eje_${Date.now()}`, label: '', options: [''], isColor: false })
                 }
               >
                 <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} className="mr-1" />
@@ -338,99 +349,61 @@ function TemplateEditorDialog({
               </Button>
             </div>
 
-            {form.axes.length === 0 ? (
+            {/* Error del array entero (ej. "Máximo 6 ejes"): RHF lo deja en la
+                propia entrada, no en un `.root`. */}
+            <FieldError errors={[errors.axes]} />
+
+            {axes.fields.length === 0 ? (
               <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
                 Sin ejes: los productos con esta plantilla no tendrán variantes.
               </p>
             ) : (
-              form.axes.map((axis, axisIndex) => (
-                <div key={axis.key} className="space-y-3 rounded-2xl border bg-card p-4">
+              axes.fields.map((axis, axisIndex) => (
+                <div key={axis.id} className="space-y-3 rounded-2xl border bg-card p-4">
                   <div className="flex items-end gap-2">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor={`axis-${axis.key}`}>Etiqueta visible</Label>
+                    <Field className="flex-1" data-invalid={!!errors.axes?.[axisIndex]?.label}>
+                      <FieldLabel htmlFor={`axis-${axis.id}`} required>
+                        Etiqueta visible
+                      </FieldLabel>
                       <Input
-                        id={`axis-${axis.key}`}
-                        value={axis.label}
-                        onChange={(e) => patchAxis(axisIndex, { label: e.target.value })}
+                        id={`axis-${axis.id}`}
                         placeholder="Ej. Tipo de conector"
+                        aria-required
+                        aria-invalid={!!errors.axes?.[axisIndex]?.label}
+                        {...register(`axes.${axisIndex}.label`)}
                       />
-                    </div>
+                      <FieldError errors={[errors.axes?.[axisIndex]?.label]} />
+                    </Field>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       aria-label="Eliminar eje"
                       className="hover:bg-destructive/20 hover:text-destructive"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          axes: prev.axes.filter((_, i) => i !== axisIndex),
-                        }))
-                      }
+                      onClick={() => axes.remove(axisIndex)}
                     >
                       <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                     </Button>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2">
-                    <Label className="text-xs font-normal">
+                  <Field orientation="horizontal" className="justify-between rounded-xl bg-muted px-3 py-2">
+                    <FieldLabel htmlFor={`axis-color-${axis.id}`} className="text-xs font-normal">
                       Es el eje de color (se representa con fotos)
-                    </Label>
-                    <Switch
-                      checked={Boolean(axis.isColor)}
-                      onCheckedChange={(c) => patchAxis(axisIndex, { isColor: c })}
+                    </FieldLabel>
+                    <Controller
+                      control={control}
+                      name={`axes.${axisIndex}.isColor`}
+                      render={({ field }) => (
+                        <Switch
+                          id={`axis-color-${axis.id}`}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
                     />
-                  </div>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Opciones
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {axis.options.map((option, optionIndex) => (
-                        <div
-                          key={optionIndex}
-                          className="flex items-center gap-1 rounded-xl border bg-background pr-1"
-                        >
-                          <input
-                            value={option}
-                            onChange={(e) =>
-                              patchAxis(axisIndex, {
-                                options: axis.options.map((o, i) =>
-                                  i === optionIndex ? e.target.value : o,
-                                ),
-                              })
-                            }
-                            placeholder="Opción"
-                            className="w-28 bg-transparent px-2.5 py-1.5 text-xs outline-none"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            aria-label="Quitar opción"
-                            onClick={() =>
-                              patchAxis(axisIndex, {
-                                options: axis.options.filter((_, i) => i !== optionIndex),
-                              })
-                            }
-                          >
-                            <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
-                          </Button>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => patchAxis(axisIndex, { options: [...axis.options, ''] })}
-                      >
-                        <HugeiconsIcon icon={Add01Icon} size={12} strokeWidth={2} className="mr-1" />
-                        Añadir
-                      </Button>
-                    </div>
-                  </div>
+                  <AxisOptionsField control={control} axisIndex={axisIndex} errors={errors} />
                 </div>
               ))
             )}
@@ -449,28 +422,28 @@ function TemplateEditorDialog({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  setForm((prev) => ({ ...prev, specs: [...prev.specs, { label: '', value: '' }] }))
-                }
+                onClick={() => specs.append({ label: '', value: '' })}
               >
                 <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} className="mr-1" />
                 Spec
               </Button>
             </div>
 
-            {form.specs.map((spec, index) => (
-              <div key={index} className="flex items-center gap-2">
+            <FieldError errors={[errors.specs]} />
+
+            {specs.fields.map((spec, index) => (
+              <div key={spec.id} className="flex items-center gap-2">
                 <Input
-                  value={spec.label}
-                  onChange={(e) => patchSpec(index, { label: e.target.value })}
                   placeholder="Ej. Frecuencia"
                   className="w-1/3"
+                  aria-label="Etiqueta de la spec"
+                  {...register(`specs.${index}.label`)}
                 />
                 <Input
-                  value={spec.value}
-                  onChange={(e) => patchSpec(index, { value: e.target.value })}
                   placeholder="Ej. 20Hz - 40kHz"
                   className="flex-1"
+                  aria-label="Valor de la spec"
+                  {...register(`specs.${index}.value`)}
                 />
                 <Button
                   type="button"
@@ -478,9 +451,7 @@ function TemplateEditorDialog({
                   size="icon"
                   aria-label="Eliminar spec"
                   className="hover:bg-destructive/20 hover:text-destructive"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, specs: prev.specs.filter((_, i) => i !== index) }))
-                  }
+                  onClick={() => specs.remove(index)}
                 >
                   <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
@@ -500,5 +471,94 @@ function TemplateEditorDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// `options` es un array de strings PLANOS. `useFieldArray` no sirve acá (necesita
+// un objeto por ítem para generar su `id`), así que el array entero es un solo
+// campo controlado. Los errores vienen en dos niveles: el del array
+// ("Cada eje necesita al menos una opción") y el de cada opción vacía.
+function AxisOptionsField({
+  control,
+  axisIndex,
+  errors,
+}: {
+  control: Control<TemplateInput>;
+  axisIndex: number;
+  errors: FieldErrors<TemplateInput>;
+}) {
+  // RHF tipa el error de un array de primitivas como `Merge<FieldError, (FieldError|undefined)[]>`:
+  // es un array que además lleva `message` propio. Se leen los dos lados.
+  const raw = errors.axes?.[axisIndex]?.options as unknown as
+    | (RhfFieldError & ArrayLike<RhfFieldError | undefined>)
+    | undefined;
+  const perOption: (RhfFieldError | undefined)[] = Array.isArray(raw) ? raw : [];
+  const rootError = raw?.message ? { message: raw.message } : undefined;
+
+  return (
+    <Field data-invalid={!!raw}>
+      <FieldLabel
+        className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground"
+        required
+      >
+        Opciones
+      </FieldLabel>
+      <Controller
+        control={control}
+        name={`axes.${axisIndex}.options`}
+        render={({ field }) => {
+          const options = field.value ?? [];
+          return (
+            <div className="flex flex-wrap gap-2">
+              {options.map((option, optionIndex) => (
+                <div
+                  key={optionIndex}
+                  className={cn(
+                    'flex items-center gap-1 rounded-xl border bg-background pr-1',
+                    perOption[optionIndex] && 'border-destructive',
+                  )}
+                >
+                  {/* Input pelado a propósito: el chip ya es el contenedor con
+                      apariencia; una primitiva Input acá lo rompería. */}
+                  <input
+                    value={option}
+                    onChange={(e) =>
+                      field.onChange(
+                        options.map((o, i) => (i === optionIndex ? e.target.value : o)),
+                      )
+                    }
+                    onBlur={field.onBlur}
+                    placeholder="Opción"
+                    aria-label={`Opción ${optionIndex + 1}`}
+                    aria-invalid={!!perOption[optionIndex]}
+                    className="w-28 bg-transparent px-2.5 py-1.5 text-xs outline-none"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Quitar opción"
+                    onClick={() => field.onChange(options.filter((_, i) => i !== optionIndex))}
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => field.onChange([...options, ''])}
+              >
+                <HugeiconsIcon icon={Add01Icon} size={12} strokeWidth={2} className="mr-1" />
+                Añadir
+              </Button>
+            </div>
+          );
+        }}
+      />
+      <FieldError errors={[rootError, ...perOption]} />
+    </Field>
   );
 }

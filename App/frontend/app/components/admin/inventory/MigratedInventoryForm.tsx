@@ -9,7 +9,7 @@ import { useForm, Controller, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
+import { Field, FieldError, FieldLabel } from "~/components/ui/field";
 import { migratedItemFormSchema, type MigratedItemFormInput, type MigratedItemFormValues } from "~/lib/validators";
 import {
   useCreateMigratedItemMutation,
@@ -47,6 +47,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
     handleSubmit,
     watch,
     reset,
+    setError,
     formState: { errors },
   } = useForm<MigratedItemFormValues, any, MigratedItemFormInput>({
     resolver: zodResolver(migratedItemFormSchema),
@@ -71,9 +72,10 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
   const sugerido = Math.round((costeReal * 1.40) / 10) * 10;
 
   async function onSubmit(data: MigratedItemFormInput) {
+    // Código duplicado: es un error DEL CAMPO, no del resultado de la operación.
     const codeExists = existingItems.some(i => (i.code || "").toLowerCase() === data.code.toLowerCase() && i.id !== item?.id);
     if (codeExists) {
-      toast.error(`El código "${data.code}" ya se encuentra registrado.`);
+      setError("code", { message: `El código "${data.code}" ya se encuentra registrado.` });
       return;
     }
 
@@ -137,25 +139,27 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
     >
       <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-2">
         <span className="rounded-pill bg-warning/15 px-2.5 py-1 text-xs font-medium text-warning">
-          🏷️ Migrado
+          Migrado
         </span>
         <p className="text-xs text-muted-foreground">
           Datos históricos del Excel viejo. No afectan el inventario actual.
         </p>
       </div>
 
-      <div className="grid gap-2">
-  <Label>Fecha</Label>
-        <Input type="date" {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
-      </div>
-      <div className="grid gap-2">
-  <Label>Lote</Label>
+      <Field data-invalid={!!errors.purchaseDate}>
+        <FieldLabel htmlFor="migrated-date" required>Fecha</FieldLabel>
+        <Input id="migrated-date" type="date" aria-required {...register("purchaseDate")} aria-invalid={!!errors.purchaseDate} />
+        <FieldError errors={[errors.purchaseDate]} />
+      </Field>
+      <Field data-invalid={!!errors.lot}>
+        <FieldLabel htmlFor="migrated-lot">Lote</FieldLabel>
         <Controller
           control={control}
           name="lot"
           render={({ field }) => (
             <>
               <Input
+                id="migrated-lot"
                 type="text"
                 list="migrated-lot-options"
                 value={field.value || ""}
@@ -172,52 +176,58 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
             </>
           )}
         />
-      </div>
-      <div className="grid gap-2">
-  <Label>Código</Label>
-        <input className="input" {...register("code")} />
-      </div>
+        <FieldError errors={[errors.lot]} />
+      </Field>
+      <Field data-invalid={!!errors.code}>
+        <FieldLabel htmlFor="migrated-code" required>Código</FieldLabel>
+        <Input id="migrated-code" aria-required {...register("code")} aria-invalid={!!errors.code} />
+        <FieldError errors={[errors.code]} />
+      </Field>
 
-      <div className="sm:col-span-2 lg:col-span-3">
-        <div className="grid gap-2">
-  <Label>Nombre del producto</Label>
-          <Controller
-            control={control}
-            name="productName"
-            render={({ field }) => (
-              <>
-                <Input
-                  type="text"
-                  list="migrated-product-name-options"
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  aria-invalid={!!errors.productName}
-                />
-                <datalist id="migrated-product-name-options">
-                  {Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean))).map((opt) => (
-                    <option key={opt} value={opt} />
-                  ))}
-                </datalist>
-              </>
-            )}
-          />
-        </div>
-      </div>
+      <Field className="sm:col-span-2 lg:col-span-3" data-invalid={!!errors.productName}>
+        <FieldLabel htmlFor="migrated-product-name" required>Nombre del producto</FieldLabel>
+        <Controller
+          control={control}
+          name="productName"
+          render={({ field }) => (
+            <>
+              <Input
+                id="migrated-product-name"
+                type="text"
+                list="migrated-product-name-options"
+                value={field.value || ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                aria-required
+                aria-invalid={!!errors.productName}
+              />
+              <datalist id="migrated-product-name-options">
+                {Array.from(new Set(existingItems.map((i) => i.productName).filter(Boolean))).map((opt) => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
+            </>
+          )}
+        />
+        <FieldError errors={[errors.productName]} />
+      </Field>
 
-      <div className="grid gap-2">
-  <Label>Entradas (cantidad)</Label>
-        <input type="number" min={1} className="input" {...register("quantity")} />
-      </div>
-      <div className="grid gap-2">
-  <Label>Precio base (USD)</Label>
-        <input type="number" step="0.0001" min={0} className="input" {...register("costUnit")} />
-      </div>
-      <div className="grid gap-2">
-  <Label>Costo de envío unit. (USD)</Label>
-        <input type="number" step="0.0001" min={0} className="input" {...register("shippingUnit")} />
-      </div>
+      <Field data-invalid={!!errors.quantity}>
+        <FieldLabel htmlFor="migrated-qty" required>Entradas (cantidad)</FieldLabel>
+        <Input id="migrated-qty" type="number" min={1} aria-required {...register("quantity")} aria-invalid={!!errors.quantity} />
+        <FieldError errors={[errors.quantity]} />
+      </Field>
+      <Field data-invalid={!!errors.costUnit}>
+        <FieldLabel htmlFor="migrated-cost" required>Precio base (USD)</FieldLabel>
+        <Input id="migrated-cost" type="number" step="0.0001" min={0} aria-required {...register("costUnit")} aria-invalid={!!errors.costUnit} />
+        <FieldError errors={[errors.costUnit]} />
+      </Field>
+      <Field data-invalid={!!errors.shippingUnit}>
+        <FieldLabel htmlFor="migrated-shipping" required>Costo de envío unit. (USD)</FieldLabel>
+        <Input id="migrated-shipping" type="number" step="0.0001" min={0} aria-required {...register("shippingUnit")} aria-invalid={!!errors.shippingUnit} />
+        <FieldError errors={[errors.shippingUnit]} />
+      </Field>
 
       {/* Preview calculado en vivo */}
       <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-6 rounded-card border border-border bg-card/60 px-4 py-2">
@@ -235,12 +245,11 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
         </div>
       </div>
 
-      <div className="sm:col-span-2 lg:col-span-3">
-        <div className="grid gap-2">
-  <Label>Comentarios</Label>
-          <input className="input" placeholder="Opcional" {...register("comments")} />
-        </div>
-      </div>
+      <Field className="sm:col-span-2 lg:col-span-3" data-invalid={!!errors.comments}>
+        <FieldLabel htmlFor="migrated-comments">Comentarios</FieldLabel>
+        <Input id="migrated-comments" placeholder="Opcional" {...register("comments")} aria-invalid={!!errors.comments} />
+        <FieldError errors={[errors.comments]} />
+      </Field>
 
       <div className="flex items-end sm:col-span-2 lg:col-span-3">
         <Button type="submit" className="w-full sm:w-auto" disabled={creating || updating}>

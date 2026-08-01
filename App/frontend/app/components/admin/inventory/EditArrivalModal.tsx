@@ -5,11 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
+import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useUpdatePurchaseMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { Spinner } from "~/components/ui/spinner";
 
 export function EditArrivalModal({
@@ -72,37 +73,41 @@ export function EditArrivalModal({
           <DialogTitle>Editar recepción · {purchase?.code ?? ""}</DialogTitle>
         </DialogHeader>
       <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-4">
-        <div className="grid gap-2">
-          <Label>Fecha de ingreso a Nicaragua</Label>
-          <Input type="date" {...register("arrivalDate")} />
-        </div>
+        <Field data-invalid={!!errors.arrivalDate}>
+          <FieldLabel htmlFor="edit-arrival-date" required>Fecha de ingreso a Nicaragua</FieldLabel>
+          <Input id="edit-arrival-date" type="date" aria-required aria-invalid={!!errors.arrivalDate} {...register("arrivalDate")} />
+          <FieldError errors={[errors.arrivalDate]} />
+        </Field>
 
-        <div className="grid gap-2">
-          <Label>Costo de envío unitario (USD)</Label>
-          <input type="number" step="0.0001" min={0} className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("shippingUnit")} />
-        </div>
+        <Field data-invalid={!!errors.shippingUnit}>
+          <FieldLabel htmlFor="edit-arrival-shipping" required>Costo de envío unitario (USD)</FieldLabel>
+          <Input id="edit-arrival-shipping" type="number" step="0.0001" min={0} aria-required {...register("shippingUnit")} aria-invalid={!!errors.shippingUnit} />
+          <FieldError errors={[errors.shippingUnit]} />
+        </Field>
 
-        <div className="grid gap-2">
-          <Label>Precio de venta (C$)</Label>
-          <input type="number" step="1" min={0} className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" placeholder="Precio al que se vende" {...register("suggestedPrice")} />
-          <span className="mt-1 block text-xs text-muted-foreground">Es el precio que verá el vendedor al cotizar. Puedes cambiarlo cuando quieras.</span>
-        </div>
+        <Field data-invalid={!!errors.suggestedPrice}>
+          <FieldLabel htmlFor="edit-arrival-price">Precio de venta (C$)</FieldLabel>
+          <Input id="edit-arrival-price" type="number" step="1" min={0} placeholder="Precio al que se vende" {...register("suggestedPrice")} aria-invalid={!!errors.suggestedPrice} />
+          <FieldDescription>Es el precio que verá el vendedor al cotizar. Puedes cambiarlo cuando quieras.</FieldDescription>
+          <FieldError errors={[errors.suggestedPrice]} />
+        </Field>
 
-        <div className="grid gap-2">
-          <Label>Categoría</Label>
-          <select className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" defaultValue="" {...register("category")}>
-            <option value="" disabled>
+        <Field data-invalid={!!errors.category}>
+          <FieldLabel htmlFor="edit-arrival-category" required>Categoría</FieldLabel>
+          <NativeSelect id="edit-arrival-category" className="w-full" defaultValue="" aria-required aria-invalid={!!errors.category} {...register("category")}>
+            <NativeSelectOption value="" disabled>
               Selecciona una categoría
-            </option>
+            </NativeSelectOption>
             {config?.categories.map((c) => (
-              <option key={c.id} value={c.id}>
+              <NativeSelectOption key={c.id} value={c.id}>
                 {c.icon} {c.name}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
-        </div>
+          </NativeSelect>
+          <FieldError errors={[errors.category]} />
+        </Field>
 
-        <div className="flex justify-end gap-2 border-t border pt-4">
+        <div className="flex justify-end gap-2 border-t pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">
             Cancelar
           </Button>

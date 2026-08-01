@@ -4,12 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
+import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useReportArrivalMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
-import { formatCordobas } from "~/lib/formatters";
+import { formatCordobas, roundTo } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
 
 const RATE = 37;
@@ -53,7 +54,7 @@ export function ArrivalModal({
   else if (costoFijo <= 800) margin = 0.35;
   else if (costoFijo <= 1200) margin = 0.30;
   
-  const suggestedPriceCalc = parseFloat((costoFijo / (1 - margin)).toFixed(2));
+  const suggestedPriceCalc = roundTo(costoFijo / (1 - margin));
 
   useEffect(() => {
     if (hasShipping) {
@@ -90,32 +91,35 @@ export function ArrivalModal({
           </div>
         )}
         
-        <div className="grid gap-2">
-          <Label>Fecha de ingreso a Nicaragua</Label>
-          <Input type="date" {...register("arrivalDate")} />
-        </div>
+        <Field data-invalid={!!errors.arrivalDate}>
+          <FieldLabel htmlFor="arrival-date" required>Fecha de ingreso a Nicaragua</FieldLabel>
+          <Input id="arrival-date" type="date" aria-required aria-invalid={!!errors.arrivalDate} {...register("arrivalDate")} />
+          <FieldError errors={[errors.arrivalDate]} />
+        </Field>
 
-        <div className="grid gap-2">
-          <Label>Costo de envío unitario (USD)</Label>
-          <input type="number" step="0.0001" min={0} className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("shippingUnit")} />
-        </div>
+        <Field data-invalid={!!errors.shippingUnit}>
+          <FieldLabel htmlFor="arrival-shipping" required>Costo de envío unitario (USD)</FieldLabel>
+          <Input id="arrival-shipping" type="number" step="0.0001" min={0} aria-required {...register("shippingUnit")} aria-invalid={!!errors.shippingUnit} />
+          <FieldError errors={[errors.shippingUnit]} />
+        </Field>
 
-        <div className="grid gap-2">
-          <Label>Categoría</Label>
-          <select className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" defaultValue="" {...register("category")}>
-            <option value="" disabled>
+        <Field data-invalid={!!errors.category}>
+          <FieldLabel htmlFor="arrival-category" required>Categoría</FieldLabel>
+          <NativeSelect id="arrival-category" className="w-full" defaultValue="" aria-required aria-invalid={!!errors.category} {...register("category")}>
+            <NativeSelectOption value="" disabled>
               Selecciona una categoría
-            </option>
+            </NativeSelectOption>
             {config?.categories.map((c) => (
-              <option key={c.id} value={c.id}>
+              <NativeSelectOption key={c.id} value={c.id}>
                 {c.icon} {c.name}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
-        </div>
+          </NativeSelect>
+          <FieldError errors={[errors.category]} />
+        </Field>
 
         {hasShipping && (
-          <div className="rounded-lg bg-muted p-3 text-xs space-y-1.5 border border">
+          <div className="rounded-lg border bg-muted p-3 text-xs space-y-1.5">
             <div className="flex justify-between text-muted-foreground">
               <span>Costo Real Unit. (C$)</span>
               <span className="font-medium text-foreground">{formatCordobas(costRealCordobas)}</span>
@@ -124,19 +128,21 @@ export function ArrivalModal({
               <span>Coste c/ Fijos (C$)</span>
               <span className="font-medium text-warning">{formatCordobas(costoFijo)}</span>
             </div>
-            <div className="flex justify-between font-semibold pt-1 border-t border/50">
+            <div className="flex justify-between font-semibold pt-1 border-t border-border/50">
               <span>Precio Sugerido Calculado</span>
               <span className="text-primary-2">{formatCordobas(suggestedPriceCalc)}</span>
             </div>
           </div>
         )}
 
-        <div className="grid gap-2">
-          <Label>Precio de venta final (C$)</Label>
-          <input type="number" step="0.01" min={0} className="input font-bold text-primary flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("suggestedPrice")} />
-        </div>
+        <Field data-invalid={!!errors.suggestedPrice}>
+          <FieldLabel htmlFor="arrival-price">Precio de venta final (C$)</FieldLabel>
+          <Input id="arrival-price" type="number" step="0.01" min={0} className="font-bold" {...register("suggestedPrice")} aria-invalid={!!errors.suggestedPrice} />
+          <FieldDescription>Si lo dejás vacío se guarda el sugerido calculado arriba.</FieldDescription>
+          <FieldError errors={[errors.suggestedPrice]} />
+        </Field>
 
-        <div className="flex justify-end gap-2 border-t border pt-4">
+        <div className="flex justify-end gap-2 border-t pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">
             Cancelar
           </Button>

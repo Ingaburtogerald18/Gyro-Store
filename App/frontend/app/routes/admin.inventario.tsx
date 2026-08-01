@@ -1,8 +1,12 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Alert02Icon, ArchiveIcon, ArrowMoveDownLeftIcon, Delete02Icon, File01Icon, Package01Icon, PackageAddIcon, PackageIcon, PackageMovingIcon, RefreshIcon, DeliveryTruck01Icon, DollarCircleIcon } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { MetaFunction } from '@remix-run/node';
+import { arrivalInputSchema, newPurchaseInputSchema } from '@shared/schemas';
 import {
   useGetPurchasesQuery,
   useGetInventoryKpisQuery,
@@ -19,16 +23,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/com
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
 import { DataTable } from '~/components/ui/DataTable';
+import { QueryState } from '~/components/ui/QueryState';
 import { ColumnDef } from '@tanstack/react-table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '~/components/ui/dialog';
 import { Input } from '~/components/ui/input';
-import { Label } from '~/components/ui/label';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '~/components/ui/field';
 import { DatePicker } from '~/components/ui/date-picker';
 
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { getSupabaseClient } from '~/lib/supabase.client';
+import { formatCordobas, formatUsd } from '~/lib/formatters';
 import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => {
@@ -41,6 +52,50 @@ const TOP_TABS = [
 ] as const;
 
 const NESTED_TAB = 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm';
+
+// Los dos formularios de esta ruta salen de los schemas del backend en
+// `@shared/schemas`, recortados a lo que el formulario realmente pide:
+//
+//  · `code` lo asigna el servidor, así que no se pide ni se valida acá.
+//  · `category` no se pide al recibir: el lote ya la trae de la compra.
+//  · Los <input> devuelven string, y `newPurchaseInputSchema` espera number: se
+//    envuelve con `z.coerce`, pero un campo vacío tiene que FALLAR, no volverse 0
+//    — por eso `''` se mapea a NaN antes de coercionar (mismo patrón que
+//    `lib/validators.ts`).
+const emptyToNaN = (v: unknown) => (v === '' || v === null || v === undefined ? NaN : v);
+
+const purchaseDialogSchema = newPurchaseInputSchema
+  .omit({ code: true, suggestedPrice: true })
+  .extend({
+    quantity: z.preprocess(emptyToNaN, z.coerce.number().int('Debe ser entero').positive('La cantidad debe ser mayor a 0.')),
+    costUnit: z.preprocess(emptyToNaN, z.coerce.number().min(0, 'No puede ser negativo')),
+    taxUnit: z.preprocess(emptyToNaN, z.coerce.number().min(0, 'No puede ser negativo')),
+    purchaseDate: z.string().min(1, 'La fecha de compra es obligatoria.'),
+  });
+// Entrada (lo que sostienen los inputs, strings) ≠ salida (lo ya coercionado):
+// RHF necesita los dos por separado para que el resolver tipe bien.
+type PurchaseDialogValues = z.input<typeof purchaseDialogSchema>;
+type PurchaseDialogOutput = z.output<typeof purchaseDialogSchema>;
+
+const EMPTY_PURCHASE_DIALOG = {
+  productName: '',
+  quantity: '',
+  costUnit: '',
+  taxUnit: '',
+  lot: '',
+  purchaseDate: '',
+  category: '',
+} as unknown as PurchaseDialogValues;
+
+// `arrivalInputSchema` no pide categoría: el lote ya la trae de la compra.
+const receiveSchema = arrivalInputSchema.extend({
+  arrivalDate: z.string().min(1, 'La fecha de llegada es obligatoria.'),
+  shippingUnit: z.preprocess(emptyToNaN, z.coerce.number().min(0, 'No puede ser negativo')),
+  // Opcional: vacío significa "usá el sugerido que calculó el servidor".
+  suggestedPrice: z.union([z.literal(''), z.coerce.number().min(0, 'No puede ser negativo')]).optional(),
+});
+type ReceiveFormValues = z.input<typeof receiveSchema>;
+type ReceiveFormOutput = z.output<typeof receiveSchema>;
 
 // Helper: Calcular Fecha de Salida
 function getDepartureDate(purchaseDate: string): string {
@@ -90,21 +145,25 @@ export default function AdminInventario() {
   const [activeTab, setActiveTab] = useState('purchases');
 
   const [receiveItem, setReceiveItem] = useState<any>(null);
-  const [receiveData, setReceiveData] = useState({
-    arrivalDate: '',
-    shippingUnit: '',
-    suggestedPrice: ''
-  });
   const [simulatedPrice, setSimulatedPrice] = useState<number | null>(null);
   const [inventoryType, setInventoryType] = useState('current');
 
   // Confirm delete
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // ── Formulario: recibir lote en Nicaragua ──
+  // `arrivalInputSchema` es el contrato del backend; `category` no se pide acá
+  // (el lote ya la trae de la compra), así que se omite del formulario.
+  const receiveForm = useForm<ReceiveFormValues, any, ReceiveFormOutput>({
+    resolver: zodResolver(receiveSchema),
+    defaultValues: { arrivalDate: '', shippingUnit: '', suggestedPrice: '' } as ReceiveFormValues,
+  });
+  const shippingUnitRaw = receiveForm.watch('shippingUnit');
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (receiveItem && receiveData.shippingUnit !== '') {
-        const val = Number(receiveData.shippingUnit);
+      if (receiveItem && shippingUnitRaw !== '' && shippingUnitRaw !== undefined) {
+        const val = Number(shippingUnitRaw);
         if (val >= 0 && !isNaN(val)) {
           simulateCost({ id: receiveItem.id, shippingUnit: val })
             .unwrap()
@@ -119,27 +178,26 @@ export default function AdminInventario() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [receiveData.shippingUnit, receiveItem, simulateCost]);
+  }, [shippingUnitRaw, receiveItem, simulateCost]);
 
-  const handleReceive = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleReceive = receiveForm.handleSubmit(async (values) => {
     if (!receiveItem) return;
     try {
       await reportArrival({
         id: receiveItem.id,
         body: {
-          arrivalDate: receiveData.arrivalDate,
-          shippingUnit: Number(receiveData.shippingUnit),
-          suggestedPrice: receiveData.suggestedPrice ? Number(receiveData.suggestedPrice) : undefined
+          arrivalDate: values.arrivalDate,
+          shippingUnit: Number(values.shippingUnit),
+          suggestedPrice: values.suggestedPrice ? Number(values.suggestedPrice) : undefined
         }
       }).unwrap();
       setReceiveItem(null);
-      setReceiveData({ arrivalDate: '', shippingUnit: '', suggestedPrice: '' });
+      receiveForm.reset();
       toast.success('Compra recibida correctamente');
     } catch (err: any) {
       toast.error(err?.data?.error || 'Error al recibir la compra');
     }
-  };
+  });
 
   const handleRevert = async (id: string, productName: string) => {
     if (!window.confirm(`¿Estás seguro de que querés retirar "${productName}" de bodega y regresarlo a compras en tránsito?`)) {
@@ -154,37 +212,33 @@ export default function AdminInventario() {
     }
   };
 
-  // Estado del formulario
-  const [formData, setFormData] = useState({
-    productName: '',
-    quantity: '' as number | string,
-    unitCost: '' as number | string,
-    taxUnit: '' as number | string,
-    lot: '',
-    purchaseDate: '',
-    category: '',
+  // ── Formulario: registrar compra en China ──
+  // El contrato es `newPurchaseInputSchema` (backend). `code` se omite: lo asigna
+  // el servidor. Los numéricos van por `z.coerce` para que el input de texto valide.
+  const purchaseForm = useForm<PurchaseDialogValues, any, PurchaseDialogOutput>({
+    resolver: zodResolver(purchaseDialogSchema),
+    defaultValues: EMPTY_PURCHASE_DIALOG,
   });
 
-  const handleRegisterPurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegisterPurchase = purchaseForm.handleSubmit(async (values) => {
     try {
       await createPurchase({
-        productName: formData.productName,
-        quantity: Number(formData.quantity) || 1,
-        costUnit: Number(formData.unitCost) || 0,
-        taxUnit: Number(formData.taxUnit) || 0,
-        lot: formData.lot,
-        purchaseDate: formData.purchaseDate,
-        category: formData.category,
+        productName: values.productName,
+        quantity: Number(values.quantity),
+        costUnit: Number(values.costUnit),
+        taxUnit: Number(values.taxUnit),
+        lot: values.lot,
+        purchaseDate: values.purchaseDate,
+        category: values.category,
         code: '' // Generado por backend
       }).unwrap();
       toast.success('Compra registrada. Código auto-asignado.');
       setIsDialogOpen(false);
-      setFormData({ productName: '', quantity: '', unitCost: '', taxUnit: '', lot: '', purchaseDate: '', category: '' });
+      purchaseForm.reset(EMPTY_PURCHASE_DIALOG);
     } catch (error: any) {
       toast.error(error?.data?.error || 'Error al registrar la compra.');
     }
-  };
+  });
 
   // Auto-execute pending delete after redirect
   useEffect(() => {
@@ -223,7 +277,7 @@ export default function AdminInventario() {
     {
       accessorKey: 'code',
       header: 'Código',
-      cell: ({ row }) => <span className="font-medium text-white bg-emerald-500/20 rounded-md px-2 py-0.5 text-xs">{row.original.code}</span>,
+      cell: ({ row }) => <span className="font-mono text-xs font-medium text-primary-2 bg-primary/15 rounded-md px-2 py-0.5">{row.original.code}</span>,
     },
     {
       accessorKey: 'lot',
@@ -255,7 +309,7 @@ export default function AdminInventario() {
       meta: { align: 'right' },
       cell: ({ row }) => {
         const cost = (row.original.costUnit || 0) + (row.original.taxUnit || 0);
-        return <span className="tabular-nums text-muted-foreground">${cost.toFixed(2)}</span>;
+        return <span className="nums text-muted-foreground">{formatUsd(cost)}</span>;
       },
     },
     {
@@ -265,7 +319,7 @@ export default function AdminInventario() {
       cell: ({ row }) => {
         const cost = (row.original.costUnit || 0) + (row.original.taxUnit || 0);
         const total = cost * (row.original.quantity || 0);
-        return <span className="tabular-nums font-semibold text-primary">${total.toFixed(2)}</span>;
+        return <span className="nums font-semibold text-primary-2">{formatUsd(total)}</span>;
       },
     },
     {
@@ -333,7 +387,7 @@ export default function AdminInventario() {
               size="sm"
               onClick={() => {
                 setReceiveItem(row.original);
-                setReceiveData({
+                receiveForm.reset({
                   arrivalDate: new Date().toISOString().split('T')[0],
                   shippingUnit: '',
                   suggestedPrice: ''
@@ -377,7 +431,7 @@ export default function AdminInventario() {
         return (
           <div className="flex justify-center">
             {isMapped ? (
-              <Badge variant="outline" className="w-fit text-[10px] h-5 px-1.5 bg-primary/20 text-white border-primary/40">
+              <Badge variant="outline" className="w-fit text-[10px] h-5 px-1.5 bg-primary/15 text-primary-2 border-primary/40">
                 Mapeado
               </Badge>
             ) : (
@@ -411,8 +465,8 @@ export default function AdminInventario() {
       meta: { align: 'right' },
       cell: ({ row }) => {
         const costeFinal = row.original.costeFinalCordobas;
-        return <span className="tabular-nums text-muted-foreground">
-          {costeFinal ? `C$ ${costeFinal.toFixed(2)}` : '—'}
+        return <span className="nums text-muted-foreground">
+          {costeFinal ? formatCordobas(costeFinal, 'C$', 2) : '—'}
         </span>;
       },
     },
@@ -422,8 +476,8 @@ export default function AdminInventario() {
       meta: { align: 'right' },
       cell: ({ row }) => {
         const suggested = row.original.suggestedPrice;
-        return <span className="tabular-nums font-medium text-foreground">
-          {suggested ? `C$ ${suggested.toFixed(2)}` : '—'}
+        return <span className="nums font-medium text-foreground">
+          {suggested ? formatCordobas(suggested, 'C$', 2) : '—'}
         </span>;
       },
     },
@@ -437,8 +491,8 @@ export default function AdminInventario() {
             ? row.original.suggestedPrice - row.original.costeFinalCordobas 
             : 0
         );
-        return <span className="tabular-nums font-medium text-emerald-500">
-          {ganancia ? `C$ ${ganancia.toFixed(2)}` : '—'}
+        return <span className="nums font-medium text-success">
+          {ganancia ? formatCordobas(ganancia, 'C$', 2) : '—'}
         </span>;
       },
     },
@@ -524,7 +578,7 @@ export default function AdminInventario() {
                     <HugeiconsIcon icon={DollarCircleIcon} size={18} strokeWidth={2} className="text-tone-emerald" />
                   </div>
                 </div>
-                <CardTitle className="text-3xl tabular-nums text-primary">${kpis?.totalInversionConImpuestosUsd?.toFixed(2) || '0.00'}</CardTitle>
+                <CardTitle className="text-3xl nums text-primary-2">{formatUsd(kpis?.totalInversionConImpuestosUsd ?? 0)}</CardTitle>
               </CardHeader>
             </Card>
             <Card className="relative overflow-hidden border-t-2 border-t-tone-amber/40">
@@ -565,93 +619,108 @@ export default function AdminInventario() {
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleRegisterPurchase} className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="productName">Nombre del producto</Label>
+                    <Field data-invalid={!!purchaseForm.formState.errors.productName}>
+                      <FieldLabel htmlFor="productName" required>Nombre del producto</FieldLabel>
                       <Input
                         id="productName"
-                        value={formData.productName}
-                        onChange={e => setFormData({ ...formData, productName: e.target.value })}
                         placeholder="Ej. iPhone 13 Pro Max"
-                        required
+                        aria-required
+                        aria-invalid={!!purchaseForm.formState.errors.productName}
+                        {...purchaseForm.register('productName')}
                       />
-                    </div>
+                      <FieldError errors={[purchaseForm.formState.errors.productName]} />
+                    </Field>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="purchaseDate">Fecha de compra</Label>
-                      <DatePicker
-                        id="purchaseDate"
-                        value={formData.purchaseDate}
-                        onChange={v => setFormData({ ...formData, purchaseDate: v })}
-                        placeholder="Elegí la fecha de compra"
+                    <Field data-invalid={!!purchaseForm.formState.errors.purchaseDate}>
+                      <FieldLabel htmlFor="purchaseDate" required>Fecha de compra</FieldLabel>
+                      <Controller
+                        control={purchaseForm.control}
+                        name="purchaseDate"
+                        render={({ field }) => (
+                          <DatePicker
+                            id="purchaseDate"
+                            value={field.value ?? ''}
+                            onChange={field.onChange}
+                            placeholder="Elegí la fecha de compra"
+                          />
+                        )}
                       />
-                    </div>
+                      <FieldError errors={[purchaseForm.formState.errors.purchaseDate]} />
+                    </Field>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="quantity">Cantidad</Label>
+                      <Field data-invalid={!!purchaseForm.formState.errors.quantity}>
+                        <FieldLabel htmlFor="quantity" required>Cantidad</FieldLabel>
                         <Input
                           id="quantity"
                           type="number"
                           min="1"
-                          value={formData.quantity}
-                          onChange={e => setFormData({ ...formData, quantity: e.target.value })}
-                          required
+                          aria-required
+                          aria-invalid={!!purchaseForm.formState.errors.quantity}
+                          {...purchaseForm.register('quantity')}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lot">Nº seguimiento / lote</Label>
+                        <FieldError errors={[purchaseForm.formState.errors.quantity]} />
+                      </Field>
+                      <Field data-invalid={!!purchaseForm.formState.errors.lot}>
+                        <FieldLabel htmlFor="lot" required>Nº seguimiento / lote</FieldLabel>
                         <Input
                           id="lot"
-                          value={formData.lot}
-                          onChange={e => setFormData({ ...formData, lot: e.target.value })}
                           placeholder="Tracking"
-                          required
+                          aria-required
+                          aria-invalid={!!purchaseForm.formState.errors.lot}
+                          {...purchaseForm.register('lot')}
                         />
-                      </div>
+                        <FieldError errors={[purchaseForm.formState.errors.lot]} />
+                      </Field>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="unitCost">Costo unit. (USD)</Label>
+                      <Field data-invalid={!!purchaseForm.formState.errors.costUnit}>
+                        <FieldLabel htmlFor="unitCost" required>Costo unit. (USD)</FieldLabel>
                         <Input
                           id="unitCost"
                           type="number"
                           min="0" step="0.01"
-                          value={formData.unitCost}
-                          onChange={e => setFormData({ ...formData, unitCost: e.target.value })}
-                          required
+                          aria-required
+                          aria-invalid={!!purchaseForm.formState.errors.costUnit}
+                          {...purchaseForm.register('costUnit')}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="taxUnit">Impuesto unit. (USD)</Label>
+                        <FieldError errors={[purchaseForm.formState.errors.costUnit]} />
+                      </Field>
+                      <Field data-invalid={!!purchaseForm.formState.errors.taxUnit}>
+                        <FieldLabel htmlFor="taxUnit" required>Impuesto unit. (USD)</FieldLabel>
                         <Input
                           id="taxUnit"
                           type="number"
                           min="0" step="0.01"
-                          value={formData.taxUnit}
-                          onChange={e => setFormData({ ...formData, taxUnit: e.target.value })}
-                          required
+                          aria-required
+                          aria-invalid={!!purchaseForm.formState.errors.taxUnit}
+                          {...purchaseForm.register('taxUnit')}
                         />
-                      </div>
+                        <FieldError errors={[purchaseForm.formState.errors.taxUnit]} />
+                      </Field>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Categoría</Label>
-                      <Select
-                        required
-                        value={formData.category}
-                        onValueChange={v => setFormData({ ...formData, category: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona una categoría" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map(c => (
-                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Field data-invalid={!!purchaseForm.formState.errors.category}>
+                      <FieldLabel htmlFor="purchase-category" required>Categoría</FieldLabel>
+                      <Controller
+                        control={purchaseForm.control}
+                        name="category"
+                        render={({ field }) => (
+                          <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                            <SelectTrigger id="purchase-category">
+                              <SelectValue placeholder="Selecciona una categoría" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.map(c => (
+                                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <FieldError errors={[purchaseForm.formState.errors.category]} />
+                    </Field>
 
                     <Button type="submit" className="w-full font-semibold mt-4 bg-primary hover:bg-primary/85 shadow-md shadow-primary/20 transition-all duration-200 active:scale-[0.97] hover:shadow-lg hover:shadow-primary/25" disabled={isRegistering}>
   {isRegistering && <Spinner className="mr-2" />}
@@ -663,19 +732,27 @@ export default function AdminInventario() {
 
             </CardHeader>
             <CardContent>
-              {!purchases.length && !isLoadingPurchases ? (
-                <div className="text-center py-12 border border-dashed rounded-lg bg-muted/40">
-                  <HugeiconsIcon icon={File01Icon} size={40} strokeWidth={2} className="text-muted-foreground mx-auto mb-3 opacity-50" />
-                  <p className="text-foreground font-medium">No hay compras recientes</p>
-                  <p className="text-muted-foreground text-sm mt-1">El historial aparecerá aquí cuando registres entradas.</p>
-                </div>
-              ) : (
+              <QueryState
+                loading={isLoadingPurchases}
+                empty={purchases.length === 0}
+                emptyFallback={
+                  <div className="text-center py-12 border border-dashed rounded-lg bg-muted/40">
+                    <HugeiconsIcon icon={File01Icon} size={40} strokeWidth={2} className="text-muted-foreground mx-auto mb-3 opacity-50" />
+                    <p className="text-foreground font-medium">No hay compras recientes</p>
+                    <p className="text-muted-foreground text-sm mt-1">El historial aparecerá aquí cuando registres entradas.</p>
+                    <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
+                      <HugeiconsIcon icon={PackageAddIcon} size={16} strokeWidth={2} className="mr-2" />
+                      Registrar entrada
+                    </Button>
+                  </div>
+                }
+              >
                 <DataTable
                   columns={finalPurchaseColumns}
                   data={purchases}
                   searchPlaceholder="Buscar por código o producto..."
                 />
-              )}
+              </QueryState>
             </CardContent>
           </Card>
         </TabsContent>
@@ -724,18 +801,32 @@ export default function AdminInventario() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  {!inventory.length && !isLoading ? (
-                    <div className="text-center py-12 border border-dashed rounded-lg bg-muted/40">
-                      <HugeiconsIcon icon={PackageAddIcon} size={40} strokeWidth={2} className="text-muted-foreground mx-auto mb-3 opacity-50" />
-                      <p className="text-foreground font-medium">Bodega vacía</p>
-                    </div>
-                  ) : (
+                  <QueryState
+                    loading={isLoading}
+                    error={isError}
+                    empty={inventory.length === 0}
+                    errorMessage="No se pudo cargar el inventario."
+                    onRetry={refetch}
+                    emptyFallback={
+                      <div className="text-center py-12 border border-dashed rounded-lg bg-muted/40">
+                        <HugeiconsIcon icon={PackageAddIcon} size={40} strokeWidth={2} className="text-muted-foreground mx-auto mb-3 opacity-50" />
+                        <p className="text-foreground font-medium">Bodega vacía</p>
+                        <p className="text-muted-foreground text-sm mt-1">
+                          El stock aparece acá cuando reportás la llegada de una compra en tránsito.
+                        </p>
+                        <Button variant="outline" className="mt-4" onClick={() => setActiveTab('purchases')}>
+                          <HugeiconsIcon icon={File01Icon} size={16} strokeWidth={2} className="mr-2" />
+                          Ir a Registro de compras
+                        </Button>
+                      </div>
+                    }
+                  >
                     <DataTable
                       columns={inventoryColumns}
                       data={inventory}
                       searchPlaceholder="Buscar producto..."
                     />
-                  )}
+                  </QueryState>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -783,43 +874,59 @@ export default function AdminInventario() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleReceive} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Fecha de llegada</Label>
-              <DatePicker
-                value={receiveData.arrivalDate}
-                onChange={v => setReceiveData({ ...receiveData, arrivalDate: v })}
-                placeholder="Elegí la fecha de llegada"
+            <Field data-invalid={!!receiveForm.formState.errors.arrivalDate}>
+              <FieldLabel htmlFor="receive-arrival-date" required>Fecha de llegada</FieldLabel>
+              <Controller
+                control={receiveForm.control}
+                name="arrivalDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="receive-arrival-date"
+                    value={(field.value as string) ?? ''}
+                    onChange={field.onChange}
+                    placeholder="Elegí la fecha de llegada"
+                  />
+                )}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Costo envío unitario (USD)</Label>
-              <Input type="number" step="0.01" min="0" required
-                value={receiveData.shippingUnit}
-                onChange={e => setReceiveData({ ...receiveData, shippingUnit: e.target.value })}
+              <FieldError errors={[receiveForm.formState.errors.arrivalDate]} />
+            </Field>
+            <Field data-invalid={!!receiveForm.formState.errors.shippingUnit}>
+              <FieldLabel htmlFor="receive-shipping" required>Costo envío unitario (USD)</FieldLabel>
+              <Input
+                id="receive-shipping"
+                type="number" step="0.01" min="0"
                 placeholder="0.00"
+                aria-required
+                aria-invalid={!!receiveForm.formState.errors.shippingUnit}
+                {...receiveForm.register('shippingUnit')}
               />
-            </div>
+              <FieldError errors={[receiveForm.formState.errors.shippingUnit]} />
+            </Field>
 
             {simulatedPrice !== null && (
               <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
-                <p className="text-sm text-white">
-                  <span className="font-semibold">Precio sugerido calculado:</span> C$ {simulatedPrice.toFixed(2)}
+                <p className="text-sm text-foreground">
+                  <span className="font-semibold">Precio sugerido calculado:</span>{' '}
+                  <span className="nums">{formatCordobas(simulatedPrice, 'C$', 2)}</span>
                 </p>
-                <p className="text-xs text-white/70 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Si dejás el campo de abajo vacío, este será el precio que se asigne automáticamente.
                 </p>
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Precio tentativo (C$)</Label>
-              <Input type="number" step="0.01" min="0"
-                value={receiveData.suggestedPrice}
-                onChange={e => setReceiveData({ ...receiveData, suggestedPrice: e.target.value })}
+            <Field data-invalid={!!receiveForm.formState.errors.suggestedPrice}>
+              <FieldLabel htmlFor="receive-suggested">Precio tentativo (C$)</FieldLabel>
+              <Input
+                id="receive-suggested"
+                type="number" step="0.01" min="0"
                 placeholder={simulatedPrice !== null ? String(simulatedPrice) : '0.00'}
+                aria-invalid={!!receiveForm.formState.errors.suggestedPrice}
+                {...receiveForm.register('suggestedPrice')}
               />
-              <p className="text-xs text-muted-foreground">Opcional. Si lo dejás vacío se guarda el sugerido.</p>
-            </div>
+              <FieldDescription>Opcional. Si lo dejás vacío se guarda el sugerido.</FieldDescription>
+              <FieldError errors={[receiveForm.formState.errors.suggestedPrice]} />
+            </Field>
             <DialogFooter className="pt-2">
               <Button type="button" variant="ghost" onClick={() => setReceiveItem(null)}>Cancelar</Button>
               <Button type="submit" className="font-medium bg-primary hover:bg-primary/85 shadow-md shadow-primary/20 transition-all duration-200 active:scale-[0.97] hover:shadow-lg hover:shadow-primary/25" disabled={isReceiving}>

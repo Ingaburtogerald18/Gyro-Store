@@ -179,9 +179,14 @@ body {
   --primary-2: oklch(0.432 0.095 166.913);
   --whatsapp: #128c3e;
   --promo: oklch(0.585 0.233 292.5);
-  --success: oklch(0.63 0.15 150);
-  --warning: oklch(0.72 0.15 75);
-  --info: oklch(0.6 0.14 245);
+  /* Estados semánticos en tema CLARO. Van más oscuros que su par del tema
+     oscuro a propósito: como también se usan de color de TEXTO, tienen que
+     pasar 4.5:1 contra --background (blanco). Los valores anteriores
+     (0.72/0.63/0.6 de L) daban 2.54:1, 3.28:1 y 3.91:1 — todos por debajo del
+     piso de DESIGN.md §9. Medidos: 5.65:1, 5.19:1 y 5.46:1. */
+  --success: oklch(0.52 0.13 150);
+  --warning: oklch(0.52 0.11 70);
+  --info: oklch(0.52 0.13 245);
   /* Acentos de StatCard (claro). */
   --tone-indigo: oklch(0.51 0.19 275);
   --tone-sky: oklch(0.56 0.14 233);
@@ -230,6 +235,7 @@ body {
   --primary-2: oklch(0.696 0.17 162.48);
   --whatsapp: #25d366;
   --promo: oklch(0.585 0.233 292.5);
+  /* En oscuro van claros: 9–10:1 contra --background y contra --card. */
   --success: oklch(0.72 0.16 150);
   --warning: oklch(0.8 0.16 78);
   --info: oklch(0.7 0.15 245);

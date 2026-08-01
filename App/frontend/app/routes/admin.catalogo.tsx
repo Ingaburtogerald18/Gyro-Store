@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, Alert02Icon, DashboardSquare01Icon, Delete02Icon, Edit02Icon, Package01Icon, Search01Icon, SquareIcon, Tag01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, DashboardSquare01Icon, Delete02Icon, Edit02Icon, Package01Icon, Search01Icon, SquareIcon, Tag01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { 
@@ -19,6 +19,8 @@ import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { QueryState } from '~/components/ui/QueryState';
+import { Skeleton } from '~/components/ui/skeleton';
 
 import { SortableCatalogGrid } from '~/components/catalog/SortableCatalogGrid';
 import { ProductEditorDialog } from '~/components/catalog/ProductEditorDialog';
@@ -31,7 +33,7 @@ export const meta: MetaFunction = () => {
 };
 
 export default function AdminCatalogo() {
-  const { data: catalog = [], isLoading, isError } = useGetAdminCatalogQuery();
+  const { data: catalog = [], isLoading, isError, refetch } = useGetAdminCatalogQuery();
   const [createProduct, { isLoading: isCreating }] = useCreateAdminProductMutation();
   const [updateProduct, { isLoading: isUpdating }] = useUpdateAdminProductMutation();
   const [deleteProduct] = useDeleteAdminProductMutation();
@@ -138,7 +140,7 @@ export default function AdminCatalogo() {
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-          <TabsList className="bg-card border border">
+          <TabsList className="bg-card border">
             <TabsTrigger value="catalog" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={Package01Icon} size={16} strokeWidth={2} className="mr-2" /> Artículos</TabsTrigger>
             <TabsTrigger value="categories" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={Tag01Icon} size={16} strokeWidth={2} className="mr-2" /> Categorías</TabsTrigger>
             <TabsTrigger value="templates" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={DashboardSquare01Icon} size={16} strokeWidth={2} className="mr-2" /> Templates</TabsTrigger>
@@ -164,39 +166,40 @@ export default function AdminCatalogo() {
             </Button>
       </div>
 
-      {isError ? (
-        <Card className="bg-card border-destructive/50">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-             <HugeiconsIcon icon={Alert02Icon} size={40} strokeWidth={2} className="text-destructive mb-4" />
-             <p className="text-destructive font-medium">No se pudo cargar el catálogo.</p>
-             <p className="text-muted-foreground text-sm">Esperando que el backend conecte con la base de datos.</p>
-          </CardContent>
-        </Card>
-      ) : isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
-            <Card key={i} className="bg-card border animate-pulse h-64"></Card>
-          ))}
-        </div>
-      ) : catalog.length === 0 ? (
-        <Card className="bg-card border border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <HugeiconsIcon icon={Tag01Icon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground">Catálogo Vacío</h3>
-            <p className="text-muted-foreground text-sm mt-1 mb-4 text-center max-w-sm">No hay productos registrados. Comienza agregando tu primer artículo.</p>
-            <Button onClick={handleOpenCreate}>
-              Agregar Producto
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <SortableCatalogGrid 
-          items={catalog} 
+      <QueryState
+        loading={isLoading}
+        error={isError}
+        empty={catalog.length === 0}
+        errorMessage="No se pudo cargar el catálogo."
+        onRetry={refetch}
+        loadingFallback={
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-64 rounded-card" />
+            ))}
+          </div>
+        }
+        emptyFallback={
+          <Card className="border-dashed bg-card">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <HugeiconsIcon icon={Tag01Icon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium text-foreground">Catálogo vacío</h3>
+              <p className="text-muted-foreground text-sm mt-1 mb-4 text-center max-w-sm">No hay productos registrados. Comienza agregando tu primer artículo.</p>
+              <Button onClick={handleOpenCreate}>
+                <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+                Agregar producto
+              </Button>
+            </CardContent>
+          </Card>
+        }
+      >
+        <SortableCatalogGrid
+          items={catalog}
           onReorder={handleReorder}
           onEdit={handleOpenEdit}
           onDelete={handleDelete}
         />
-      )}
+      </QueryState>
         </TabsContent>
 
         <TabsContent value="categories" className="space-y-6 outline-none">
