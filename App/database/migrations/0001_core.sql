@@ -1,7 +1,8 @@
 -- ============================================================================
 -- Gyro Store v2 · 0001 · Core (identidad + catálogo)
 -- ============================================================================
--- Identidad del staff (`profiles`) y el modelo de catálogo completo:
+-- Baseline del esquema. Identidad del staff (`profiles`) y el modelo de
+-- catálogo completo:
 --
 --   categories    = la taxonomía pública.
 --   templates     = el molde REUTILIZABLE. Define los ejes de variante
@@ -11,10 +12,11 @@
 --                   exacta a lo que hay en bodega (`variant_mappings`).
 --   combos        = agrupación de productos con precio propio.
 --
--- Principio de seguridad (doc 02/03): RLS en DENY-ALL. Cada tabla activa RLS
--- SIN crear políticas, así que nadie con la anon/authenticated key lee ni
--- escribe. El backend usa la `service_role`, que IGNORA las RLS por diseño.
--- Esto aplica a TODAS las tablas de este archivo y no se vuelve a repetir.
+-- Principio de seguridad (doc 02/03): RLS en DENY-ALL. Cada tabla del esquema
+-- activa RLS SIN crear políticas, así que nadie con la anon/authenticated key
+-- lee ni escribe. El backend usa la `service_role`, que IGNORA las RLS por
+-- diseño. Esto aplica a TODAS las tablas de los archivos 0001–0004 y no se
+-- vuelve a repetir en cada una.
 -- ============================================================================
 
 -- ── Función: mantener updated_at ──
@@ -33,7 +35,7 @@ $$;
 -- Enums globales
 -- ============================================================================
 -- Se declaran todos acá aunque varios los consuman tablas de archivos
--- posteriores: un tipo es global a la base y tenerlos juntos evita perseguir
+-- posteriores: un tipo es global a la base, y tenerlos juntos evita perseguir
 -- en qué archivo nació cada uno.
 
 -- Roles del sistema. global_admin = acceso total.
@@ -50,8 +52,9 @@ create type purchase_status as enum ('china', 'pending', 'received');
 create type order_status as enum ('pending_approval', 'approved', 'paid', 'rejected');
 create type sale_origin as enum ('native', 'migrated');
 
--- 'void' = factura anulada. El número se conserva (un correlativo no puede
--- tener huecos), el documento queda marcado y se registra quién y por qué.
+-- 'void' = factura anulada. Borrar una factura emitida por error dejaría un
+-- hueco en el correlativo, que es justo lo que un correlativo no puede tener:
+-- el número se conserva y el documento queda marcado con quién y por qué.
 create type invoice_status as enum ('unlinked', 'linked', 'void');
 
 create type payment_method as enum ('efectivo', 'transferencia', 'tarjeta');

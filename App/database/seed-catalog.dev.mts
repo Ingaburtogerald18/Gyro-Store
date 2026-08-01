@@ -1,9 +1,10 @@
 // ============================================================================
 // Gyro Store v2 · Seed de CATÁLOGO y LANDING — SOLO DESARROLLO
 // ============================================================================
-// Complementa a seed.sql (que a propósito no trae catálogo): inserta productos
-// de prueba y los slides del hero para ver el storefront funcionando. UUIDs
-// fijos + upsert => es re-ejecutable sin duplicar. NUNCA contra producción.
+// Complementa a migrations/0005_seed.sql (que a propósito no trae productos):
+// inserta catálogo de prueba y los slides del hero para ver el storefront
+// funcionando. UUIDs fijos + upsert => re-ejecutable sin duplicar. NUNCA
+// contra producción.
 //
 //   cd App && npx tsx database/seed-catalog.dev.mts
 // ============================================================================
@@ -58,7 +59,7 @@ const catalogItems = [
     published: true,
     is_promo: false,
     sort_order: 0,
-    images: ['https://picsum.photos/seed/kz-edx-pro/600/600'],
+    images: [], // TODO: subir a Supabase Storage y referenciar la URL pública
   },
   {
     id: '22222222-2222-4222-8222-222222222202',
@@ -68,7 +69,7 @@ const catalogItems = [
     published: true,
     is_promo: true,
     sort_order: 1,
-    images: ['https://picsum.photos/seed/kz-az09/600/600'],
+    images: [], // TODO: subir a Supabase Storage y referenciar la URL pública
   },
   {
     id: '22222222-2222-4222-8222-222222222203',
@@ -88,7 +89,7 @@ const catalogItems = [
     published: true,
     is_promo: false,
     sort_order: 3,
-    images: ['https://picsum.photos/seed/mousepad-xl/600/600'],
+    images: [], // TODO: subir a Supabase Storage y referenciar la URL pública
   },
 ];
 
@@ -117,7 +118,7 @@ const landingConfig = {
       title: 'Adaptador Bluetooth KZ AZ09',
       description:
         'Convertí tus KZ favoritos en inalámbricos sin perder calidad. Bluetooth 5.2 y 6.5 horas de batería.',
-      mediaUrl: 'https://picsum.photos/seed/kz-az09/900/900',
+      mediaUrl: '', // TODO: subir a Supabase Storage y referenciar la URL pública
       mediaType: 'image',
       buttonText: 'Ver oferta',
       actionType: 'link',
@@ -129,7 +130,7 @@ const landingConfig = {
       title: 'Audífonos KZ EDX Pro',
       description:
         'Driver dinámico de 10 mm y cable desmontable de 2 pines. El punto de entrada al audio de verdad.',
-      mediaUrl: 'https://picsum.photos/seed/kz-edx-pro/900/900',
+      mediaUrl: '', // TODO: subir a Supabase Storage y referenciar la URL pública
       mediaType: 'image',
       buttonText: 'Ver producto',
       actionType: 'link',
