@@ -320,7 +320,7 @@ function FinanzasConfig() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FinancialConfig>({
-    resolver: zodResolver(financialConfigSchema),
+    resolver: zodResolver(financialConfigSchema) as any,
   });
 
   const costoFUScale = useFieldArray({ control, name: 'costoFUScale' });
@@ -425,7 +425,7 @@ function FinanzasConfig() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
 
         <Section title="Configuración General" description="Parámetros base que aplican a todos los módulos.">
           <div className="space-y-4">
@@ -453,6 +453,19 @@ function FinanzasConfig() {
               />
               <FieldDescription>Ejemplo: 0.20 para 20%</FieldDescription>
               <FieldError errors={[errors.salaryPercentage]} />
+            </Field>
+            <Field data-invalid={!!errors.minMarginMultiplier}>
+              <FieldLabel htmlFor="cfg-min-margin" required>Margen de Precio Mínimo (Múltiplo)</FieldLabel>
+              <Input
+                id="cfg-min-margin"
+                type="number" step="0.01"
+                className="max-w-xs"
+                aria-required
+                aria-invalid={!!errors.minMarginMultiplier}
+                {...register('minMarginMultiplier', { valueAsNumber: true })}
+              />
+              <FieldDescription>Ejemplo: 1.15 significa que no se puede vender a menos del 15% sobre el costo</FieldDescription>
+              <FieldError errors={[errors.minMarginMultiplier]} />
             </Field>
           </div>
         </Section>
@@ -484,7 +497,7 @@ function FinanzasConfig() {
             {costoFUScale.fields.map((row, i) => (
               <div key={row.id} className="flex items-end gap-4">
                 <CeilingField
-                  control={control}
+                  control={control as any}
                   name={`costoFUScale.${i}.maxCost`}
                   id={`cfu-max-${row.id}`}
                   label="Costo Máximo (C$)"
@@ -526,7 +539,7 @@ function FinanzasConfig() {
             {marginScale.fields.map((row, i) => (
               <div key={row.id} className="flex items-end gap-4">
                 <CeilingField
-                  control={control}
+                  control={control as any}
                   name={`marginScale.${i}.maxCost`}
                   id={`mar-max-${row.id}`}
                   label="Coste Máximo (C$)"
@@ -568,7 +581,7 @@ function FinanzasConfig() {
             {commissionScale.fields.map((row, i) => (
               <div key={row.id} className="flex items-end gap-4">
                 <CeilingField
-                  control={control}
+                  control={control as any}
                   name={`commissionScale.${i}.maxProfit`}
                   id={`com-max-${row.id}`}
                   label="Utilidad Neta Máxima (C$)"

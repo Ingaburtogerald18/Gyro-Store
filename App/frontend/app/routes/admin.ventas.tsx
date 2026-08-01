@@ -376,14 +376,19 @@ export default function AdminVentas() {
                         Comisión: <span className="font-medium text-primary-2">{formatCordobas(line.comision)}</span> (
                         {Math.round(line.comisionPercent * 100)}%)
                       </span>
-                      <span>
-                        Ganancia tienda: <span className="font-medium text-primary-2">{formatCordobas(line.gananciaTienda)}</span>
-                      </span>
+                      {line.gananciaTienda !== undefined && (
+                        <span>
+                          Ganancia tienda: <span className="font-medium text-primary-2">{formatCordobas(line.gananciaTienda)}</span>
+                        </span>
+                      )}
                       {line.wholesale.discountPercent > 0 && (
                         <span>Mayoreo: −{Math.round(line.wholesale.discountPercent * 100)}%</span>
                       )}
                       {line.insufficientStock && (
                         <span className="font-medium text-destructive">Stock insuficiente (disp. {line.available})</span>
+                      )}
+                      {line.belowMinMargin && (
+                        <span className="font-medium text-destructive">Por debajo del margen mínimo</span>
                       )}
                     </div>
                     {line.wholesale.warning && (
@@ -397,9 +402,11 @@ export default function AdminVentas() {
                   <span className="text-muted-foreground">
                     Comisión total: <span className="font-semibold text-foreground">{formatCordobas(quote.totalComision)}</span>
                   </span>
-                  <span className="text-muted-foreground">
-                    Ganancia tienda: <span className="font-semibold text-foreground">{formatCordobas(quote.totalGananciaTienda)}</span>
-                  </span>
+                  {quote.totalGananciaTienda !== undefined && (
+                    <span className="text-muted-foreground">
+                      Ganancia tienda: <span className="font-semibold text-foreground">{formatCordobas(quote.totalGananciaTienda)}</span>
+                    </span>
+                  )}
                   <span className="text-lg font-bold text-primary-2">{formatCordobas(quote.total)}</span>
                 </div>
               </CardContent>

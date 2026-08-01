@@ -13,6 +13,7 @@ const IMAGE_RESOURCES_KEY = 'image_resources';
 const DEFAULT_FINANCIAL_CONFIG: FinancialConfig = {
   exchangeRate: 37,
   salaryPercentage: 0.20,
+  minMarginMultiplier: 1.15,
   costoFUScale: [
     { maxCost: 100, amount: 15 },
     { maxCost: 200, amount: 25 },
