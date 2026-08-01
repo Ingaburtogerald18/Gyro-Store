@@ -28,7 +28,14 @@ const DEFAULT_LANDING: LandingConfig = {
   ],
 };
 
+let cachedLandingConfig: LandingConfig | null = null;
+let landingConfigCachedAt = 0;
+
 export async function getLandingConfig(): Promise<LandingConfig> {
+  if (cachedLandingConfig && Date.now() - landingConfigCachedAt < 60_000) {
+    return cachedLandingConfig;
+  }
+
   const { data, error } = await db
     .from('app_config')
     .select('value')
@@ -47,12 +54,16 @@ export async function getLandingConfig(): Promise<LandingConfig> {
     });
     return DEFAULT_LANDING;
   }
+
+  cachedLandingConfig = parsed.data;
+  landingConfigCachedAt = Date.now();
   return parsed.data;
 }
 
 // Guarda la configuración completa (no hay merge parcial a propósito: el panel
 // manda siempre el arreglo entero, así el orden de los slides es explícito).
 export async function saveLandingConfig(config: LandingConfig): Promise<LandingConfig> {
+  landingConfigCachedAt = 0;
   const { error } = await db
     .from('app_config')
     .upsert({ key: CONFIG_KEY, value: config }, { onConflict: 'key' });

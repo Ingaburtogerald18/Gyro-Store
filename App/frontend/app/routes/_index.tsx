@@ -34,7 +34,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (configRes.ok) config = (await configRes.json()) as StoreConfig;
     if (landingRes.ok) landing = (await landingRes.json()) as LandingConfig;
   } catch {
-    // Si la API falla, la página igual renderiza con su estado vacío.
   }
 
   return { origin, products, config, landing };

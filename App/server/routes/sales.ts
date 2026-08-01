@@ -7,7 +7,13 @@ import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler';
 import { requireSeller, requireAdmin } from '../middleware/auth';
 import { parseUuidParam } from '../utils/params';
-import { quoteInputSchema, registerSaleInputSchema, rejectSaleInputSchema } from '../../shared/schemas';
+import {
+  payCommissionInputSchema,
+  quoteInputSchema,
+  registerSaleInputSchema,
+  rejectSaleInputSchema,
+  settleBalanceInputSchema,
+} from '../../shared/schemas';
 import {
   listSellableProducts,
   quoteSale,
@@ -16,6 +22,13 @@ import {
   rejectSale,
   listSales,
 } from '../services/sales';
+import {
+  getSellerSummary,
+  listCommissionPayments,
+  listPendingBalances,
+  payCommissions,
+  settleSellerBalance,
+} from '../services/sellerPayments';
 
 const router = Router();
 
@@ -44,6 +57,63 @@ router.post(
     const data = registerSaleInputSchema.parse(req.body);
     const sale = await registerSale(data, { uid: req.user!.uid, email: req.user!.email });
     res.status(201).json(sale);
+  }),
+);
+
+// ==========================================
+// PAGO DE COMISIONES
+// ==========================================
+// Van ANTES de `/:id/...`: si no, Express haría coincidir "payments" o
+// "balances" con el parámetro y caerían en la ruta equivocada.
+
+// Portal del vendedor: cada uno ve LO SUYO. El email sale del token, nunca del
+// query — si no, un vendedor podría leer el resumen de otro cambiando la URL.
+router.get(
+  '/my-summary',
+  asyncHandler(async (req, res) => {
+    res.json(await getSellerSummary(req.user!.email));
+  }),
+);
+
+router.get(
+  '/my-payments',
+  asyncHandler(async (req, res) => {
+    res.json(await listCommissionPayments(req.user!.email));
+  }),
+);
+
+router.get(
+  '/payments',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const sellerEmail = typeof req.query.sellerEmail === 'string' ? req.query.sellerEmail : undefined;
+    res.json(await listCommissionPayments(sellerEmail));
+  }),
+);
+
+router.get(
+  '/balances',
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json(await listPendingBalances());
+  }),
+);
+
+router.post(
+  '/pay',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const data = payCommissionInputSchema.parse(req.body);
+    res.status(201).json(await payCommissions(data, req.user!.uid));
+  }),
+);
+
+router.post(
+  '/settle-balance',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const data = settleBalanceInputSchema.parse(req.body);
+    res.status(201).json(await settleSellerBalance(data, req.user!.uid));
   }),
 );
 

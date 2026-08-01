@@ -2,6 +2,7 @@
 // Portado de la v1 (middleware/auth.js): whitelist por env → tabla `profiles` →
 // array de roles. La autorización REAL vive acá; el frontend solo oculta botones.
 import type { Request, Response, NextFunction } from 'express';
+import * as jose from 'jose';
 import { config, VALID_ROLES, type AppRole } from '../config';
 import { db, getUserFromToken } from '../supabase';
 
@@ -30,10 +31,18 @@ export function primaryRole(roles: AppRole[]): AppRole | null {
   return config.rolePriority.find((r) => roles.includes(r)) || roles[0] || null;
 }
 
+const profileCache = new Map<string, { data: any; cachedAt: number }>();
+
 // Lee el perfil por id de auth. Si no existe, lo crea (primer login).
 // Tolera que la tabla `profiles` aún no exista (durante el Hito 0): captura y
 // devuelve null, para que la whitelist por env siga funcionando.
 async function fetchProfile(supaUser: any) {
+  const now = Date.now();
+  const cached = profileCache.get(supaUser.id);
+  if (cached && now - cached.cachedAt < 30_000) {
+    return cached.data;
+  }
+
   try {
     const { data, error } = await db
       .from('profiles')
@@ -51,6 +60,8 @@ async function fetchProfile(supaUser: any) {
         db.from('profiles').update({ avatar_url: authAvatar }).eq('id', supaUser.id).then();
         data.avatar_url = authAvatar;
       }
+      
+      profileCache.set(supaUser.id, { data, cachedAt: now });
       return data;
     }
 
@@ -71,6 +82,7 @@ async function fetchProfile(supaUser: any) {
       .single();
 
     if (insertError) return null;
+    profileCache.set(supaUser.id, { data: newProfile, cachedAt: now });
     return newProfile;
   } catch {
     return null;
@@ -103,9 +115,27 @@ export async function authenticate(
   const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
   if (!token) return { error: 401, message: 'Falta el token de sesión.' };
 
-  const supaUser = await getUserFromToken(token);
+  // Paralelizar: Decodificar el token localmente para iniciar fetchProfile rápido
+  let decoded: any = null;
+  try {
+    decoded = jose.decodeJwt(token);
+  } catch (e) {}
+
+  const profilePromise = (decoded && decoded.sub)
+    ? fetchProfile({ id: decoded.sub, email: decoded.email, user_metadata: decoded.user_metadata })
+    : Promise.resolve(null);
+
+  const supaUserPromise = getUserFromToken(token);
+
+  const [supaUser, profileResult] = await Promise.all([supaUserPromise, profilePromise]);
+
   if (!supaUser || !supaUser.email) {
     return { error: 401, message: 'Sesión inválida o expirada.' };
+  }
+
+  let profile = profileResult;
+  if (!profile && !decoded) {
+    profile = await fetchProfile(supaUser);
   }
 
   const email = supaUser.email.toLowerCase();
@@ -135,7 +165,6 @@ export async function authenticate(
     };
   }
 
-  const profile = await fetchProfile(supaUser);
   const roles = rolesFromEnvOrProfile(email, profile);
   if (!roles.length) {
     return { error: 403, message: 'Esta cuenta no tiene permisos asignados.' };

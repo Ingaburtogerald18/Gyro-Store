@@ -59,6 +59,7 @@ export interface InventoryRow {
   priceUnitFinalUsd?: number;
   costRealCordobas?: number;
   costoFijoCordobas?: number;
+  costeFinalCordobas?: number;
   preTotalUsd?: number;
   totalFinalUsd?: number;
   suggestedPrice?: number | null;
@@ -846,7 +847,7 @@ export async function consumeReservation(orderId: string): Promise<{ consumed: n
   const reservations = (data ?? []) as unknown as { id: string; purchase_id: string; quantity: number }[];
   if (!reservations.length) return { consumed: 0 };
 
-  for (const reservation of reservations) {
+  const updatePromises = reservations.map(async (reservation) => {
     const { data: purchase, error: purchaseError } = await db
       .from('purchases')
       .select('quantity_sold, quantity_reserved')
@@ -863,13 +864,16 @@ export async function consumeReservation(orderId: string): Promise<{ consumed: n
       .eq('id', reservation.purchase_id)
       .eq('quantity_reserved', purchase.quantity_reserved); // compare-and-swap
     if (updateError) throw updateError;
+  });
 
-    const { error: markError } = await db
-      .from('stock_reservations')
-      .update({ status: 'consumed' })
-      .eq('id', reservation.id);
-    if (markError) throw markError;
-  }
+  await Promise.all(updatePromises);
+
+  const reservationIds = reservations.map(r => r.id);
+  const { error: markError } = await db
+    .from('stock_reservations')
+    .update({ status: 'consumed' })
+    .in('id', reservationIds);
+  if (markError) throw markError;
 
   return { consumed: reservations.length };
 }
@@ -889,14 +893,96 @@ export async function releaseReservations(orderId: string): Promise<{ released: 
   const reservations = (data ?? []) as unknown as { id: string; purchase_id: string; quantity: number }[];
   if (!reservations.length) return { released: 0 };
 
-  for (const reservation of reservations) {
-    await releaseFifoLot(reservation.purchase_id, 'quantity_reserved', reservation.quantity);
-    const { error: markError } = await db
-      .from('stock_reservations')
-      .update({ status: 'released' })
-      .eq('id', reservation.id);
-    if (markError) throw markError;
-  }
+  const releasePromises = reservations.map(reservation => 
+    releaseFifoLot(reservation.purchase_id, 'quantity_reserved', reservation.quantity)
+  );
+  await Promise.all(releasePromises);
+
+  const reservationIds = reservations.map(r => r.id);
+  const { error: markError } = await db
+    .from('stock_reservations')
+    .update({ status: 'released' })
+    .in('id', reservationIds);
+  if (markError) throw markError;
 
   return { released: reservations.length };
+}
+
+// ============================================================================
+// ── Vínculo con el catálogo: disponibilidad por código de lote ──
+// ============================================================================
+// El catálogo mapea cada variante a uno o más `purchases.code` (decisión de
+// diseño: `code` es único por lote, no hay SKU compartido en v2). Estas dos
+// funciones son la única puerta que el catálogo usa para leer bodega.
+//
+// Solo cuentan los lotes `received`: un lote en tránsito desde China existe en
+// la tabla pero no es vendible, y publicarlo como stock haría prometer entregas
+// que no se pueden cumplir. `migrated_inventory` queda fuera a propósito.
+
+export interface AvailableLot {
+  code: string;
+  productName: string;
+  category: string | null;
+  lot: string;
+  available: number;
+  suggestedPrice: number | null;
+}
+
+// Catálogo de lotes recibidos para el buscador del editor de producto. Devuelve
+// también los agotados: al editar un producto ya mapeado hay que poder ver el
+// lote vinculado aunque se haya vendido entero, o el vínculo se vería "roto".
+export async function listAvailableLots(): Promise<AvailableLot[]> {
+  const { data, error } = await db
+    .from('purchases')
+    .select('code, product_name, category, lot, quantity, quantity_sold, quantity_reserved, suggested_price')
+    .eq('status', 'received')
+    .order('purchase_date', { ascending: false });
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as {
+    code: string;
+    product_name: string;
+    category: string | null;
+    lot: string | null;
+    quantity: number;
+    quantity_sold: number;
+    quantity_reserved: number;
+    suggested_price: number | null;
+  }[];
+
+  return rows.map((row) => ({
+    code: row.code,
+    productName: row.product_name,
+    category: row.category,
+    lot: row.lot ?? '',
+    available: Math.max(0, row.quantity - row.quantity_sold - row.quantity_reserved),
+    suggestedPrice: row.suggested_price,
+  }));
+}
+
+// Disponible por código, para resolver el stock de las variantes del storefront.
+// Varios lotes NO pueden compartir código (`purchases.code` es unique), así que
+// el mapa es 1-a-1; aun así se suma, para no depender de esa restricción.
+export async function getAvailableByCodes(codes: string[]): Promise<Map<string, number>> {
+  const available = new Map<string, number>();
+  const unique = [...new Set(codes.filter(Boolean))];
+  if (unique.length === 0) return available;
+
+  const { data, error } = await db
+    .from('purchases')
+    .select('code, quantity, quantity_sold, quantity_reserved')
+    .eq('status', 'received')
+    .in('code', unique);
+  if (error) throw error;
+
+  for (const row of (data ?? []) as unknown as {
+    code: string;
+    quantity: number;
+    quantity_sold: number;
+    quantity_reserved: number;
+  }[]) {
+    const free = Math.max(0, row.quantity - row.quantity_sold - row.quantity_reserved);
+    available.set(row.code, (available.get(row.code) ?? 0) + free);
+  }
+  return available;
 }

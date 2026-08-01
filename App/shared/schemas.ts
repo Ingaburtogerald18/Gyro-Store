@@ -18,13 +18,19 @@ export const categorySchema = z.object({
 
 export type Category = z.infer<typeof categorySchema>;
 
-// Schema base para los templates de productos
+// Schema base para los templates de productos.
+//
+// `axes`/`options`/`specs` se validan como jsonb OPACO a propósito. La forma
+// canónica de `axes` es un array ordenado ([{ key, label, options, isColor }]),
+// pero en la base conviven filas viejas con forma de diccionario. Fijar acá una
+// de las dos haría que la otra reventara con un 500 en la validación, ANTES de
+// llegar a `services/catalogPresenter.ts`, que es quien sabe normalizar ambas.
 export const templateSchema = z.object({
   id: z.uuid(),
   name: z.string().nullable(),
-  axes: z.record(z.string(), z.unknown()),
-  options: z.record(z.string(), z.unknown()),
-  specs: z.record(z.string(), z.unknown()),
+  axes: z.unknown(),
+  options: z.unknown(),
+  specs: z.unknown(),
 });
 
 // Vista PÚBLICA del ítem de catálogo: lo único que puede salir al storefront.
@@ -112,13 +118,29 @@ export const catalogProductSchema = z.object({
 // completo de opciones, le alcanza con `axesSummary`.
 export const catalogAxisSchema = z.object({
   key: z.string(),
+  // Etiqueta visible del eje ("Tipo de conector"). Sin ella el selector de la
+  // ficha tendría que mostrar el id interno.
+  label: z.string(),
   options: z.array(z.string()),
   isColor: z.boolean(),
 });
 
+// Una combinación concreta de opciones, con su precio y su stock REAL ya
+// resuelto contra bodega. Los códigos de lote que la respaldan no viajan: son
+// datos internos del inventario.
+export const catalogVariantSchema = z.object({
+  variantName: z.string(),
+  axisValues: z.array(z.string()),
+  price: z.number(),
+  stock: z.number().int(),
+});
+
 export const catalogDetailSchema = catalogProductSchema.extend({
   axes: z.array(catalogAxisSchema),
+  variants: z.array(catalogVariantSchema),
 });
+
+export type CatalogVariant = z.infer<typeof catalogVariantSchema>;
 
 export type SpecRow = z.infer<typeof specRowSchema>;
 export type WholesaleDiscount = z.infer<typeof wholesaleDiscountItemSchema>;
@@ -138,11 +160,65 @@ export type CatalogDetail = z.infer<typeof catalogDetailSchema>;
 // ── SCHEMAS DEL DOMINIO: CATÁLOGO (ADMIN) ──
 // ============================================================================
 
-// Entrada del formulario de producto del panel. El nombre y las specs viven en
-// `templates` (el molde) y los precios/imágenes en `catalog_items`; el servicio
-// del admin se encarga de repartirlos entre las dos tablas.
+// ── Plantillas (el molde reutilizable) ──
+//
+// Un eje es una dimensión de variante: "Color" con opciones ["Negro", "Azul"].
+// `key` es el id interno (llave en `axis_options`), `label` lo que ve el
+// cliente. `isColor` marca el eje que se representa con fotos en vez de texto.
+export const templateAxisSchema = z.object({
+  key: z.string().min(1, 'La clave del eje es obligatoria.').max(40),
+  label: z.string().min(1, 'La etiqueta del eje es obligatoria.').max(60),
+  options: z.array(z.string().min(1).max(60)).min(1, 'Cada eje necesita al menos una opción.').max(40),
+  isColor: z.boolean().optional(),
+});
+export type TemplateAxis = z.infer<typeof templateAxisSchema>;
+
+export const templateInputSchema = z.object({
+  name: z.string().min(2, 'El nombre de la plantilla es obligatorio.').max(120),
+  description: z.string().max(500).optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  // Techo de ejes: las combinaciones crecen como producto cartesiano, así que
+  // unos pocos ejes ya generan cientos de filas en la tabla de mapeo.
+  axes: z.array(templateAxisSchema).max(6, 'Máximo 6 ejes por plantilla.'),
+  specs: z.array(specRowSchema).max(30),
+});
+export type TemplateInput = z.infer<typeof templateInputSchema>;
+
+export const adminTemplateSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  description: z.string(),
+  categoryId: z.string().uuid().nullable(),
+  axes: z.array(templateAxisSchema),
+  specs: z.array(specRowSchema),
+  updatedAt: z.string(),
+});
+export type AdminTemplate = z.infer<typeof adminTemplateSchema>;
+
+// ── Vínculo variante ↔ bodega ──
+//
+// Cada combinación exacta de opciones ("Negro / Con micrófono") apunta a uno o
+// más lotes de `purchases` POR SU CÓDIGO. Se guardan varios porque un lote se
+// agota y entra otro del mismo artículo: mientras alguno tenga disponible, la
+// variante se vende. El stock mostrado es la SUMA de los lotes vinculados.
+//
+// `price` es un override opcional: si falta, la variante usa el precio del
+// producto. Nunca se guarda la disponibilidad a mano — se deriva del stock.
+export const variantMappingSchema = z.object({
+  codes: z.array(z.string().min(1).max(40)).max(20),
+  price: z.number().min(0).max(9_999_999).optional(),
+});
+export type VariantMapping = z.infer<typeof variantMappingSchema>;
+
+export const variantMappingsSchema = z.record(z.string().max(200), variantMappingSchema);
+export type VariantMappings = z.infer<typeof variantMappingsSchema>;
+
+// Entrada del formulario de producto del panel. Los precios, imágenes y el
+// vínculo con bodega viven en `catalog_items`; los ejes y las specs base vienen
+// del molde (`templates`), que el producto solo referencia.
 export const adminProductInputSchema = z.object({
   name: z.string().min(2, 'El nombre es obligatorio.').max(120),
+  description: z.string().max(2000).optional(),
   // Precio de venta. Se permite 0 para "consultar precio".
   price: z.number().min(0, 'El precio no puede ser negativo.').max(9_999_999),
   // Precio "antes": habilita el badge de descuento cuando es mayor que price.
@@ -153,6 +229,13 @@ export const adminProductInputSchema = z.object({
   published: z.boolean(),
   isPromo: z.boolean(),
   sortOrder: z.number().int().min(0).max(9999),
+
+  // ── Molde y variantes ──
+  templateId: z.string().uuid().nullable().optional(),
+  // Recorte de opciones: qué ofrece ESTE producto por eje. Vacío = todas las
+  // del molde (misma convención que v1, la respeta `includedOptions`).
+  axisOptions: z.record(z.string().max(40), z.array(z.string().max(60))).optional(),
+  variantMappings: variantMappingsSchema.optional(),
 });
 
 export type AdminProductInput = z.infer<typeof adminProductInputSchema>;
@@ -163,6 +246,7 @@ export const adminProductSchema = z.object({
   id: z.uuid(),
   templateId: z.string().nullable(),
   name: z.string(),
+  description: z.string(),
   price: z.number(),
   basePrice: z.number().nullable(),
   precioSugerido: z.number().nullable(),
@@ -174,6 +258,11 @@ export const adminProductSchema = z.object({
   isPromo: z.boolean(),
   sortOrder: z.number().int(),
   updatedAt: z.string(),
+  // Ejes heredados del molde: la tabla de mapeo los necesita para generar las
+  // combinaciones sin tener que pedir la plantilla por separado.
+  axes: z.array(templateAxisSchema),
+  axisOptions: z.record(z.string(), z.array(z.string())),
+  variantMappings: variantMappingsSchema,
 });
 
 export type AdminProduct = z.infer<typeof adminProductSchema>;
@@ -455,6 +544,47 @@ export const rejectSaleInputSchema = z.object({
 });
 export type RejectSaleInput = z.infer<typeof rejectSaleInputSchema>;
 
+// ── Pago de comisiones (doc 11 §4) ──
+// El comprobante viaja como URL ya subida a `POST /api/upload`, no como
+// multipart: v2 centraliza las subidas ahí y así esta ruta queda siendo JSON.
+//
+// El `refine` es la regla de auditoría: un pago sin comprobante Y sin
+// justificación es un movimiento de dinero sin rastro. La base lo repite como
+// CHECK constraint — el borde valida para dar un mensaje útil, la tabla para
+// que no entre por ninguna otra puerta.
+const payoutProofSchema = {
+  paymentMethod: z.enum(['efectivo', 'transferencia', 'tarjeta']),
+  receiptUrl: z.string().max(2048).optional(),
+  noReceiptComment: z.string().max(500).optional(),
+};
+
+const hasProof = (d: { receiptUrl?: string; noReceiptComment?: string }) =>
+  Boolean(d.receiptUrl?.trim() || d.noReceiptComment?.trim());
+const proofMessage = {
+  message: 'Subí el comprobante o justificá por qué no lo hay.',
+  path: ['receiptUrl'],
+};
+
+export const payCommissionInputSchema = z
+  .object({
+    sellerEmail: z.string().email('Vendedor inválido.'),
+    orderIds: z
+      .array(z.uuid())
+      .min(1, 'Elegí al menos una venta para pagar.')
+      .max(200, 'Máximo 200 ventas por lote.'),
+    ...payoutProofSchema,
+  })
+  .refine(hasProof, proofMessage);
+export type PayCommissionInput = z.infer<typeof payCommissionInputSchema>;
+
+export const settleBalanceInputSchema = z
+  .object({
+    sellerEmail: z.string().email('Vendedor inválido.'),
+    ...payoutProofSchema,
+  })
+  .refine(hasProof, proofMessage);
+export type SettleBalanceInput = z.infer<typeof settleBalanceInputSchema>;
+
 // ============================================================================
 // ── SCHEMAS DEL DOMINIO: FACTURACIÓN (ADMIN/CASHIER) ──
 // ============================================================================
@@ -468,6 +598,21 @@ export const createInvoiceInputSchema = z.object({
   deliveryFee: z.number().min(0).optional(),
 });
 export type CreateInvoiceInput = z.infer<typeof createInvoiceInputSchema>;
+
+// Anular exige motivo: una factura anulada sin explicación es un hueco en la
+// auditoría. El correlativo conserva el número — no se borra nunca.
+export const voidInvoiceInputSchema = z.object({
+  reason: z.string().min(1, 'El motivo de anulación es obligatorio.').max(500),
+});
+export type VoidInvoiceInput = z.infer<typeof voidInvoiceInputSchema>;
+
+// Corrección de datos de cobro. `orderId` no se puede cambiar: reasignar una
+// factura a otra venta rompería la trazabilidad del correlativo.
+export const updateInvoiceInputSchema = z.object({
+  method: z.enum(['efectivo', 'transferencia', 'tarjeta']).optional(),
+  deliveryFee: z.number().min(0).max(9_999_999).optional(),
+});
+export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;
 
 // ============================================================================
 // ── SCHEMAS DEL DOMINIO: CUOTAS (ADMIN) ──

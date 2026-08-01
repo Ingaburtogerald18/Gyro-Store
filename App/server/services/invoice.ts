@@ -109,11 +109,114 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
   return toInvoice(invoice as unknown as InvoiceRow);
 }
 
-export async function listInvoices(): Promise<Invoice[]> {
+export async function listInvoices(filters: { status?: string } = {}): Promise<Invoice[]> {
+  let query = db.from('invoices').select(INVOICE_COLUMNS).order('invoice_number', { ascending: false });
+  if (filters.status) query = query.eq('status', filters.status);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return ((data ?? []) as unknown as InvoiceRow[]).map(toInvoice);
+}
+
+// Búsqueda por número de factura — lo que el cajero tiene a mano cuando el
+// cliente vuelve con el papel. Portado de `GET /invoices/lookup` de v1.
+export async function findInvoiceByNumber(invoiceNumber: number): Promise<Invoice | null> {
   const { data, error } = await db
     .from('invoices')
     .select(INVOICE_COLUMNS)
-    .order('invoice_number', { ascending: false });
+    .eq('invoice_number', invoiceNumber)
+    .maybeSingle();
   if (error) throw error;
-  return ((data ?? []) as unknown as InvoiceRow[]).map(toInvoice);
+  return data ? toInvoice(data as unknown as InvoiceRow) : null;
+}
+
+// Anula una factura emitida por error.
+//
+// NO se borra: el correlativo no puede tener huecos. El número sigue existiendo,
+// marcado como anulado y con constancia de quién y por qué.
+//
+// La venta asociada NO se toca. Anular el documento y revertir la venta son dos
+// decisiones distintas: puede que la venta esté bien y solo el papel salió mal
+// (método de pago equivocado, delivery mal cobrado). Revertir la venta es
+// `rejectSale`, y se decide aparte.
+export async function voidInvoice(
+  id: string,
+  reason: string,
+  voidedBy: string | null,
+): Promise<Invoice | null> {
+  const { data: existing, error: findError } = await db
+    .from('invoices')
+    .select('id, status')
+    .eq('id', id)
+    .maybeSingle();
+  if (findError) throw findError;
+  if (!existing) return null;
+
+  if (existing.status === 'void') {
+    throw new BadRequestError('Esta factura ya está anulada.');
+  }
+
+  const { data, error } = await db
+    .from('invoices')
+    .update({
+      status: 'void',
+      void_reason: reason,
+      voided_by: voidedBy,
+      voided_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select(INVOICE_COLUMNS)
+    .single();
+  if (error) throw error;
+  return toInvoice(data as unknown as InvoiceRow);
+}
+
+// Corrección de los datos de cobro. El monto de la venta no se toca acá —
+// `total` se recalcula desde el total de la orden más el delivery.
+export async function updateInvoice(
+  id: string,
+  input: { method?: string; deliveryFee?: number },
+): Promise<Invoice | null> {
+  const { data: existing, error: findError } = await db
+    .from('invoices')
+    .select('id, status, sale_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (findError) throw findError;
+  if (!existing) return null;
+
+  if (existing.status === 'void') {
+    throw new BadRequestError('No se puede editar una factura anulada.');
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (input.method !== undefined) patch.method = input.method;
+
+  if (input.deliveryFee !== undefined) {
+    const { data: order, error: orderError } = await db
+      .from('orders')
+      .select('total')
+      .eq('id', existing.sale_id)
+      .maybeSingle();
+    if (orderError) throw orderError;
+
+    const deliveryFee = round(input.deliveryFee, 2);
+    patch.delivery_fee = deliveryFee;
+    patch.total = round((order?.total ?? 0) + deliveryFee, 2);
+  }
+
+  if (Object.keys(patch).length === 0) {
+    const { data, error } = await db.from('invoices').select(INVOICE_COLUMNS).eq('id', id).single();
+    if (error) throw error;
+    return toInvoice(data as unknown as InvoiceRow);
+  }
+
+  const { data, error } = await db
+    .from('invoices')
+    .update(patch)
+    .eq('id', id)
+    .select(INVOICE_COLUMNS)
+    .single();
+  if (error) throw error;
+  return toInvoice(data as unknown as InvoiceRow);
 }

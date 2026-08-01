@@ -12,6 +12,21 @@ Las migraciones se encuentran en `App/database/migrations/` y deben aplicarse **
 
 *Nota: Las dependencias circulares (FKs cruzadas) entre 0002, 0003 y 0004 se completan mediante `ALTER TABLE` al final de 0003 y 0004.*
 
+Las migraciones siguientes (0005 en adelante) son aditivas e idempotentes. Las dos últimas:
+
+- `0015_catalog_templates.sql`: nombre y descripción propios del producto, más categoría
+  y ejes en las plantillas. Habilita el vínculo catálogo ↔ bodega.
+- `0016_seed_templates_v1.sql`: plantillas heredadas de v1. **Quedó incompleta** —
+  se armó leyendo el working tree de v1, que estaba 28 commits atrás. La corrige 0018.
+- `0017_commission_payouts.sql`: pago de comisiones a vendedores (`commission_payments`)
+  y cuenta corriente de ajustes. Tabla aparte de `payments`, que es de cuotas de clientes.
+- `0018_templates_v1_fix.sql`: corrige 0016 contra `origin/main` de v1 — divide
+  «KZ Castor» en Harman / Bass Enhanced / Pro Bass y agrega KZ AZ10.
+- `0019_invoice_void.sql`: anulación de facturas (valor `void` del enum + quién y por qué).
+
+> Al leer código del proyecto v1 (`D:\Gyro_Store_Web_Page_Version2`), usar siempre
+> `git show origin/main:<ruta>`: el working tree local está muy por detrás del remoto.
+
 ## Cómo Aplicarlas
 Aplicar una por una secuencialmente:
 - Vía **SQL Editor** en el Dashboard de Supabase (copiar y pegar).

@@ -53,9 +53,6 @@ router.post('/', requireAdmin, upload.single('file'), async (req, res, next) => 
 
     const url = await uploadFile(bufferToUpload, folder, uniqueFilename, contentType);
 
-    console.log('[UPLOAD] Generated URL:', url);
-    console.log('[UPLOAD] process.env.R2_PUBLIC_URL:', process.env.R2_PUBLIC_URL);
-
     res.json({ url });
   } catch (error: any) {
     if (error.message.includes('Cloudflare R2 no está configurado')) {

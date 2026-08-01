@@ -6,14 +6,23 @@
 // `catalog_items`. Este servicio esconde ese reparto: el panel manda un objeto
 // plano y acá se traduce.
 import { db } from '../supabase';
-import type { AdminProduct, AdminProductInput, SpecRow } from '../../shared/schemas';
+import type {
+  AdminProduct,
+  AdminProductInput,
+  SpecRow,
+  TemplateAxis,
+  VariantMappings,
+} from '../../shared/schemas';
 import { firstOfEmbed } from '../utils/firstOfEmbed';
+import { normalizeAxes, normalizeSpecs } from './catalogPresenter';
 
 // Se listan las columnas a mano (nunca `select('*')`): así una columna nueva no
 // se filtra sola a una respuesta sin que nadie lo revise.
 const ADMIN_COLUMNS = [
   'id',
   'template_id',
+  'name',
+  'description',
   'price',
   'base_price',
   'precio_sugerido',
@@ -24,12 +33,23 @@ const ADMIN_COLUMNS = [
   'sort_order',
   'updated_at',
   'category_id',
-  'template:templates(id, name, specs)',
+  'axis_options',
+  'variant_mappings',
+  'template:templates(id, name, axes, specs)',
 ].join(', ');
+
+interface TemplateEmbed {
+  id: string;
+  name: string | null;
+  axes: unknown;
+  specs: unknown;
+}
 
 interface AdminRow {
   id: string;
   template_id: string | null;
+  name: string | null;
+  description: string | null;
   price: number | null;
   base_price: number | null;
   precio_sugerido: number | null;
@@ -40,7 +60,9 @@ interface AdminRow {
   sort_order: number;
   updated_at: string;
   category_id: string | null;
-  template: { id: string; name: string | null; specs: unknown } | { id: string; name: string | null; specs: unknown }[] | null;
+  axis_options: unknown;
+  variant_mappings: unknown;
+  template: TemplateEmbed | TemplateEmbed[] | null;
 }
 
 function toStringArray(value: unknown): string[] {
@@ -66,12 +88,51 @@ function toSpecs(value: unknown): SpecRow[] {
   return [];
 }
 
+// `axis_options` recorta las opciones del molde a las que este producto ofrece.
+// Se lee tolerante: jsonb opaco, y una clave con algo que no sea un array de
+// strings simplemente no recorta nada (equivale a "todas").
+function toAxisOptions(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: Record<string, string[]> = {};
+  for (const [key, options] of Object.entries(value as Record<string, unknown>)) {
+    const list = toStringArray(options);
+    if (list.length) out[key] = list;
+  }
+  return out;
+}
+
+// Mapeo variante → códigos de lote. Acepta la forma vieja de v1 (`skus`/`sku`,
+// cuando el vínculo era contra un SKU compartido) para que los datos migrados
+// sigan apareciendo en el editor en vez de verse como "sin vincular".
+function toVariantMappings(value: unknown): VariantMappings {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: VariantMappings = {};
+  for (const [combo, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const entry = raw as Record<string, unknown>;
+    const codes = [
+      ...toStringArray(entry.codes),
+      ...toStringArray(entry.skus),
+      ...(typeof entry.sku === 'string' && entry.sku ? [entry.sku] : []),
+    ];
+    if (!codes.length) continue;
+    const price = typeof entry.price === 'number' && entry.price > 0 ? entry.price : undefined;
+    out[combo] = price === undefined
+      ? { codes: [...new Set(codes)] }
+      : { codes: [...new Set(codes)], price };
+  }
+  return out;
+}
+
 function toAdminProduct(row: AdminRow): AdminProduct {
   const template = firstOfEmbed(row.template);
   return {
     id: row.id,
     templateId: row.template_id,
-    name: template?.name ?? 'Sin nombre',
+    // El nombre es del producto. Los ítems creados antes de la migración 0015 lo
+    // tenían solo en el molde: se cae ahí para no mostrarlos como "Sin nombre".
+    name: row.name ?? template?.name ?? 'Sin nombre',
+    description: row.description ?? '',
     price: row.price ?? row.base_price ?? 0,
     basePrice: row.base_price,
     precioSugerido: row.precio_sugerido,
@@ -83,6 +144,35 @@ function toAdminProduct(row: AdminRow): AdminProduct {
     isPromo: row.is_promo,
     sortOrder: row.sort_order,
     updatedAt: row.updated_at,
+    // Los ejes viajan resueltos desde el molde: el editor arma con ellos las
+    // combinaciones de la tabla de mapeo sin pedir la plantilla aparte.
+    axes: normalizeAxes(template?.axes).map((axis): TemplateAxis => ({
+      key: axis.key,
+      label: axis.label,
+      options: axis.options,
+      isColor: axis.isColor,
+    })),
+    axisOptions: toAxisOptions(row.axis_options),
+    variantMappings: toVariantMappings(row.variant_mappings),
+  };
+}
+
+// Campos que el producto posee (los del molde NO se tocan desde acá — ver la
+// nota de `createAdminProduct`).
+function toItemRow(input: AdminProductInput) {
+  return {
+    name: input.name.trim(),
+    description: input.description?.trim() ?? '',
+    price: input.price,
+    base_price: input.basePrice ?? null,
+    images: input.images,
+    published: input.published,
+    is_promo: input.isPromo,
+    sort_order: input.sortOrder,
+    category_id: input.categoryId ?? null,
+    template_id: input.templateId ?? null,
+    axis_options: input.axisOptions ?? {},
+    variant_mappings: input.variantMappings ?? {},
   };
 }
 
@@ -107,34 +197,40 @@ export async function getAdminProduct(id: string): Promise<AdminProduct | null> 
   return data ? toAdminProduct(data as unknown as AdminRow) : null;
 }
 
-// Crear = un template (nombre + specs) y su ítem de catálogo. Si el insert del
-// ítem falla, se borra el template para no dejarlo huérfano.
-export async function createAdminProduct(input: AdminProductInput): Promise<AdminProduct> {
-  const { data: template, error: templateError } = await db
+// El editor de producto NUNCA escribe en `templates`.
+//
+// Antes lo hacía porque había un molde por producto (relación 1:1 de hecho).
+// Ahora los moldes se COMPARTEN: guardar el nombre o las specs del producto en
+// su plantilla se los cambiaría, en silencio, a todos los demás productos que
+// la usan. Los moldes se editan en su propia pestaña (`services/templates.ts`).
+//
+// Único caso en que sí se crea uno: un producto sin plantilla. Necesita dónde
+// guardar sus specs, así que nace con un molde propio y sin ejes; de ahí en
+// adelante es una plantilla normal, editable desde su pestaña.
+async function createOwnTemplate(input: AdminProductInput): Promise<string> {
+  const { data, error } = await db
     .from('templates')
-    .insert({ name: input.name, specs: input.specs, axes: {}, options: {} })
+    .insert({ name: input.name.trim(), specs: input.specs, axes: [], options: {} })
     .select('id')
     .single();
+  if (error) throw error;
+  return data.id as string;
+}
 
-  if (templateError) throw templateError;
+export async function createAdminProduct(input: AdminProductInput): Promise<AdminProduct> {
+  const templateId = input.templateId ?? (await createOwnTemplate(input));
+  const ownsTemplate = !input.templateId;
 
   const { data: item, error: itemError } = await db
     .from('catalog_items')
-    .insert({
-      template_id: template.id,
-      price: input.price,
-      base_price: input.basePrice ?? null,
-      images: input.images,
-      published: input.published,
-      is_promo: input.isPromo,
-      sort_order: input.sortOrder,
-      category_id: input.categoryId ?? null,
-    })
+    .insert({ ...toItemRow(input), template_id: templateId })
     .select('id')
     .single();
 
   if (itemError) {
-    await db.from('templates').delete().eq('id', template.id);
+    // Solo se limpia el molde si lo creamos nosotros en esta misma llamada:
+    // borrar una plantilla compartida dejaría sin ejes a otros productos.
+    if (ownsTemplate) await db.from('templates').delete().eq('id', templateId);
     throw itemError;
   }
 
@@ -150,56 +246,46 @@ export async function updateAdminProduct(
   const existing = await getAdminProduct(id);
   if (!existing) return null;
 
-  const { error: itemError } = await db
+  // Un ítem viejo sin molde: se le crea uno para que sus specs tengan dónde
+  // vivir. Si ya tiene, se respeta lo que eligió el editor.
+  const templateId = input.templateId ?? existing.templateId ?? (await createOwnTemplate(input));
+
+  const { error } = await db
     .from('catalog_items')
-    .update({
-      price: input.price,
-      base_price: input.basePrice ?? null,
-      images: input.images,
-      published: input.published,
-      is_promo: input.isPromo,
-      sort_order: input.sortOrder,
-      category_id: input.categoryId ?? null,
-    })
+    .update({ ...toItemRow(input), template_id: templateId })
     .eq('id', id);
 
-  if (itemError) throw itemError;
-
-  // El nombre y las specs viven en el molde. Un ítem sin template es dato viejo:
-  // se le crea uno al vuelo para que pueda tener nombre.
-  if (existing.templateId) {
-    const { error } = await db
-      .from('templates')
-      .update({ name: input.name, specs: input.specs })
-      .eq('id', existing.templateId);
-    if (error) throw error;
-  } else {
-    const { data: template, error } = await db
-      .from('templates')
-      .insert({ name: input.name, specs: input.specs, axes: {}, options: {} })
-      .select('id')
-      .single();
-    if (error) throw error;
-    const { error: linkError } = await db
-      .from('catalog_items')
-      .update({ template_id: template.id })
-      .eq('id', id);
-    if (linkError) throw linkError;
-  }
-
+  if (error) throw error;
   return getAdminProduct(id);
 }
 
-// Despublicar en vez de borrar: el producto puede estar referenciado por pedidos
-// históricos, y "archivar" es reversible. El borrado duro no se expone.
-export async function archiveAdminProduct(id: string): Promise<boolean> {
-  const { data, error } = await db
-    .from('catalog_items')
-    .update({ published: false })
-    .eq('id', id)
-    .select('id')
-    .maybeSingle();
+// Guarda el orden tras el drag & drop de la grilla. Se emiten los UPDATEs en
+// paralelo y se revisa TODO el lote: con `Promise.all` a secas, un fallo
+// posterior queda sin reportar y la grilla mostraría un orden que no se guardó.
+export async function reorderAdminCatalog(items: { id: string; sortOrder: number }[]): Promise<void> {
+  const results = await Promise.all(
+    items.map(({ id, sortOrder }) =>
+      db.from('catalog_items').update({ sort_order: sortOrder }).eq('id', id),
+    ),
+  );
 
-  if (error) throw error;
-  return Boolean(data);
+  const failed = results.find((result) => result.error);
+  if (failed?.error) throw failed.error;
+}
+
+// Realizamos un borrado real de la base de datos. Si el producto ya tiene pedidos, 
+// la base de datos (Postgres) rechazará el borrado por llave foránea, lo cual es correcto.
+export async function archiveAdminProduct(id: string): Promise<boolean> {
+  const { error } = await db
+    .from('catalog_items')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    if (error.code === '23503') { // foreign_key_violation
+      throw new Error('No se puede eliminar porque ya hay pedidos o datos asociados a este producto.');
+    }
+    throw error;
+  }
+  return true;
 }

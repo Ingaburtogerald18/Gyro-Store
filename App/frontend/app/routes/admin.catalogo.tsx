@@ -14,17 +14,16 @@ import {
   useDeleteCategoryMutation,
 } from '~/store/api/catalogAdminApi';
 import type { AdminProductInput, AdminProduct, Category } from '@shared/schemas';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '~/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
-import { Badge } from '~/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '~/components/ui/dialog';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
-import { Switch } from '~/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 
 import { SortableCatalogGrid } from '~/components/catalog/SortableCatalogGrid';
+import { ProductEditorDialog } from '~/components/catalog/ProductEditorDialog';
+import { TemplatesPanel } from '~/components/catalog/TemplatesPanel';
+import { ToneDot } from '~/components/catalog/ToneDot';
 import { toast } from 'sonner';
 
 export const meta: MetaFunction = () => {
@@ -48,59 +47,33 @@ export default function AdminCatalogo() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
 
-  const [formData, setFormData] = useState<AdminProductInput>({
-    name: '',
-    price: 0,
-    basePrice: 0,
-    images: [],
-    specs: [],
-    published: false,
-    isPromo: false,
-    sortOrder: 0,
-    categoryId: null,
-  });
-
   const [categoryFormData, setCategoryFormData] = useState({ name: '', slug: '' });
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   const handleOpenCreate = () => {
     setEditingProduct(null);
-    setFormData({
-      name: '', price: 0, basePrice: 0, images: [], specs: [], published: false, isPromo: false, sortOrder: 0
-    });
     setIsDialogOpen(true);
   };
 
   const handleOpenEdit = (product: AdminProduct) => {
     setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      price: product.price,
-      basePrice: product.basePrice || 0,
-      images: product.images,
-      specs: product.specs,
-      published: product.published,
-      isPromo: product.isPromo,
-      sortOrder: product.sortOrder,
-      categoryId: product.categoryId ?? null,
-    });
     setIsDialogOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (input: AdminProductInput) => {
     try {
       if (editingProduct) {
-        await updateProduct({ id: editingProduct.id, data: formData }).unwrap();
+        await updateProduct({ id: editingProduct.id, data: input }).unwrap();
         toast.success('Producto actualizado.');
       } else {
-        await createProduct(formData).unwrap();
+        await createProduct(input).unwrap();
         toast.success('Producto creado.');
       }
       setIsDialogOpen(false);
-    } catch (error) {
-      toast.success('Acción simulada (Backend pendiente).');
-      setIsDialogOpen(false);
+    } catch (error: any) {
+      // Antes esto reportaba éxito ("Acción simulada") aunque el guardado
+      // fallara, así que el admin creía haber guardado y no era cierto.
+      toast.error(error?.data?.error || 'No se pudo guardar el producto.');
     }
   };
 
@@ -109,8 +82,8 @@ export default function AdminCatalogo() {
       try {
         await deleteProduct(id).unwrap();
         toast.success('Producto eliminado.');
-      } catch (error) {
-        toast.success('Eliminación simulada (Backend pendiente).');
+      } catch (error: any) {
+        toast.error(error?.data?.error || error?.message || 'No se pudo eliminar el producto. Verifica que no tenga pedidos asociados.');
       }
     }
   };
@@ -123,8 +96,8 @@ export default function AdminCatalogo() {
       }));
       await reorderCatalog({ items: reorderPayload }).unwrap();
       toast.success('Orden actualizado.');
-    } catch (error) {
-      toast.error('No se pudo guardar el orden (Simulado).');
+    } catch (error: any) {
+      toast.error(error?.data?.error || 'No se pudo guardar el orden.');
     }
   };
 
@@ -185,105 +158,10 @@ export default function AdminCatalogo() {
               />
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <Button onClick={handleOpenCreate} className="font-bold h-10">
-            <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
-            Nuevo Producto
-          </Button>
-
-          <DialogContent className="bg-card border text-foreground w-full sm:max-w-xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-primary font-bold text-xl">
-                {editingProduct ? 'Editar Producto' : 'Crear Producto'}
-              </DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                Completa los detalles. Estos cambios afectarán el storefront inmediatamente si lo publicas.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-6 mt-6 pb-20">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-foreground">Nombre del Producto</Label>
-                  <Input 
-                    id="name" 
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-card border focus-visible:ring-ring" 
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-foreground">Categoría</Label>
-                  <Select 
-                    value={formData.categoryId || ''} 
-                    onValueChange={v => setFormData({ ...formData, categoryId: v || null })}
-                  >
-                    <SelectTrigger className="bg-card border">
-                      <SelectValue placeholder="Sin categoría" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card border">
-                      <SelectItem value="">Sin categoría</SelectItem>
-                      {categories.map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price" className="text-foreground">Precio Final (C$)</Label>
-                    <Input 
-                      id="price" type="number" min="0" step="0.01"
-                      value={formData.price}
-                      onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                      className="bg-card border focus-visible:ring-ring" 
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="basePrice" className="text-foreground text-xs">Precio "Antes" (Tachado)</Label>
-                    <Input 
-                      id="basePrice" type="number" min="0" step="0.01"
-                      value={formData.basePrice}
-                      onChange={e => setFormData({ ...formData, basePrice: parseFloat(e.target.value) || 0 })}
-                      className="bg-card border focus-visible:ring-ring" 
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4 border rounded-lg p-4 bg-card/50">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-base text-foreground">Publicado</Label>
-                      <p className="text-sm text-muted-foreground">¿Visible en la tienda?</p>
-                    </div>
-                    <Switch 
-                      checked={formData.published} 
-                      onCheckedChange={(c) => setFormData({ ...formData, published: c })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-base text-foreground">Promoción</Label>
-                      <p className="text-sm text-muted-foreground">¿Destacar en inicio?</p>
-                    </div>
-                    <Switch 
-                      checked={formData.isPromo} 
-                      onCheckedChange={(c) => setFormData({ ...formData, isPromo: c })}
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className="mt-6 pt-4 border-t border">
-                <Button type="submit" disabled={isCreating || isUpdating} className="w-full">
-                  {isCreating || isUpdating ? 'Guardando...' : 'Guardar Producto'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+            <Button onClick={handleOpenCreate} className="font-bold h-10">
+              <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+              Nuevo Producto
+            </Button>
       </div>
 
       {isError ? (
@@ -363,9 +241,15 @@ export default function AdminCatalogo() {
                 ) : (
                   categories.map(c => (
                     <div key={c.id} className="flex items-center justify-between p-4 bg-card/50 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium text-foreground">{c.name}</h4>
-                        <p className="text-sm text-muted-foreground">/{c.slug}</p>
+                      <div className="flex items-center gap-3">
+                        {/* Acá es donde se aprende el color: la lista de
+                            categorías es el único lugar que las muestra todas
+                            juntas, así que el tono se fija por comparación. */}
+                        <ToneDot toneKey={c.id} className="size-2.5" />
+                        <div>
+                          <h4 className="font-medium text-foreground">{c.name}</h4>
+                          <p className="text-sm text-muted-foreground">/{c.slug}</p>
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Button 
@@ -393,14 +277,8 @@ export default function AdminCatalogo() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4 outline-none">
-        <Card className="bg-card border border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <HugeiconsIcon icon={DashboardSquare01Icon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground">Templates (Próximamente)</h3>
-            <p className="text-muted-foreground text-sm mt-1 text-center max-w-sm">Aquí podrás administrar las plantillas de PC y componentes.</p>
-          </CardContent>
-        </Card>
-      </TabsContent>
+          <TemplatesPanel categories={categories} />
+        </TabsContent>
 
       <TabsContent value="combos" className="outline-none">
         <Card className="bg-card border border-dashed">
@@ -412,6 +290,15 @@ export default function AdminCatalogo() {
         </Card>
       </TabsContent>
       </Tabs>
+
+      <ProductEditorDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        product={editingProduct}
+        categories={categories}
+        isSaving={isCreating || isUpdating}
+        onSave={handleSave}
+      />
     </div>
   );
 }

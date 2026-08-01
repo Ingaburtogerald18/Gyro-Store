@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, ArchiveIcon, Delete02Icon, File01Icon, Package01Icon, PackageAddIcon, PackageIcon, RefreshIcon } from "@hugeicons/core-free-icons";
-import { useState, useEffect } from 'react';
+import { Alert02Icon, ArchiveIcon, ArrowMoveDownLeftIcon, Delete02Icon, File01Icon, Package01Icon, PackageAddIcon, PackageIcon, PackageMovingIcon, RefreshIcon, DeliveryTruck01Icon, DollarCircleIcon } from "@hugeicons/core-free-icons";
+import { useState, useEffect, useMemo } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import type { MetaFunction } from '@remix-run/node';
 import {
   useGetPurchasesQuery,
@@ -10,9 +11,10 @@ import {
   useDeletePurchaseMutation,
   useReportArrivalMutation,
   useSimulateCostMutation,
+  useRevertPurchaseMutation,
   type Purchase
 } from '~/store/api/inventoryV1Api';
-import { useGetCategoriesQuery } from '~/store/api/catalogAdminApi';
+import { useGetCategoriesQuery, useGetAdminCatalogQuery } from '~/store/api/catalogAdminApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
@@ -33,9 +35,12 @@ export const meta: MetaFunction = () => {
   return [{ title: 'Inventario | Gyro Store Admin' }];
 };
 
-// Clases de la píldora activa en los segmentos: el preset pinta lo activo con el
-// primario (cyan), no con verde. Un solo lugar para mantener la consistencia.
-const ACTIVE_TAB = 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm';
+const TOP_TABS = [
+  { value: 'purchases', label: 'Registro de compras', icon: File01Icon },
+  { value: 'inventory', label: 'Inventario', icon: PackageIcon },
+] as const;
+
+const NESTED_TAB = 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm';
 
 // Helper: Calcular Fecha de Salida
 function getDepartureDate(purchaseDate: string): string {
@@ -63,9 +68,24 @@ export default function AdminInventario() {
   const [createPurchase, { isLoading: isRegistering }] = useCreatePurchaseMutation();
   const [deletePurchase, { isLoading: isDeleting }] = useDeletePurchaseMutation();
   const [reportArrival, { isLoading: isReceiving }] = useReportArrivalMutation();
+  const [revertPurchase] = useRevertPurchaseMutation();
   const [simulateCost, { data: simulatedData, isLoading: isSimulating }] = useSimulateCostMutation();
   const { data: categories = [] } = useGetCategoriesQuery();
+  const { data: allProducts = [] } = useGetAdminCatalogQuery();
 
+  const allMappedCodes = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of allProducts) {
+      if (p.variantMappings) {
+        for (const mapping of Object.values(p.variantMappings)) {
+          for (const code of mapping.codes) set.add(code);
+        }
+      }
+    }
+    return set;
+  }, [allProducts]);
+
+  const reduceMotion = useReducedMotion();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('purchases');
 
@@ -75,6 +95,7 @@ export default function AdminInventario() {
     shippingUnit: '',
     suggestedPrice: ''
   });
+  const [simulatedPrice, setSimulatedPrice] = useState<number | null>(null);
   const [inventoryType, setInventoryType] = useState('current');
 
   // Confirm delete
@@ -82,11 +103,19 @@ export default function AdminInventario() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (receiveItem && receiveData.shippingUnit) {
+      if (receiveItem && receiveData.shippingUnit !== '') {
         const val = Number(receiveData.shippingUnit);
         if (val >= 0 && !isNaN(val)) {
-          simulateCost({ id: receiveItem.id, shippingUnit: val }).catch(() => {});
+          simulateCost({ id: receiveItem.id, shippingUnit: val })
+            .unwrap()
+            .then(res => setSimulatedPrice(res.precioSugerido))
+            .catch(err => {
+              console.error("Error simulando costo:", err);
+              setSimulatedPrice(null);
+            });
         }
+      } else {
+        setSimulatedPrice(null);
       }
     }, 500);
     return () => clearTimeout(timer);
@@ -109,6 +138,19 @@ export default function AdminInventario() {
       toast.success('Compra recibida correctamente');
     } catch (err: any) {
       toast.error(err?.data?.error || 'Error al recibir la compra');
+    }
+  };
+
+  const handleRevert = async (id: string, productName: string) => {
+    if (!window.confirm(`¿Estás seguro de que querés retirar "${productName}" de bodega y regresarlo a compras en tránsito?`)) {
+      return;
+    }
+    const tId = toast.loading('Retirando de bodega...');
+    try {
+      await revertPurchase(id).unwrap();
+      toast.success('Retirado exitosamente. Ahora aparece en Registro de compras.', { id: tId });
+    } catch (err: any) {
+      toast.error(err?.data?.error || 'Error al revertir el lote.', { id: tId });
     }
   };
 
@@ -181,7 +223,7 @@ export default function AdminInventario() {
     {
       accessorKey: 'code',
       header: 'Código',
-      cell: ({ row }) => <span className="font-medium text-primary">{row.original.code}</span>,
+      cell: ({ row }) => <span className="font-medium text-white bg-emerald-500/20 rounded-md px-2 py-0.5 text-xs">{row.original.code}</span>,
     },
     {
       accessorKey: 'lot',
@@ -237,9 +279,14 @@ export default function AdminInventario() {
         const arrDate = new Date(row.original.arrivalDate);
         const diffMs = arrDate.getTime() - depDate.getTime();
         const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-        const color = diffDays > 0 ? 'text-warning' : (diffDays < 0 ? 'text-success' : 'text-muted-foreground');
         const prefix = diffDays > 0 ? '+' : '';
-        return <span className={`tabular-nums font-medium ${color}`}>{prefix}{diffDays} días</span>;
+        if (diffDays > 0) {
+          return <span className="tabular-nums font-medium text-warning bg-warning/10 rounded-md px-1.5 py-0.5 text-xs">{prefix}{diffDays} días</span>;
+        }
+        if (diffDays < 0) {
+          return <span className="tabular-nums font-medium text-success bg-success/10 rounded-md px-1.5 py-0.5 text-xs">{prefix}{diffDays} días</span>;
+        }
+        return <span className="tabular-nums text-muted-foreground">{diffDays} días</span>;
       }
     },
     {
@@ -263,11 +310,11 @@ export default function AdminInventario() {
         return (
           <div className="flex justify-center">
             {dynamicStatus === 'transit' ? (
-              <Badge variant="outline" className="border-info/30 bg-info/10 text-info">En tránsito</Badge>
+              <Badge variant="outline" className="border-info/40 bg-info/15 text-info shadow-[0_0_8px_oklch(0.7_0.15_245/0.15)]">En tránsito</Badge>
             ) : dynamicStatus === 'china' ? (
-              <Badge variant="outline" className="border-warning/30 bg-warning/10 text-warning">En China</Badge>
+              <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning shadow-[0_0_8px_oklch(0.8_0.16_78/0.15)]">En China</Badge>
             ) : s === 'received' ? (
-              <Badge variant="outline" className="border-success/30 bg-success/10 text-success">Recibido</Badge>
+              <Badge variant="outline" className="border-success/40 bg-success/15 text-success shadow-[0_0_8px_oklch(0.72_0.16_150/0.15)]">Recibido</Badge>
             ) : (
               <Badge variant="outline" className="border-border bg-muted text-muted-foreground">{s}</Badge>
             )}
@@ -281,9 +328,9 @@ export default function AdminInventario() {
       cell: ({ row }) => {
         if (row.original.status !== 'china') return null;
         return (
-          <div className="flex gap-1 justify-end">
+          <div className="flex gap-1.5 justify-end">
             <Button
-              variant="ghost" size="sm"
+              size="sm"
               onClick={() => {
                 setReceiveItem(row.original);
                 setReceiveData({
@@ -292,16 +339,17 @@ export default function AdminInventario() {
                   suggestedPrice: ''
                 });
               }}
-              className="h-8 text-primary hover:text-primary hover:bg-primary/10"
+              className="h-7 gap-1.5 shadow-sm shadow-primary/20 transition-all duration-200 active:scale-[0.96]"
             >
-              Recibir
+              <HugeiconsIcon icon={ArrowMoveDownLeftIcon} size={14} strokeWidth={2} />
+              Ingreso a bodega
             </Button>
             <Button
-              variant="ghost" size="icon"
+              variant="ghost" size="icon-sm"
               onClick={() => setDeleteId(row.original.id)}
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 active:scale-[0.92]"
             >
-              <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+              <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} />
             </Button>
           </div>
         );
@@ -319,6 +367,25 @@ export default function AdminInventario() {
       accessorKey: 'productName',
       header: 'Producto',
       cell: ({ row }) => <span className="font-medium text-foreground">{row.original.productName}</span>,
+    },
+    {
+      id: 'isMapped',
+      header: 'Catálogo',
+      meta: { align: 'center' },
+      cell: ({ row }) => {
+        const isMapped = allMappedCodes.has(row.original.code);
+        return (
+          <div className="flex justify-center">
+            {isMapped ? (
+              <Badge variant="outline" className="w-fit text-[10px] h-5 px-1.5 bg-primary/20 text-white border-primary/40">
+                Mapeado
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground text-xs">—</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'quantityOriginal',
@@ -359,50 +426,118 @@ export default function AdminInventario() {
           {suggested ? `C$ ${suggested.toFixed(2)}` : '—'}
         </span>;
       },
+    },
+    {
+      id: 'gananciaEsperada',
+      header: 'Ganancia esperada (C$)',
+      meta: { align: 'right' },
+      cell: ({ row }) => {
+        const ganancia = row.original.gananciaUnitCordobas ?? (
+          row.original.suggestedPrice && row.original.costeFinalCordobas 
+            ? row.original.suggestedPrice - row.original.costeFinalCordobas 
+            : 0
+        );
+        return <span className="tabular-nums font-medium text-emerald-500">
+          {ganancia ? `C$ ${ganancia.toFixed(2)}` : '—'}
+        </span>;
+      },
+    },
+    {
+      id: 'actions',
+      meta: { align: 'right' },
+      cell: ({ row }) => {
+        // Solo permitir revertir si no tiene ventas (ni reservas)
+        const canRevert = !row.original.quantitySold && !row.original.quantityReserved;
+        
+        return (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!canRevert}
+              onClick={() => handleRevert(row.original.id, row.original.productName)}
+              className="h-7 gap-1.5 border-warning/40 text-warning hover:bg-warning hover:text-background hover:border-warning shadow-[0_0_6px_oklch(0.8_0.16_78/0.1)] hover:shadow-[0_0_12px_oklch(0.8_0.16_78/0.2)] transition-all duration-200 active:scale-[0.96] disabled:opacity-40 disabled:shadow-none"
+              title={canRevert ? "Regresar a Registro de Compras" : "No se puede retirar: ya tiene ventas o reservas registradas"}
+            >
+              <HugeiconsIcon icon={PackageMovingIcon} size={14} strokeWidth={2} />
+              Retirar de bodega
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Control de Inventario</h2>
-          <p className="text-muted-foreground">Registro de compras en China y stock recibido en bodega.</p>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-          <TabsList>
-            <TabsTrigger value="purchases" className={ACTIVE_TAB}>
-              <HugeiconsIcon icon={File01Icon} size={16} strokeWidth={2} className="mr-2" /> Registro de compras
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className={ACTIVE_TAB}>
-              <HugeiconsIcon icon={PackageIcon} size={16} strokeWidth={2} className="mr-2" /> Inventario
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="mb-2">
+        <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Control de Inventario</h2>
+        <p className="text-muted-foreground">Registro de compras en China y stock recibido en bodega.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="inline-flex w-fit rounded-lg bg-muted/50 border border-border/50 p-1 gap-1">
+          {TOP_TABS.map(tab => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setActiveTab(tab.value)}
+              className={`relative flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab.value
+                  ? 'text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {activeTab === tab.value && (
+                <motion.div
+                  layoutId="inventory-tab-pill"
+                  className="absolute inset-0 rounded-md bg-primary shadow-sm"
+                  transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.2, duration: 0.4 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <HugeiconsIcon icon={tab.icon} size={16} strokeWidth={2} />
+                {tab.label}
+              </span>
+            </button>
+          ))}
+        </div>
 
         <TabsContent value="purchases" className="space-y-6 outline-none">
           <div className="grid gap-4 md:grid-cols-3">
-            <Card>
+            <Card className="relative overflow-hidden border-t-2 border-t-tone-sky/40">
               <CardHeader className="pb-2">
-                <CardDescription className="font-medium">Compras registradas</CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardDescription className="font-medium">Compras registradas</CardDescription>
+                  <div className="grid size-9 place-items-center rounded-xl bg-tone-sky/10">
+                    <HugeiconsIcon icon={PackageIcon} size={18} strokeWidth={2} className="text-tone-sky" />
+                  </div>
+                </div>
                 <CardTitle className="text-3xl tabular-nums">{kpis?.totalPurchases || 0}</CardTitle>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="relative overflow-hidden border-t-2 border-t-tone-emerald/40">
               <CardHeader className="pb-2">
-                <CardDescription className="font-medium">Inversión estimada (USD)</CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardDescription className="font-medium">Inversión estimada (USD)</CardDescription>
+                  <div className="grid size-9 place-items-center rounded-xl bg-tone-emerald/10">
+                    <HugeiconsIcon icon={DollarCircleIcon} size={18} strokeWidth={2} className="text-tone-emerald" />
+                  </div>
+                </div>
                 <CardTitle className="text-3xl tabular-nums text-primary">${kpis?.totalInversionConImpuestosUsd?.toFixed(2) || '0.00'}</CardTitle>
               </CardHeader>
             </Card>
-            <Card>
+            <Card className="relative overflow-hidden border-t-2 border-t-tone-amber/40">
               <CardHeader className="pb-2">
-                <CardDescription className="font-medium">En tránsito</CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardDescription className="font-medium">En tránsito</CardDescription>
+                  <div className="grid size-9 place-items-center rounded-xl bg-tone-amber/10">
+                    <HugeiconsIcon icon={DeliveryTruck01Icon} size={18} strokeWidth={2} className="text-tone-amber" />
+                  </div>
+                </div>
                 <CardTitle className="text-3xl tabular-nums text-warning flex items-center gap-2">
-                  {kpis?.inTransit || 0} <HugeiconsIcon icon={Alert02Icon} size={20} strokeWidth={2} />
+                  {kpis?.inTransit || 0}
+                  {(kpis?.inTransit ?? 0) > 0 && <HugeiconsIcon icon={Alert02Icon} size={18} strokeWidth={2} />}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -417,7 +552,7 @@ export default function AdminInventario() {
 
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all active:scale-[0.98]">
+                  <Button className="font-semibold bg-primary hover:bg-primary/85 text-primary-foreground shadow-md shadow-primary/20 transition-all duration-200 active:scale-[0.96] hover:shadow-lg hover:shadow-primary/25">
                     <HugeiconsIcon icon={PackageAddIcon} size={16} strokeWidth={2} className="mr-2" />
                     Registrar entrada
                   </Button>
@@ -518,7 +653,7 @@ export default function AdminInventario() {
                       </Select>
                     </div>
 
-                    <Button type="submit" className="w-full font-semibold mt-4 bg-primary hover:bg-primary/90 shadow-md" disabled={isRegistering}>
+                    <Button type="submit" className="w-full font-semibold mt-4 bg-primary hover:bg-primary/85 shadow-md shadow-primary/20 transition-all duration-200 active:scale-[0.97] hover:shadow-lg hover:shadow-primary/25" disabled={isRegistering}>
   {isRegistering && <Spinner className="mr-2" />}
   Confirmar compra
 </Button>
@@ -546,20 +681,37 @@ export default function AdminInventario() {
         </TabsContent>
 
         <TabsContent value="inventory" className="space-y-6 outline-none">
-          <div className="flex justify-end">
-            <Tabs value={inventoryType} onValueChange={setInventoryType} className="w-full sm:w-auto">
-              <TabsList>
-                <TabsTrigger value="current" className={ACTIVE_TAB}>
-                  <HugeiconsIcon icon={PackageIcon} size={16} strokeWidth={2} className="mr-2" /> Inventario actual
-                </TabsTrigger>
-                <TabsTrigger value="migrated" className={ACTIVE_TAB}>
-                  <HugeiconsIcon icon={ArchiveIcon} size={16} strokeWidth={2} className="mr-2" /> Inventario migrado
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Tabs value={inventoryType} onValueChange={setInventoryType} className="space-y-6 outline-none">
+            <div className="inline-flex w-fit rounded-lg bg-muted/50 border border-border/50 p-1 gap-1">
+              {([
+                { value: 'current', label: 'Inventario actual', icon: PackageIcon },
+                { value: 'migrated', label: 'Inventario migrado', icon: ArchiveIcon },
+              ] as const).map(tab => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setInventoryType(tab.value)}
+                  className={`relative flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                    inventoryType === tab.value
+                      ? 'text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {inventoryType === tab.value && (
+                    <motion.div
+                      layoutId="inventory-nested-pill"
+                      className="absolute inset-0 rounded-md bg-primary shadow-sm"
+                      transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.2, duration: 0.4 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-2">
+                    <HugeiconsIcon icon={tab.icon} size={16} strokeWidth={2} />
+                    {tab.label}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-          <Tabs value={inventoryType} className="outline-none">
             <TabsContent value="current" className="outline-none m-0">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
@@ -567,8 +719,8 @@ export default function AdminInventario() {
                     <CardTitle className="text-lg">Existencias actuales</CardTitle>
                     <CardDescription>Stock recibido (listo para venta).</CardDescription>
                   </div>
-                  <Button variant="outline" size="icon" onClick={refetch} disabled={isLoading} aria-label="Refrescar">
-                    <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <Button variant="outline" size="icon" onClick={refetch} disabled={isLoading} aria-label="Refrescar" className="transition-all duration-200 active:scale-[0.92]">
+                    <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className={isLoading ? 'animate-spin' : ''} />
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -613,7 +765,7 @@ export default function AdminInventario() {
             <Button variant="ghost" onClick={() => setDeleteId(null)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting} className="transition-all duration-200 active:scale-[0.97]">
   {isDeleting && <Spinner className="mr-2" />}
   Continuar a Microsoft
 </Button>
@@ -648,12 +800,14 @@ export default function AdminInventario() {
               />
             </div>
 
-            {simulatedData?.precioSugerido !== undefined && (
+            {simulatedPrice !== null && (
               <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
-                <p className="text-sm text-primary">
-                  <span className="font-semibold">Precio sugerido calculado:</span> C$ {simulatedData.precioSugerido.toFixed(2)}
+                <p className="text-sm text-white">
+                  <span className="font-semibold">Precio sugerido calculado:</span> C$ {simulatedPrice.toFixed(2)}
                 </p>
-                {isSimulating && <p className="text-xs text-primary/70 mt-1">Calculando...</p>}
+                <p className="text-xs text-white/70 mt-1">
+                  Si dejás el campo de abajo vacío, este será el precio que se asigne automáticamente.
+                </p>
               </div>
             )}
 
@@ -662,13 +816,13 @@ export default function AdminInventario() {
               <Input type="number" step="0.01" min="0"
                 value={receiveData.suggestedPrice}
                 onChange={e => setReceiveData({ ...receiveData, suggestedPrice: e.target.value })}
-                placeholder={simulatedData?.precioSugerido ? String(simulatedData.precioSugerido) : '0.00'}
+                placeholder={simulatedPrice !== null ? String(simulatedPrice) : '0.00'}
               />
               <p className="text-xs text-muted-foreground">Opcional. Si lo dejás vacío se guarda el sugerido.</p>
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="ghost" onClick={() => setReceiveItem(null)}>Cancelar</Button>
-              <Button type="submit" className="font-medium bg-primary hover:bg-primary/90 shadow-md" disabled={isReceiving}>
+              <Button type="submit" className="font-medium bg-primary hover:bg-primary/85 shadow-md shadow-primary/20 transition-all duration-200 active:scale-[0.97] hover:shadow-lg hover:shadow-primary/25" disabled={isReceiving}>
   {isReceiving && <Spinner className="mr-2" />}
   Confirmar llegada
 </Button>

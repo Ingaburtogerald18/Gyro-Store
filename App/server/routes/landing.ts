@@ -10,6 +10,7 @@ const router = Router();
 router.get(
   '/',
   asyncHandler(async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     res.json(await getLandingConfig());
   }),
 );

@@ -1,5 +1,24 @@
 import { baseApi } from './baseApi';
-import type { AdminProduct, AdminProductInput, Category } from '../../../../shared/schemas';
+import type {
+  AdminProduct,
+  AdminProductInput,
+  AdminTemplate,
+  Category,
+  TemplateInput,
+} from '../../../../shared/schemas';
+
+// Un lote de bodega ya recibido, tal como lo devuelve
+// GET /admin/catalog/inventory-lots. Es la unidad a la que se vincula una
+// variante del catálogo: en v2 `purchases.code` es único por lote, no hay un
+// SKU compartido entre lotes.
+export interface InventoryLot {
+  code: string;
+  productName: string;
+  category: string | null;
+  lot: string;
+  available: number;
+  suggestedPrice: number | null;
+}
 
 export const catalogAdminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -47,6 +66,45 @@ export const catalogAdminApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['AdminCatalog', 'Catalog'],
     }),
+    // ── Plantillas (moldes de variantes) ──
+    getTemplates: builder.query<AdminTemplate[], void>({
+      query: () => '/admin/catalog/templates',
+      providesTags: ['Templates'],
+    }),
+    createTemplate: builder.mutation<AdminTemplate, TemplateInput>({
+      query: (body) => ({
+        url: '/admin/catalog/templates',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Templates'],
+    }),
+    updateTemplate: builder.mutation<AdminTemplate, { id: string; data: TemplateInput }>({
+      query: ({ id, data }) => ({
+        url: `/admin/catalog/templates/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      // Cambiar los ejes de un molde cambia las combinaciones de TODOS los
+      // productos que lo usan: el catálogo del panel y el público se invalidan.
+      invalidatesTags: ['Templates', 'AdminCatalog', 'Catalog'],
+    }),
+    deleteTemplate: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/admin/catalog/templates/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Templates'],
+    }),
+
+    // Lotes de bodega disponibles para vincular a una variante.
+    getInventoryLots: builder.query<InventoryLot[], void>({
+      query: () => '/admin/catalog/inventory-lots',
+      // Depende de `Purchase`: al recibir un lote en inventario, el buscador de
+      // este editor tiene que mostrarlo sin recargar la página.
+      providesTags: ['Purchase'],
+    }),
+
     getCategories: builder.query<Category[], void>({
       query: () => '/admin/catalog/categories',
       providesTags: ['Categories'],
@@ -84,6 +142,11 @@ export const {
   useUpdateAdminProductMutation,
   useDeleteAdminProductMutation,
   useReorderAdminCatalogMutation,
+  useGetTemplatesQuery,
+  useCreateTemplateMutation,
+  useUpdateTemplateMutation,
+  useDeleteTemplateMutation,
+  useGetInventoryLotsQuery,
   useGetCategoriesQuery,
   useCreateCategoryMutation,
   useUpdateCategoryMutation,

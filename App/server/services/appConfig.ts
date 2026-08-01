@@ -59,7 +59,14 @@ const DEFAULT_FINANCIAL_CONFIG: FinancialConfig = {
   ]
 };
 
+let cachedFinancialConfig: FinancialConfig | null = null;
+let financialConfigCachedAt = 0;
+
 export async function getFinancialConfig(): Promise<FinancialConfig> {
+  if (cachedFinancialConfig && Date.now() - financialConfigCachedAt < 60_000) {
+    return cachedFinancialConfig;
+  }
+
   const { data, error } = await db
     .from('app_config')
     .select('value')
@@ -80,10 +87,13 @@ export async function getFinancialConfig(): Promise<FinancialConfig> {
     return DEFAULT_FINANCIAL_CONFIG;
   }
 
+  cachedFinancialConfig = parsed.data;
+  financialConfigCachedAt = Date.now();
   return parsed.data;
 }
 
 export async function updateFinancialConfig(config: FinancialConfig): Promise<FinancialConfig> {
+  financialConfigCachedAt = 0;
   const { error } = await db
     .from('app_config')
     .upsert({
@@ -98,7 +108,14 @@ export async function updateFinancialConfig(config: FinancialConfig): Promise<Fi
   return getFinancialConfig();
 }
 
+let cachedImageResources: ImageResources | null = null;
+let imageResourcesCachedAt = 0;
+
 export async function getImageResources(): Promise<ImageResources> {
+  if (cachedImageResources && Date.now() - imageResourcesCachedAt < 60_000) {
+    return cachedImageResources;
+  }
+
   const { data, error } = await db
     .from('app_config')
     .select('value')
@@ -110,10 +127,14 @@ export async function getImageResources(): Promise<ImageResources> {
 
   const result = imageResourcesSchema.safeParse(data.value);
   if (!result.success) return {};
+
+  cachedImageResources = result.data;
+  imageResourcesCachedAt = Date.now();
   return result.data;
 }
 
 export async function updateImageResources(payload: unknown): Promise<ImageResources> {
+  imageResourcesCachedAt = 0;
   const config = imageResourcesSchema.parse(payload);
 
   const { error } = await db

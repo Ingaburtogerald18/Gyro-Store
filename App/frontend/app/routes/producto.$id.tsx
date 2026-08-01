@@ -38,7 +38,6 @@ export const headers: HeadersFunction = () => ({
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const origin = new URL(request.url).origin;
-  // El id real es lo que va después del último `--` (el slug puede tener guiones).
   const raw = params.id ?? '';
   const productId = raw.split('--').pop() ?? '';
 
@@ -47,19 +46,18 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   let config: StoreConfig | null = null;
 
   try {
-    const [detailRes, listRes, configRes] = await Promise.all([
+    const [detailRes, catalogRes, configRes] = await Promise.all([
       fetch(`${origin}/api/catalog/${productId}`),
       fetch(`${origin}/api/catalog`),
       fetch(`${origin}/api/config`),
     ]);
     if (detailRes.ok) product = (await detailRes.json()) as CatalogDetail;
-    if (listRes.ok) {
-      const items = ((await listRes.json()) as { items?: CatalogProduct[] }).items ?? [];
+    if (catalogRes.ok) {
+      const items = ((await catalogRes.json()) as { items?: CatalogProduct[] }).items ?? [];
       related = items.filter((p) => p.id !== productId).slice(0, 12);
     }
     if (configRes.ok) config = (await configRes.json()) as StoreConfig;
   } catch {
-    // Si la API falla, se responde 404 abajo en vez de romper el render.
   }
 
   if (!product) {

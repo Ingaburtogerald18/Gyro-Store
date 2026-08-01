@@ -118,6 +118,8 @@ async function syncEntraPhoto(accessToken: string, providerToken: string) {
 
 function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin: boolean; pathname: string }) {
   const { setOpen } = useSidebar();
+  const { data: config } = useGetConfigQuery();
+  const reduceMotion = useReducedMotion();
   
   return (
     <Sidebar 
@@ -125,10 +127,17 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-16 flex items-center justify-center p-0">
+      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-28 flex items-center justify-center p-0">
         
         {/* Expanded View */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none gap-2">
+          {config?.images?.logoStatic && (
+            <img 
+              src={config.images.logoStatic} 
+              alt="Gyro Store Logo" 
+              className="h-10 w-auto object-contain"
+            />
+          )}
           <div className="flex flex-col items-center text-center leading-tight">
             <span className="font-bold text-lg tracking-tight whitespace-nowrap">Gyro Store</span>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap uppercase tracking-wider font-medium">Panel admin</span>
@@ -137,8 +146,12 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
 
         {/* Collapsed View (Icon) */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
-          <NavLink to="/admin" className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:opacity-90 transition-opacity">
-            <HugeiconsIcon icon={Store01Icon} size={16} strokeWidth={2} />
+          <NavLink to="/admin" className="flex aspect-square size-10 items-center justify-center hover:opacity-80 transition-opacity overflow-hidden">
+             {config?.images?.logoStatic ? (
+               <img src={config.images.logoStatic} alt="Logo" className="w-full h-full object-contain" />
+             ) : (
+               <HugeiconsIcon icon={Store01Icon} size={20} strokeWidth={2} className="text-foreground" />
+             )}
           </NavLink>
         </div>
       </SidebarHeader>
@@ -177,8 +190,20 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                   }
 
                   return (
-                    <SidebarMenuItem key={item.name}>
-                      <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
+                    <SidebarMenuItem key={item.name} className="relative">
+                      {isActive && (
+                        <motion.div
+                          layoutId="sidebar-active-pill"
+                          className="absolute inset-0 rounded-lg bg-primary"
+                          transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.15, duration: 0.5 }}
+                        />
+                      )}
+                      <SidebarMenuButton
+                        asChild
+                        isActive={false}
+                        tooltip={item.name}
+                        className={isActive ? "relative z-10 text-primary-foreground font-medium hover:bg-transparent hover:text-primary-foreground" : ""}
+                      >
                         <NavLink to={item.to} end={item.end} prefetch="intent">
                           <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
                           <span>{item.name}</span>

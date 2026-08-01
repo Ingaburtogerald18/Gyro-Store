@@ -65,6 +65,49 @@ export interface SaleListItem {
   createdAt: string;
 }
 
+// ── Pago de comisiones ──
+// Un lote de pago es inmutable: registra lo que se entregó. Si después se edita
+// una venta ya pagada, la diferencia va a `balance` y se salda en el próximo
+// corte (ver server/services/sellerPayments.ts).
+
+export interface CommissionPayment {
+  id: string;
+  sellerEmail: string;
+  sellerName: string;
+  orderIds: string[];
+  grossComision: number;
+  /** Ajustes arrastrados de cortes anteriores. */
+  saldoAplicado: number;
+  totalComision: number;
+  isSettlement: boolean;
+  paymentMethod: string;
+  receiptUrl: string | null;
+  noReceiptComment: string | null;
+  createdAt: string;
+}
+
+export interface SellerBalance {
+  sellerEmail: string;
+  sellerName: string;
+  /** >0 la tienda le debe · <0 el vendedor debe devolver */
+  balance: number;
+  count: number;
+}
+
+export interface SellerSummary {
+  pendingApproval: { count: number; comision: number };
+  approvedUnpaid: { count: number; comision: number };
+  paid: { count: number; comision: number };
+  balance: number;
+}
+
+/** El comprobante se sube antes a `POST /api/upload`; acá viaja como URL. */
+export interface PayoutProof {
+  paymentMethod: 'efectivo' | 'transferencia' | 'tarjeta';
+  receiptUrl?: string;
+  noReceiptComment?: string;
+}
+
 export const salesApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getSellableProducts: build.query<SellableProduct[], void>({
@@ -90,6 +133,40 @@ export const salesApi = baseApi.injectEndpoints({
       query: (params) => ({ url: 'sales', params: params ?? undefined }),
       providesTags: ['Sale'],
     }),
+
+    // ── Comisiones (admin) ──
+    getCommissionPayments: build.query<CommissionPayment[], { sellerEmail?: string } | void>({
+      query: (params) => ({ url: 'sales/payments', params: params ?? undefined }),
+      providesTags: ['CommissionPayment'],
+    }),
+    getSellerBalances: build.query<SellerBalance[], void>({
+      query: () => 'sales/balances',
+      providesTags: ['CommissionPayment'],
+    }),
+    payCommissions: build.mutation<
+      CommissionPayment,
+      PayoutProof & { sellerEmail: string; orderIds: string[] }
+    >({
+      query: (body) => ({ url: 'sales/pay', method: 'POST', body }),
+      // Pagar mueve las ventas a 'paid': el listado de ventas también cambia.
+      invalidatesTags: ['CommissionPayment', 'Sale'],
+    }),
+    settleSellerBalance: build.mutation<CommissionPayment, PayoutProof & { sellerEmail: string }>({
+      query: (body) => ({ url: 'sales/settle-balance', method: 'POST', body }),
+      invalidatesTags: ['CommissionPayment'],
+    }),
+
+    // ── Portal del vendedor ──
+    // Sin parámetros a propósito: el backend resuelve el vendedor desde el
+    // token, así que nadie puede pedir el resumen de otro.
+    getMySalesSummary: build.query<SellerSummary, void>({
+      query: () => 'sales/my-summary',
+      providesTags: ['CommissionPayment', 'Sale'],
+    }),
+    getMyCommissionPayments: build.query<CommissionPayment[], void>({
+      query: () => 'sales/my-payments',
+      providesTags: ['CommissionPayment'],
+    }),
   }),
 });
 
@@ -100,4 +177,10 @@ export const {
   useApproveSaleMutation,
   useRejectSaleMutation,
   useGetSalesQuery,
+  useGetCommissionPaymentsQuery,
+  useGetSellerBalancesQuery,
+  usePayCommissionsMutation,
+  useSettleSellerBalanceMutation,
+  useGetMySalesSummaryQuery,
+  useGetMyCommissionPaymentsQuery,
 } = salesApi;
