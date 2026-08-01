@@ -10,6 +10,11 @@ export interface UserProfile {
   deleted_at: string | null;
   last_login?: string; // opcional por si el backend lo envía
   avatar_url?: string | null;
+  /**
+   * Lo calcula el backend contra `config.protectedEmail`. Solo sirve para
+   * ocultar acciones en el UI; la denegación real vive en `routes/adminUsers.ts`.
+   */
+  isProtected?: boolean;
 }
 
 export const usersApi = baseApi.injectEndpoints({

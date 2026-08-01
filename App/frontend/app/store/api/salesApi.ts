@@ -54,6 +54,26 @@ export interface RegisteredSale {
   total: number;
 }
 
+// Edición de una venta ya registrada (PUT /api/sales/:id, solo admin).
+// `reason` es OBLIGATORIO cuando la venta ya salió de `pending_approval`:
+// el backend lo rechaza sin él (server/services/sales.ts → updateSale).
+export interface UpdateSaleInput {
+  id: string;
+  phone?: string;
+  items: SaleLineInput[];
+  reason?: string;
+}
+
+/**
+ * Una venta con sus líneas, que es lo que el editor necesita para precargar.
+ * OJO: hoy NINGÚN endpoint la devuelve — `GET /api/sales` responde
+ * `SaleListItem[]` sin `items` y no existe `GET /api/sales/:id`. El tipo vive
+ * acá para que `SaleEditor` esté listo el día que el backend lo exponga.
+ */
+export interface SaleWithItems extends SaleListItem {
+  items: SaleLineInput[];
+}
+
 export interface SaleListItem {
   id: string;
   status: SaleStatus;
@@ -122,6 +142,11 @@ export const salesApi = baseApi.injectEndpoints({
       query: (body) => ({ url: 'sales', method: 'POST', body }),
       invalidatesTags: ['Sale', 'Purchase', 'Product'],
     }),
+    updateSale: build.mutation<RegisteredSale, UpdateSaleInput>({
+      query: ({ id, ...body }) => ({ url: `sales/${id}`, method: 'PUT', body }),
+      // Editar recalcula el snapshot y mueve reservas de stock.
+      invalidatesTags: ['Sale', 'Purchase', 'Product', 'CommissionPayment'],
+    }),
     approveSale: build.mutation<{ ok: boolean }, string>({
       query: (id) => ({ url: `sales/${id}/approve`, method: 'POST' }),
       invalidatesTags: ['Sale'],
@@ -175,6 +200,7 @@ export const {
   useGetSellableProductsQuery,
   useQuoteSaleMutation,
   useRegisterSaleMutation,
+  useUpdateSaleMutation,
   useApproveSaleMutation,
   useRejectSaleMutation,
   useGetSalesQuery,

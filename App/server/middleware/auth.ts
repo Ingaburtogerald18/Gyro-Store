@@ -33,6 +33,16 @@ export function primaryRole(roles: AppRole[]): AppRole | null {
 
 const profileCache = new Map<string, { data: any; cachedAt: number }>();
 
+/**
+ * Descarta el perfil cacheado de un usuario. La caché dura 30 s, que está bien
+ * para lecturas, pero cuando ALGO acaba de escribir en `profiles` (la foto de
+ * `sync-photo`, por ejemplo) el siguiente `/auth/me` devolvería el dato viejo
+ * durante medio minuto. Quien escribe, invalida.
+ */
+export function invalidateProfileCache(uid: string) {
+  profileCache.delete(uid);
+}
+
 // Lee el perfil por id de auth. Si no existe, lo crea (primer login).
 // Tolera que la tabla `profiles` aún no exista (durante el Hito 0): captura y
 // devuelve null, para que la whitelist por env siga funcionando.

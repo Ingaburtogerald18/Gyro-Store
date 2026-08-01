@@ -55,7 +55,17 @@ router.get(
       throw error;
     }
 
-    res.json(data || []);
+    // `isProtected` viaja calculado desde acá y no se deriva en el cliente: el
+    // correo protegido sale de una variable de entorno (config.protectedEmail),
+    // así que hardcodearlo en el frontend lo dejaría desincronizado en cuanto
+    // cambie. Es solo una pista de UI — quien deniega de verdad es el backend.
+    const rows = (data || []).map((u: { email?: string | null }) => ({
+      ...u,
+      isProtected:
+        !!SUPER_ADMIN_EMAIL && (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase(),
+    }));
+
+    res.json(rows);
   })
 );
 // POST /api/admin/users

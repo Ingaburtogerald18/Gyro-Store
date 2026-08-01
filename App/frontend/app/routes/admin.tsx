@@ -43,7 +43,7 @@ import {
 } from '~/components/ui/sidebar';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
-import { selectIsAdmin } from '~/store/slices/authSlice';
+import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
 import { useGetMeQuery } from '~/store/api/authApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
 import { BrandLoader, ModuleLoader, useAnyQueryPending } from '~/components/ui/module-loader';
@@ -95,8 +95,15 @@ const NAV_GROUPS: NavGroup[] = [
  * Sincroniza la foto de perfil de Microsoft Entra.
  * El `provider_token` solo viaja en el SIGNED_IN inmediatamente posterior al
  * redirect de OAuth, así que se intenta también desde getSession.
+ *
+ * SILENCIOSA a propósito: que un usuario no tenga foto en Entra (404) o que R2
+ * no esté configurado (500) son escenarios NORMALES, no errores que el usuario
+ * pueda resolver. Avisar de eso en cada login era ruido puro. Queda en consola
+ * para quien depura.
+ *
+ * @returns `true` si la foto cambió (hay que refrescar el perfil).
  */
-async function syncEntraPhoto(accessToken: string, providerToken: string) {
+async function syncEntraPhoto(accessToken: string, providerToken: string): Promise<boolean> {
   try {
     const res = await fetch('/api/auth/sync-photo', {
       method: 'POST',
@@ -107,13 +114,14 @@ async function syncEntraPhoto(accessToken: string, providerToken: string) {
       body: JSON.stringify({ provider_token: providerToken }),
     });
     const result = await res.json();
-    if (result.avatar_url) {
-      toast.success('Foto de perfil sincronizada. (Recarga la página)');
-    } else if (result.error) {
-      toast.error('Detalle de foto: ' + result.error);
+    if (result.error) {
+      console.warn('[sync-photo]', result.error);
+      return false;
     }
-  } catch {
-    toast.error('Error de conexión al sincronizar foto.');
+    return result.changed === true;
+  } catch (err) {
+    console.warn('[sync-photo] Error de conexión', err);
+    return false;
   }
 }
 
@@ -230,10 +238,13 @@ export default function AdminLayout() {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
-  const { isLoading: isLoadingMe } = useGetMeQuery(undefined, { skip: !user });
+  const { isLoading: isLoadingMe, refetch: refetchMe } = useGetMeQuery(undefined, { skip: !user });
   const { isLoading: isConfigLoading } = useGetConfigQuery();
 
   const isAdmin = useAppSelector(selectIsAdmin);
+  // La foto sale de /auth/me (profiles.avatar_url), no de user_metadata: con
+  // Entra ese metadata viene vacío.
+  const profilePhoto = useAppSelector(selectUserPhoto);
 
   // ── Overlay de transición entre módulos ──
   // Se muestra al cambiar de ruta y se queda hasta que las queries del módulo
@@ -282,7 +293,13 @@ export default function AdminLayout() {
         data.session.provider_token &&
         data.session.user.app_metadata?.provider === 'azure'
       ) {
-        void syncEntraPhoto(data.session.access_token, data.session.provider_token);
+        // Si la foto cambió, se re-pide /auth/me para que el avatar aparezca
+        // sin recargar. `active` evita el refetch si el layout ya se desmontó.
+        void syncEntraPhoto(data.session.access_token, data.session.provider_token).then(
+          (changed) => {
+            if (changed && active) refetchMe();
+          },
+        );
       }
     });
 
@@ -299,7 +316,9 @@ export default function AdminLayout() {
         session.provider_token &&
         session.user.app_metadata?.provider === 'azure'
       ) {
-        void syncEntraPhoto(session.access_token, session.provider_token);
+        void syncEntraPhoto(session.access_token, session.provider_token).then((changed) => {
+          if (changed && active) refetchMe();
+        });
       }
     });
 
@@ -381,7 +400,7 @@ export default function AdminLayout() {
                     className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Avatar>
-                      <AvatarImage src={user.user_metadata?.avatar_url} alt="" />
+                      <AvatarImage src={profilePhoto ?? user.user_metadata?.avatar_url} alt="" />
                       <AvatarFallback className="uppercase">
                         {user.email?.charAt(0) ?? 'U'}
                       </AvatarFallback>

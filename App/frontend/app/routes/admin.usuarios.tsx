@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete02Icon, MoreVerticalIcon, RefreshIcon, SecurityCheckIcon, Shield01Icon, UserAdd01Icon, UserRemove01Icon, UserSettings01Icon } from "@hugeicons/core-free-icons";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import type { ColumnDef } from '@tanstack/react-table';
 import { 
@@ -45,7 +45,19 @@ const ROLE_LABELS: Record<AppRole, string> = {
   logistics_customer: 'Logística (Lectura)',
 };
 
-const SUPER_ADMIN_EMAIL = 'gerald.aburto@gyrostorenic.com';
+// El correo protegido NO se hardcodea acá: sale de `config.protectedEmail` en el
+// backend (variable de entorno) y llega por usuario como `isProtected`. Tenerlo
+// escrito en el frontend lo dejaba desincronizado en cuanto cambiara el env.
+const isProtectedUser = (user: UserProfile) => user.isProtected === true;
+
+// Campos que el modal muestra pero que TODAVÍA no tienen columna en `profiles`.
+// Van deshabilitados y marcados: un input editable que no guarda nada es peor
+// que no tenerlo. Se habilitan cuando exista la migración + el endpoint.
+const PENDING_FIELDS = [
+  { id: 'correo-personal', label: 'Correo Personal', type: 'email', placeholder: 'usuario@gmail.com' },
+  { id: 'numero', label: 'Número de Teléfono', type: 'text', placeholder: '+505 0000 0000' },
+  { id: 'cuenta-bancaria', label: 'Cuenta Bancaria (Pagos)', type: 'text', placeholder: 'Ej. BAC 123456789 - Cuenta en Córdobas' },
+] as const;
 
 export default function AdminUsuarios() {
   const { data: users = [], isLoading, isError } = useGetUsersQuery();
@@ -61,10 +73,19 @@ export default function AdminUsuarios() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  // Estado controlado del modal de edición: antes se leía con
+  // `document.getElementById`, que esquiva React y deja el valor fuera del
+  // ciclo de render (el `defaultValue` tampoco se refrescaba al cambiar de
+  // usuario sin desmontar el diálogo).
+  const [editName, setEditName] = useState('');
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<AppRole>('seller');
   const [currentTab, setCurrentTab] = useState('activos');
+
+  useEffect(() => {
+    setEditName(selectedUser?.name ?? '');
+  }, [selectedUser]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +106,7 @@ export default function AdminUsuarios() {
   };
 
   const handleChangeRole = async (user: UserProfile, newRole: AppRole) => {
-    if (user.email === SUPER_ADMIN_EMAIL) {
+    if (isProtectedUser(user)) {
       toast.error('Operación denegada: Este usuario está protegido por el sistema.');
       return;
     }
@@ -98,7 +119,7 @@ export default function AdminUsuarios() {
   };
 
   const handleSuspend = async (user: UserProfile) => {
-    if (user.email === SUPER_ADMIN_EMAIL) {
+    if (isProtectedUser(user)) {
       toast.error('Operación denegada: Este usuario está protegido por el sistema.');
       return;
     }
@@ -122,7 +143,7 @@ export default function AdminUsuarios() {
   const handleDeleteConfirm = async () => {
     if (!userToDelete) return;
     const user = userToDelete;
-    if (user.email === SUPER_ADMIN_EMAIL) {
+    if (isProtectedUser(user)) {
       toast.error('Operación denegada: Este usuario está protegido por el sistema.');
       setUserToDelete(null);
       return;
@@ -139,23 +160,20 @@ export default function AdminUsuarios() {
 
   const handleSaveProfile = async () => {
     if (!selectedUser) return;
-    const nameInput = document.getElementById('display-name') as HTMLInputElement;
-    const phoneInput = document.getElementById('numero') as HTMLInputElement;
-    const personalEmailInput = document.getElementById('correo-personal') as HTMLInputElement;
-    const bankAccountInput = document.getElementById('cuenta-bancaria') as HTMLInputElement;
-    
-    const nameVal = nameInput?.value?.trim();
+
+    const nameVal = editName.trim();
     if (!nameVal) {
       toast.error('El nombre no puede estar vacío');
       return;
     }
+    // Sin cambios no hay nada que guardar: se cierra sin tocar el endpoint.
+    if (nameVal === selectedUser.name) {
+      setSelectedUser(null);
+      return;
+    }
     try {
       await updateProfile({ id: selectedUser.id, name: nameVal }).unwrap();
-      if (phoneInput?.value || personalEmailInput?.value || bankAccountInput?.value) {
-        toast.success(`Nombre actualizado. (Otros campos pendientes de base de datos)`);
-      } else {
-        toast.success('Perfil actualizado correctamente');
-      }
+      toast.success('Perfil actualizado correctamente');
       setSelectedUser(null);
     } catch (error: any) {
       toast.error(error?.data?.error || 'Error al actualizar el perfil');
@@ -171,7 +189,7 @@ export default function AdminUsuarios() {
       header: "Empleado",
       cell: ({ row }) => {
         const user = row.original;
-        const isProtected = user.email === SUPER_ADMIN_EMAIL;
+        const isProtected = isProtectedUser(user);
         return (
           <div className="flex items-center gap-3 py-1 min-w-[200px]">
             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground border shrink-0">
@@ -218,7 +236,7 @@ export default function AdminUsuarios() {
       meta: { align: "right" },
       cell: ({ row }) => {
         const user = row.original;
-        const isProtected = user.email === SUPER_ADMIN_EMAIL;
+        const isProtected = isProtectedUser(user);
         if (!isAdmin) return null;
 
         return (
@@ -443,52 +461,55 @@ export default function AdminUsuarios() {
 
               {/* Campos de Información */}
               <div className="grid gap-4 flex-1 mt-2">
+                {/* Lo único editable hoy: `profiles.name`. */}
                 <div className="grid gap-2">
                   <Label htmlFor="display-name">Display Name</Label>
-                  <Input 
-                    id="display-name" 
-                    defaultValue={selectedUser.name} 
+                  <Input
+                    id="display-name"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="correo">Correo Corporativo</Label>
-                  <Input 
-                    id="correo" 
-                    type="email" 
-                    defaultValue={selectedUser.email} 
-                    disabled 
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="correo-personal">Correo Personal</Label>
-                  <Input 
-                    id="correo-personal" 
-                    type="email" 
-                    placeholder="usuario@gmail.com"
+                  <Input
+                    id="correo"
+                    type="email"
+                    value={selectedUser.email}
+                    disabled
+                    readOnly
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="role">Role Principal</Label>
-                  <Input 
-                    id="role" 
-                    defaultValue={ROLE_LABELS[selectedUser.roles[0] || 'seller']} 
-                    disabled 
+                  <Input
+                    id="role"
+                    value={ROLE_LABELS[selectedUser.roles[0] || 'seller']}
+                    disabled
+                    readOnly
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="numero">Número de Teléfono</Label>
-                  <Input 
-                    id="numero" 
-                    placeholder="+505 0000 0000" 
-                  />
-                </div>
-                <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="cuenta-bancaria">Cuenta Bancaria (Pagos)</Label>
-                  <Input 
-                    id="cuenta-bancaria" 
-                    placeholder="Ej. BAC 123456789 - Cuenta en Córdobas" 
-                  />
-                </div>
+
+                {PENDING_FIELDS.map((field) => (
+                  <div key={field.id} className="grid gap-2">
+                    <Label htmlFor={field.id} className="flex items-center gap-2">
+                      {field.label}
+                      <Badge variant="outline" className="text-[10px] font-normal">
+                        Próximamente
+                      </Badge>
+                    </Label>
+                    <Input
+                      id={field.id}
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      disabled
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  Estos campos todavía no tienen dónde guardarse en la base de datos, así que
+                  quedan deshabilitados hasta que exista la columna.
+                </p>
               </div>
 
               <div className="mt-auto pt-6 border-t border flex flex-col gap-3">
@@ -510,7 +531,7 @@ export default function AdminUsuarios() {
                       handleSuspend(selectedUser);
                       setSelectedUser(null);
                     }}
-                    disabled={selectedUser.email === SUPER_ADMIN_EMAIL}
+                    disabled={isProtectedUser(selectedUser)}
                   >
                     <HugeiconsIcon icon={UserRemove01Icon} size={16} strokeWidth={2} className="mr-2" />
                     Archivar (Dar de baja)

@@ -27,6 +27,11 @@ interface ComboboxProps {
   id?: string;
   "aria-invalid"?: boolean;
   disabled?: boolean;
+  /**
+   * Contenido extra a la derecha de cada sugerencia (stock, código, precio…).
+   * Sin esto la lista solo muestra el texto de la opción, como antes.
+   */
+  renderOptionMeta?: (option: string) => React.ReactNode;
 }
 
 export function Combobox({
@@ -38,6 +43,7 @@ export function Combobox({
   id,
   "aria-invalid": ariaInvalid,
   disabled,
+  renderOptionMeta,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -92,6 +98,7 @@ export function Combobox({
                   className="gap-2"
                 >
                   <span className="truncate flex-1">{option}</span>
+                  {renderOptionMeta?.(option)}
                   {value === option && (
                     <HugeiconsIcon icon={CheckmarkBadge01Icon} size={16} className="shrink-0 text-primary" />
                   )}

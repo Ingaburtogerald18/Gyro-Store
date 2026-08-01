@@ -14,6 +14,12 @@ export interface AuthUser {
   // 'admin' | 'seller' | 'cashier' | 'logistics_admin' | 'customer' — se deja
   // abierto para no duplicar la lista de roles que ya vive en el backend.
   role: string | null;
+  /**
+   * Foto de perfil resuelta por el BACKEND (`profiles.avatar_url`, que llena la
+   * sincronización con Microsoft Graph). Es la única fuente confiable: en los
+   * logins con Entra, `user_metadata.avatar_url` de Supabase viene vacío.
+   */
+  photoURL?: string | null;
 }
 
 interface AuthState {
@@ -54,9 +60,18 @@ const authSlice = createSlice({
       state.user?.role != null && state.user.role !== 'customer',
     selectEditMode: (state) => state.editMode,
     selectIsAdmin: (state) => state.user?.role === 'admin' || state.user?.role === 'global_admin',
+    // Cadena vacía → null, para que el `??` del call site caiga al fallback.
+    selectUserPhoto: (state) => state.user?.photoURL || null,
   },
 });
 
 export const { sessionResolved, signedOut, toggleEditMode } = authSlice.actions;
-export const { selectAuthStatus, selectUser, selectIsStaff, selectEditMode, selectIsAdmin } = authSlice.selectors;
+export const {
+  selectAuthStatus,
+  selectUser,
+  selectIsStaff,
+  selectEditMode,
+  selectIsAdmin,
+  selectUserPhoto,
+} = authSlice.selectors;
 export const authReducer = authSlice.reducer;
