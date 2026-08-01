@@ -117,13 +117,25 @@ export interface QuoteLine {
   productName: string;
   quantity: number;
   precioUnit: number;
+  /** Costo de UNA unidad. */
   costeFinalSnap?: number;
+  /** Costo de todas las unidades (`costeFinalSnap × quantity`). */
+  costoTotal?: number;
   utilidadBruta?: number;
   salary?: number;
   utilidadNeta?: number;
   comision: number;
   comisionPercent: number;
   gananciaTienda?: number;
+
+  // La cadena por unidad: el panel muestra unitario y total lado a lado, y el
+  // tramo de `comisionPercent` sale del valor UNITARIO.
+  utilidadBrutaUnit?: number;
+  salaryUnit?: number;
+  utilidadNetaUnit?: number;
+  comisionUnit?: number;
+  gananciaTiendaUnit?: number;
+
   wholesale: { discountPercent: number; warning: boolean };
   available: number;
   insufficientStock: boolean;
@@ -159,12 +171,18 @@ export async function quoteSale(items: SaleLineInput[]): Promise<QuoteResult> {
       quantity: snapshot.quantity,
       precioUnit: snapshot.precioUnit,
       costeFinalSnap: snapshot.costeFinalSnap,
+      costoTotal: snapshot.costoTotal,
       utilidadBruta: snapshot.utilidadBruta,
       salary: snapshot.salary,
       utilidadNeta: snapshot.utilidadNeta,
       comision: snapshot.comision,
       comisionPercent: snapshot.comisionPercent,
       gananciaTienda: snapshot.gananciaTienda,
+      utilidadBrutaUnit: snapshot.utilidadBrutaUnit,
+      salaryUnit: snapshot.salaryUnit,
+      utilidadNetaUnit: snapshot.utilidadNetaUnit,
+      comisionUnit: snapshot.comisionUnit,
+      gananciaTiendaUnit: snapshot.gananciaTiendaUnit,
       wholesale: snapshot.wholesale,
       available: estimate.available,
       insufficientStock: estimate.available < item.quantity,
@@ -236,6 +254,25 @@ export async function registerSale(
     2,
   );
 
+  let contactId: string | null = null;
+  if (input.customerName || input.phone) {
+    if (input.phone) {
+      const { data, error } = await db
+        .from('contacts')
+        .upsert({ phone: input.phone, name: input.customerName || null }, { onConflict: 'phone' })
+        .select('id')
+        .single();
+      if (!error && data) contactId = data.id;
+    } else if (input.customerName) {
+      const { data, error } = await db
+        .from('contacts')
+        .insert({ name: input.customerName })
+        .select('id')
+        .single();
+      if (!error && data) contactId = data.id;
+    }
+  }
+
   const { data: order, error: orderError } = await db
     .from('orders')
     .insert({
@@ -244,6 +281,7 @@ export async function registerSale(
       seller_uid: seller.uid,
       seller_email: seller.email,
       phone: input.phone ?? null,
+      contact_id: contactId,
       total,
     })
     .select('id, status, total')
@@ -517,9 +555,37 @@ export async function updateSale(
     await releaseConsumedReservations(orderId);
   }
 
+  let contactId: string | null = order.contact_id ?? null;
+  if (input.customerName || input.phone) {
+    if (input.phone) {
+      const { data, error } = await db
+        .from('contacts')
+        .upsert({ phone: input.phone, name: input.customerName || null }, { onConflict: 'phone' })
+        .select('id')
+        .single();
+      if (!error && data) contactId = data.id;
+    } else if (input.customerName) {
+      const { data, error } = await db
+        .from('contacts')
+        .insert({ name: input.customerName })
+        .select('id')
+        .single();
+      if (!error && data) contactId = data.id;
+    }
+  } else {
+     if (input.customerName === '' && input.phone === '') {
+       contactId = null;
+     }
+  }
+
   const { error: updError } = await db
     .from('orders')
-    .update({ total: newTotal, phone: input.phone ?? null, status: 'pending_approval' })
+    .update({ 
+      total: newTotal, 
+      phone: input.phone || null, 
+      contact_id: contactId,
+      status: 'pending_approval' 
+    })
     .eq('id', orderId);
   if (updError) throw updError;
 

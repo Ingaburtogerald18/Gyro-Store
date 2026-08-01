@@ -38,6 +38,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
+  SidebarFooter,
   SidebarTrigger,
   useSidebar,
 } from '~/components/ui/sidebar';
@@ -227,6 +228,19 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
         })}
       </SidebarContent>
 
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Ver tienda">
+              <NavLink to="/">
+                <HugeiconsIcon icon={SparklesIcon} size={16} strokeWidth={2} />
+                <span>Ver tienda</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   );
@@ -384,13 +398,6 @@ export default function AdminLayout() {
 
           <div className="ml-auto flex items-center gap-2">
             <NotificationsBell />
-
-            <Button variant="ghost" size="sm" asChild className="hidden text-muted-foreground sm:flex">
-              <a href="/" target="_blank" rel="noreferrer">
-                <HugeiconsIcon icon={SparklesIcon} size={16} strokeWidth={2} aria-hidden className="mr-2" />
-                Ver tienda
-              </a>
-            </Button>
 
             {user && (
               <DropdownMenu>

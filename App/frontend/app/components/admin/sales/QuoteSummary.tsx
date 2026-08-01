@@ -73,12 +73,12 @@ export function QuoteSummary({
               <span className="text-[11px] font-bold uppercase tracking-wider text-primary-2">
                 Totales de la venta
               </span>
-              <dl className="nums divide-y divide-border/60 text-sm">
-                <Row label="Comisión total" value={formatCordobas(result.totalComision)} />
+              <dl className="nums divide-y divide-border/60">
+                <Row label="Comisión total" total={formatCordobas(result.totalComision)} />
                 {result.totalGananciaTienda !== undefined && (
-                  <Row label="Ganancia tienda total" value={formatCordobas(result.totalGananciaTienda)} strong />
+                  <Row label="Ganancia tienda total" total={formatCordobas(result.totalGananciaTienda)} strong />
                 )}
-                <Row label="Importe total" value={formatCordobas(result.total)} strong />
+                <Row label="Importe total" total={formatCordobas(result.total)} strong />
               </dl>
             </div>
           )}
@@ -158,26 +158,70 @@ function LineBreakdown({ line }: { line: QuoteLine }) {
             </p>
           )}
 
+          {/* Dos columnas: unitario × cantidad = total. La cadena financiera se
+              calcula POR UNIDAD (de ahí sale el tramo de comisión) y recién se
+              multiplica, así que mostrar solo el total escondía de dónde salía
+              el porcentaje. En móvil no entran dos columnas de cifras: queda
+              solo la de totales. */}
           <dl className="nums divide-y divide-border/40 text-xs">
+            <div className="flex items-center justify-end gap-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="hidden w-20 text-right sm:block">Unitario</span>
+              <span className="w-24 text-right">Total ×{line.quantity}</span>
+            </div>
+
+            <Row
+              label="Precio"
+              unit={formatCordobas(line.precioUnit)}
+              total={formatCordobas(importe)}
+            />
             {line.costeFinalSnap !== undefined && (
-              <Row label="Costo real" value={formatCordobas(line.costeFinalSnap)} muted small />
+              <Row
+                label="Costo real"
+                unit={`−${formatCordobas(line.costeFinalSnap)}`}
+                // El bug era mostrar acá el costo UNITARIO en una columna de
+                // totales: la resta no cerraba (1,900 − 219 ≠ 807).
+                total={`−${formatCordobas(line.costoTotal ?? line.costeFinalSnap * line.quantity)}`}
+                muted
+              />
             )}
             {line.utilidadBruta !== undefined && (
-              <Row label="Utilidad bruta" value={formatCordobas(line.utilidadBruta)} sub small />
+              <Row
+                label="Utilidad bruta"
+                unit={line.utilidadBrutaUnit !== undefined ? formatCordobas(line.utilidadBrutaUnit) : undefined}
+                total={formatCordobas(line.utilidadBruta)}
+                sub
+              />
             )}
             {line.salary !== undefined && (
-              <Row label="Fondo de empresa" value={`−${formatCordobas(line.salary)}`} muted small />
+              <Row
+                label="Fondo de empresa"
+                unit={line.salaryUnit !== undefined ? `−${formatCordobas(line.salaryUnit)}` : undefined}
+                total={`−${formatCordobas(line.salary)}`}
+                muted
+              />
             )}
             {line.utilidadNeta !== undefined && (
-              <Row label="Utilidad neta" value={formatCordobas(line.utilidadNeta)} sub small />
+              <Row
+                label="Utilidad neta"
+                unit={line.utilidadNetaUnit !== undefined ? formatCordobas(line.utilidadNetaUnit) : undefined}
+                total={formatCordobas(line.utilidadNeta)}
+                sub
+              />
             )}
             <Row
-              label={`Comisión vendedor (${Math.round(line.comisionPercent * 100)}%)`}
-              value={formatCordobas(line.comision)}
-              small
+              // El tramo sale de la utilidad neta UNITARIA: la etiqueta lo dice
+              // para que se entienda por qué es ese porcentaje y no otro.
+              label={`Comisión vendedor (${Math.round(line.comisionPercent * 100)}% de la neta unitaria)`}
+              unit={line.comisionUnit !== undefined ? `−${formatCordobas(line.comisionUnit)}` : undefined}
+              total={`−${formatCordobas(line.comision)}`}
             />
             {line.gananciaTienda !== undefined && (
-              <Row label="Ganancia tienda" value={formatCordobas(line.gananciaTienda)} strong small />
+              <Row
+                label="Ganancia tienda"
+                unit={line.gananciaTiendaUnit !== undefined ? formatCordobas(line.gananciaTiendaUnit) : undefined}
+                total={formatCordobas(line.gananciaTienda)}
+                strong
+              />
             )}
           </dl>
 
@@ -192,34 +236,44 @@ function LineBreakdown({ line }: { line: QuoteLine }) {
   );
 }
 
+/**
+ * Fila del desglose. `unit` es opcional: para el rol seller el backend no manda
+ * los valores unitarios de costo, y la fila cae a una sola columna.
+ *
+ * Las dos columnas son de ancho fijo (`w-20` / `w-24`) y `text-right`: con ancho
+ * automático los dígitos no se alinean entre filas, que es justo lo que hace
+ * legible una tabla de números.
+ */
 function Row({
   label,
-  value,
+  unit,
+  total,
   muted,
   sub,
   strong,
-  small,
 }: {
   label: string;
-  value: string;
+  unit?: string;
+  total: string;
   muted?: boolean;
   sub?: boolean;
   strong?: boolean;
-  small?: boolean;
 }) {
+  const tone = strong
+    ? 'font-semibold text-foreground'
+    : muted || sub
+      ? 'text-muted-foreground'
+      : 'font-medium text-foreground';
+  const valueTone = strong ? 'text-primary-2' : muted || sub ? 'text-muted-foreground' : 'text-foreground';
+
   return (
-    <div
-      className={cn(
-        'flex items-center justify-between gap-2',
-        sub ? 'py-0.5 pl-4' : small ? 'py-0.5' : 'py-1.5',
-        small && 'text-[11px]',
-      )}
-    >
-      <dt className={cn(strong ? 'font-semibold text-foreground' : muted || sub ? 'text-muted-foreground' : 'font-medium text-foreground')}>
-        {label}
-      </dt>
-      <dd className={cn('font-semibold', strong ? 'text-primary-2' : muted || sub ? 'text-muted-foreground' : 'text-foreground')}>
-        {value}
+    <div className={cn('flex items-center justify-between gap-2 py-1', sub && 'pl-3')}>
+      <dt className={cn('min-w-0 flex-1 text-[11px]', tone)}>{label}</dt>
+      <dd className="flex shrink-0 items-center gap-4 text-[11px]">
+        <span className={cn('hidden w-20 text-right tabular-nums sm:block', valueTone, 'opacity-80')}>
+          {unit ?? ''}
+        </span>
+        <span className={cn('w-24 text-right font-semibold tabular-nums', valueTone)}>{total}</span>
       </dd>
     </div>
   );

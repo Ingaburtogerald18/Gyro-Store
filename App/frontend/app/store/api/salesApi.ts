@@ -19,17 +19,31 @@ export interface SellableProduct {
   stock: number;
 }
 
+// Los campos financieros son OPCIONALES porque el backend los recorta por rol:
+// un vendedor no recibe costos ni ganancia de tienda (ver routes/sales.ts).
 export interface QuoteLine {
   productName: string;
   quantity: number;
   precioUnit: number;
+  /** Costo de UNA unidad. */
   costeFinalSnap?: number;
+  /** Costo de todas las unidades. */
+  costoTotal?: number;
   utilidadBruta?: number;
   salary?: number;
   utilidadNeta?: number;
   comision: number;
+  /** Fracción (0.40 = 40%). Su tramo se busca por la utilidad neta UNITARIA. */
   comisionPercent: number;
   gananciaTienda?: number;
+
+  // La misma cadena por unidad: el desglose muestra las dos columnas.
+  utilidadBrutaUnit?: number;
+  salaryUnit?: number;
+  utilidadNetaUnit?: number;
+  comisionUnit?: number;
+  gananciaTiendaUnit?: number;
+
   wholesale: { discountPercent: number; warning: boolean };
   available: number;
   insufficientStock: boolean;
@@ -44,6 +58,7 @@ export interface QuoteResult {
 }
 
 export interface RegisterSaleInput {
+  customerName?: string;
   phone?: string;
   items: SaleLineInput[];
 }
@@ -59,6 +74,7 @@ export interface RegisteredSale {
 // el backend lo rechaza sin él (server/services/sales.ts → updateSale).
 export interface UpdateSaleInput {
   id: string;
+  customerName?: string;
   phone?: string;
   items: SaleLineInput[];
   reason?: string;
@@ -81,6 +97,7 @@ export interface SaleListItem {
   sellerUid: string | null;
   sellerEmail: string;
   weekOf: string | null;
+  customerName: string | null;
   phone: string | null;
   total: number;
   createdAt: string;

@@ -53,8 +53,23 @@ router.post(
     const result = await quoteSale(data.items);
 
     if (!isAdminLike(req.user!.roles)) {
+      // El vendedor ve su comisión, no la estructura de costos de la tienda.
+      // Se recortan también los unitarios: de `utilidadBrutaUnit` se despeja el
+      // costo real restando al precio, así que dejarlos sería filtrar lo mismo.
       result.lines = result.lines.map((line) => {
-        const { costeFinalSnap, utilidadBruta, salary, utilidadNeta, gananciaTienda, ...rest } = line as any;
+        const {
+          costeFinalSnap,
+          costoTotal,
+          utilidadBruta,
+          salary,
+          utilidadNeta,
+          gananciaTienda,
+          utilidadBrutaUnit,
+          salaryUnit,
+          utilidadNetaUnit,
+          gananciaTiendaUnit,
+          ...rest
+        } = line as any;
         return rest;
       });
       delete (result as any).totalGananciaTienda;

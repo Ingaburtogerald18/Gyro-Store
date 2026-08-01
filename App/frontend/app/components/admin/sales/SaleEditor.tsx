@@ -13,6 +13,7 @@ import { Button } from '~/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '~/components/ui/field';
 import { Input } from '~/components/ui/input';
 import { Spinner } from '~/components/ui/spinner';
+import { Switch } from '~/components/ui/switch';
 import { Textarea } from '~/components/ui/textarea';
 import { errMsg, formatCordobas } from '~/lib/formatters';
 import {
@@ -54,6 +55,10 @@ export function SaleEditor({
         }))
       : [newEditorLine()],
   );
+  
+  const initialHasCustomer = !!sale?.customerName || !!sale?.phone;
+  const [includeCustomer, setIncludeCustomer] = useState(initialHasCustomer);
+  const [customerName, setCustomerName] = useState(sale?.customerName ?? '');
   const [phone, setPhone] = useState(sale?.phone ?? '');
   const [editReason, setEditReason] = useState('');
   const [result, setResult] = useState<QuoteResult | null>(null);
@@ -173,6 +178,8 @@ export function SaleEditor({
 
   function resetEditor() {
     setLines([newEditorLine()]);
+    setIncludeCustomer(false);
+    setCustomerName('');
     setPhone('');
     setResult(null);
     setErrorMsg('');
@@ -185,7 +192,8 @@ export function SaleEditor({
       if (isEdit && sale) {
         await updateSale({
           id: sale.id,
-          phone: phone.trim() || undefined,
+          customerName: includeCustomer ? customerName.trim() || undefined : '',
+          phone: includeCustomer ? phone.trim() || undefined : '',
           items: validLines,
           reason: editReason.trim() || undefined,
         }).unwrap();
@@ -194,7 +202,11 @@ export function SaleEditor({
         return;
       }
 
-      await registerSale({ phone: phone.trim() || undefined, items: validLines }).unwrap();
+      await registerSale({
+        customerName: includeCustomer ? customerName.trim() || undefined : undefined,
+        phone: includeCustomer ? phone.trim() || undefined : undefined,
+        items: validLines 
+      }).unwrap();
       toast.success('Venta registrada. Pendiente de aprobación.');
       resetEditor();
       onDone?.();
@@ -212,21 +224,44 @@ export function SaleEditor({
       {/* ── Columna izquierda: datos + productos ── */}
       <div className="space-y-4">
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
-            <h3 className="text-sm font-semibold text-foreground">Datos de la venta</h3>
-          </div>
-          <Field>
-            <FieldLabel htmlFor="sale-phone">Teléfono del cliente</FieldLabel>
-            <Input
-              id="sale-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="8888 8888"
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+              <h3 className="text-sm font-semibold text-foreground">Datos del cliente</h3>
+            </div>
+            <Switch
+              id="include-customer"
+              checked={includeCustomer}
+              onCheckedChange={setIncludeCustomer}
               disabled={busy}
+              aria-label="Incluir información del cliente"
             />
-            <FieldDescription>Opcional. Sirve para dar seguimiento al pedido.</FieldDescription>
-          </Field>
+          </div>
+          
+          {includeCustomer && (
+            <div className="grid gap-4 pt-3 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="sale-customer-name">Nombre</FieldLabel>
+                <Input
+                  id="sale-customer-name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Juan Pérez"
+                  disabled={busy}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="sale-phone">Teléfono</FieldLabel>
+                <Input
+                  id="sale-phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="8888 8888"
+                  disabled={busy}
+                />
+              </Field>
+            </div>
+          )}
         </section>
 
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">

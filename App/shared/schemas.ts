@@ -527,6 +527,7 @@ export const quoteInputSchema = z.object({
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
 
 export const registerSaleInputSchema = z.object({
+  customerName: z.string().max(100).optional(),
   phone: z.string().max(20).optional(),
   items: z
     .array(saleLineInputSchema)
@@ -539,6 +540,7 @@ export const registerSaleInputSchema = z.object({
 export type RegisterSaleInput = z.infer<typeof registerSaleInputSchema>;
 
 export const updateSaleInputSchema = z.object({
+  customerName: z.string().max(100).optional(),
   phone: z.string().optional(),
   items: z.array(saleLineInputSchema).min(1, 'Selecciona al menos un producto.').max(50),
   reason: z.string().optional(),

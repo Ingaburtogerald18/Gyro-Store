@@ -155,7 +155,7 @@ export function SaleLinesTable({
 
               {/* Fila 2: cantidad + precio + subtotal */}
               <div className="flex flex-wrap items-end gap-3 sm:flex-nowrap">
-                <Field className="w-24 shrink-0">
+                <Field className="w-28 shrink-0">
                   <FieldLabel htmlFor={`qty-${line.uid}`} className="text-xs">
                     Cantidad
                   </FieldLabel>
@@ -179,7 +179,7 @@ export function SaleLinesTable({
                   />
                 </Field>
 
-                <Field className="min-w-0 flex-1">
+                <Field className="w-28 shrink-0">
                   <FieldLabel htmlFor={`price-${line.uid}`} className="text-xs">
                     Precio unitario (C$)
                   </FieldLabel>
