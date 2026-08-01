@@ -22,7 +22,7 @@ const PUBLIC_CATALOG_COLUMNS = [
   'created_at',
   'updated_at',
   'category_id',
-  'template:templates(id, name, axes, options, specs)',
+  'template:templates(id, name, axes, specs)',
   'category:categories(id, name)',
 ].join(', ');
 

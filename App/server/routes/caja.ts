@@ -6,7 +6,7 @@ import { listAccounts, createAccount, toggleAccountStatus, listMovements, regist
 
 const router = Router();
 
-router.use(requireRole('admin', 'staff'));
+router.use(requireRole('admin', 'cashier'));
 
 // ── ACCOUNTS ──
 router.get(

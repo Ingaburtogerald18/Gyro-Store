@@ -125,7 +125,6 @@ create table templates (
   -- Con micrófono"), y ese string es la LLAVE de `catalog_items.variant_mappings`.
   -- Un objeto jsonb no garantiza orden; un array sí. De ahí el default '[]'.
   axes         jsonb default '[]',
-  options      jsonb default '{}',
   specs        jsonb default '{}',
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()

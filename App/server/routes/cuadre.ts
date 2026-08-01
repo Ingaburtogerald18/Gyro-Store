@@ -5,7 +5,7 @@ import { getCuadreDashboard } from '../services/cuadre';
 
 const router = Router();
 
-router.use(requireRole('admin', 'staff'));
+router.use(requireRole('admin', 'cashier'));
 
 router.get(
   '/',

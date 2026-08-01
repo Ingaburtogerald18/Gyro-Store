@@ -210,7 +210,7 @@ export async function getAdminProduct(id: string): Promise<AdminProduct | null> 
 async function createOwnTemplate(input: AdminProductInput): Promise<string> {
   const { data, error } = await db
     .from('templates')
-    .insert({ name: input.name.trim(), specs: input.specs, axes: [], options: {} })
+    .insert({ name: input.name.trim(), specs: input.specs, axes: [] })
     .select('id')
     .single();
   if (error) throw error;

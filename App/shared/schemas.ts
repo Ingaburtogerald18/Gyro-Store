@@ -20,16 +20,15 @@ export type Category = z.infer<typeof categorySchema>;
 
 // Schema base para los templates de productos.
 //
-// `axes`/`options`/`specs` se validan como jsonb OPACO a propósito. La forma
-// canónica de `axes` es un array ordenado ([{ key, label, options, isColor }]),
-// pero en la base conviven filas viejas con forma de diccionario. Fijar acá una
-// de las dos haría que la otra reventara con un 500 en la validación, ANTES de
-// llegar a `services/catalogPresenter.ts`, que es quien sabe normalizar ambas.
+// `axes`/`specs` se validan como jsonb OPACO a propósito. La forma canónica de
+// `axes` es un array ordenado ([{ key, label, options, isColor }]), pero en la
+// base conviven filas viejas con forma de diccionario. Fijar acá una de las dos
+// haría que la otra reventara con un 500 en la validación, ANTES de llegar a
+// `services/catalogPresenter.ts`, que es quien sabe normalizar ambas.
 export const templateSchema = z.object({
   id: z.uuid(),
   name: z.string().nullable(),
   axes: z.unknown(),
-  options: z.unknown(),
   specs: z.unknown(),
 });
 

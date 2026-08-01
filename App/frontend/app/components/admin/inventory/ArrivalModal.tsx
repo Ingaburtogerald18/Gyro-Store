@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -8,12 +8,10 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui
 import { Input } from "~/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
-import { useReportArrivalMutation, type Purchase } from "~/store/api/inventoryV1Api";
+import { useReportArrivalMutation, useSimulateCostMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
-import { formatCordobas, roundTo } from "~/lib/formatters";
+import { formatCordobas } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
-
-const RATE = 37;
 
 export function ArrivalModal({
   purchase,
@@ -24,6 +22,9 @@ export function ArrivalModal({
 }) {
   const { data: config } = useGetConfigQuery();
   const [reportArrival, { isLoading }] = useReportArrivalMutation();
+  const [simulateCost] = useSimulateCostMutation();
+  const [simulatedPrice, setSimulatedPrice] = useState<number | null>(null);
+
   const {
     register,
     control,
@@ -37,33 +38,31 @@ export function ArrivalModal({
   });
 
   const shippingUnit = useWatch({ control, name: "shippingUnit" });
-  
-  const parsedShipping = Number(shippingUnit);
-  const hasShipping = shippingUnit !== undefined && String(shippingUnit) !== "" && !isNaN(parsedShipping);
-
-  const costUnit = purchase?.costUnit || 0;
-  const taxUnit = purchase?.taxUnit || 0;
-  const priceUnitFinal = costUnit + taxUnit + (hasShipping ? parsedShipping : 0);
-  const costRealCordobas = priceUnitFinal * RATE;
-  const costoFijo = costRealCordobas / 0.75;
-  
-  let margin = 0.25;
-  if (costoFijo < 100) margin = 0.65;
-  else if (costoFijo <= 300) margin = 0.45;
-  else if (costoFijo <= 500) margin = 0.40;
-  else if (costoFijo <= 800) margin = 0.35;
-  else if (costoFijo <= 1200) margin = 0.30;
-  
-  const suggestedPriceCalc = roundTo(costoFijo / (1 - margin));
 
   useEffect(() => {
-    if (hasShipping) {
-      // Only auto-fill if the user hasn't manually edited the suggested price yet
-      if (!dirtyFields.suggestedPrice) {
-        setValue("suggestedPrice", suggestedPriceCalc, { shouldValidate: true });
+    const timer = setTimeout(() => {
+      if (purchase && shippingUnit !== undefined && String(shippingUnit) !== "") {
+        const val = Number(shippingUnit);
+        if (val >= 0 && !isNaN(val)) {
+          simulateCost({ id: purchase.id, shippingUnit: val })
+            .unwrap()
+            .then(res => {
+              setSimulatedPrice(res.precioSugerido);
+              if (!dirtyFields.suggestedPrice) {
+                setValue("suggestedPrice", res.precioSugerido, { shouldValidate: true });
+              }
+            })
+            .catch(err => {
+              console.error("Error simulando costo:", err);
+              setSimulatedPrice(null);
+            });
+        }
+      } else {
+        setSimulatedPrice(null);
       }
-    }
-  }, [hasShipping, suggestedPriceCalc, setValue, dirtyFields.suggestedPrice]);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [shippingUnit, purchase, simulateCost, setValue, dirtyFields.suggestedPrice]);
 
   async function onSubmit(data: ArrivalFormInput) {
     if (!purchase) return;
@@ -118,20 +117,15 @@ export function ArrivalModal({
           <FieldError errors={[errors.category]} />
         </Field>
 
-        {hasShipping && (
-          <div className="rounded-lg border bg-muted p-3 text-xs space-y-1.5">
-            <div className="flex justify-between text-muted-foreground">
-              <span>Costo Real Unit. (C$)</span>
-              <span className="font-medium text-foreground">{formatCordobas(costRealCordobas)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Coste c/ Fijos (C$)</span>
-              <span className="font-medium text-warning">{formatCordobas(costoFijo)}</span>
-            </div>
-            <div className="flex justify-between font-semibold pt-1 border-t border-border/50">
-              <span>Precio Sugerido Calculado</span>
-              <span className="text-primary-2">{formatCordobas(suggestedPriceCalc)}</span>
-            </div>
+        {simulatedPrice !== null && (
+          <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+            <p className="text-sm text-foreground">
+              <span className="font-semibold">Precio sugerido calculado:</span>{' '}
+              <span className="nums">{formatCordobas(simulatedPrice, 'C$', 2)}</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Si dejás el campo de abajo vacío, este será el precio que se asigne automáticamente.
+            </p>
           </div>
         )}
 

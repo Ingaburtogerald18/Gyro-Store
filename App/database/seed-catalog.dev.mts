@@ -23,28 +23,24 @@ const templates = [
     id: '11111111-1111-4111-8111-111111111101',
     name: 'Audífonos KZ EDX Pro',
     axes: { color: ['negro', 'transparente'] },
-    options: {},
     specs: { driver: '10 mm dinámico', tipo: 'in-ear', cable: 'desmontable 2 pin' },
   },
   {
     id: '11111111-1111-4111-8111-111111111102',
     name: 'Adaptador Bluetooth KZ AZ09',
     axes: { color: ['negro'] },
-    options: {},
     specs: { bluetooth: '5.2', bateria: '6.5 h' },
   },
   {
     id: '11111111-1111-4111-8111-111111111103',
     name: 'Puntas memory foam (3 pares)',
     axes: {},
-    options: {},
     specs: { tallas: 'S / M / L' },
   },
   {
     id: '11111111-1111-4111-8111-111111111104',
     name: 'Mousepad XL antideslizante',
     axes: {},
-    options: {},
     specs: { medidas: '80×30 cm' },
   },
 ];
