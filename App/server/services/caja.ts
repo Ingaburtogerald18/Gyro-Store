@@ -52,9 +52,8 @@ export async function toggleAccountStatus(id: string, activo: boolean): Promise<
 
 // ── MOVEMENTS ──
 
-// `salida_id` ya no existe: la columna se cayó con el módulo Salidas
-// (0014_drop_salidas.sql). Dejarla en el SELECT hace fallar la query entera con
-// 42703, no solo ese campo.
+// Sin `salida_id`: la columna se cayó junto con el módulo Salidas. Volver a
+// ponerla en el SELECT haría fallar la query ENTERA con 42703, no solo ese campo.
 const MOVEMENT_COLUMNS = `
   id, account_id, tipo, monto, categoria, descripcion,
   comprobante_url, ocurrio_at, registrado_por, created_at

@@ -1,0 +1,29 @@
+{
+  "include": ["env.d.ts", "**/*.ts", "**/*.tsx"],
+  // `ui-main` es la copia local del repo shadcn-ui/ui, que se consulta como
+  // referencia pero NO forma parte de la app: es un monorepo Next.js con sus
+  // propios alias. Sin excluirlo, `include` se lo traga y el typecheck sale
+  // con ~13.800 errores ajenos.
+  "exclude": ["node_modules", "build", "ui-main"],
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["@remix-run/node", "vite/client"],
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "target": "ES2022",
+    "strict": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./app/*"],
+      "@shared/*": ["../shared/*"]
+    },
+    "noEmit": true
+  }
+}

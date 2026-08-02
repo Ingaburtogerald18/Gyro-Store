@@ -49,7 +49,7 @@ const lossRowSchema = z.object({
 
 export type LossItem = z.infer<typeof lossRowSchema>;
 
-// ── Reportería de ventas (0013_reports_rpc.sql) ──
+// ── Reportería de ventas (RPCs en database/migrations/0002_functions.sql) ──
 // Un schema por RPC. Los `numeric` de Postgres llegan como number por PostgREST
 // (igual que en `kpiSchema`), así que no hace falta coerción.
 
@@ -121,7 +121,7 @@ const deliverySummarySchema = z.object({
 
 export type DeliverySummary = z.infer<typeof deliverySummarySchema>;
 
-// ── Drilldown (0015_sales_ledger_rpc.sql) ──
+// ── Drilldown (`get_sales_ledger` / `get_delivery_invoices`) ──
 // Las FILAS detrás de cada KPI, para poder auditar de dónde salió el número
 // sin salir de la pantalla.
 
@@ -245,7 +245,7 @@ export async function getExpensesByPozo(startDate?: string, endDate?: string) {
 // ============================================================================
 // ── Reportería de ventas ──
 // ============================================================================
-// Todas se apoyan en los RPC de `0013_reports_rpc.sql`: la agregación pasa en
+// Todas se apoyan en los RPC de `0002_functions.sql`: la agregación pasa en
 // Postgres y acá solo se valida la forma de lo que volvió.
 
 /**
