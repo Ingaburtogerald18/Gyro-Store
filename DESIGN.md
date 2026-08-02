@@ -343,3 +343,114 @@ Las primitivas son de shadcn; estas piezas son **nuestras** y siguen vigentes:
 - **`GeneralConfig` en `admin.configuracion.tsx` es una maqueta**: campos con
   `defaultValue`, sin estado ni endpoint. No cuenta como formulario migrado porque
   todavía no guarda nada.
+
+---
+
+## 11. Reglas del centro de administración
+
+Instaladas en la optimización por fases. El diagnóstico que las originó está en
+`Docs/16-Auditoria-UI-Admin.md`. Aplican a toda feature nueva del admin.
+
+### 11.1 Un solo elemento domina
+
+**Por pantalla, un único elemento puede tener el peso máximo.** Si dos compiten,
+ninguno gana y el usuario no sabe dónde mirar primero.
+
+En Reportería ese lugar lo tiene "Total vendido" (`HeroMetric`: 48 px, `CountUp`
+y sparkline). Los demás KPIs son `CompactKpi`: 20 px, sin contador animado, sin
+spotlight, sin sombra.
+
+### 11.2 El color es semántico, no decorativo
+
+- Los **valores numéricos** van en `text-foreground`. Siempre.
+- El `tone` de una tarjeta pinta **el icono** y el borde en hover. Nada más.
+- El color fuerte se reserva a tres cosas: el **delta** (success/destructive),
+  los **estados** (`StatusBadge`) y las **alertas reales**.
+
+Un tono distinto por tarjeta convierte la pantalla en un arcoíris y hace que el
+color deje de significar algo.
+
+### 11.3 Escala tipográfica
+
+| Rol | Clase |
+|---|---|
+| Título de página (`PageHeader`) | `font-heading text-2xl font-semibold tracking-tight` |
+| Métrica héroe | `font-heading text-5xl font-semibold tabular-nums` |
+| KPI compacto | `text-xl font-semibold tabular-nums` |
+| Eyebrow / `SectionLabel` | `text-[11px] font-semibold uppercase tracking-[0.08em]` |
+| Cuerpo y celdas | `text-sm` (`text-[13px]` en densidad compacta) |
+
+Nada por debajo de 11 px, y a 11 px solo con `uppercase` + `tracking`.
+
+### 11.4 Espaciado
+
+- Entre secciones mayores: `space-y-8` · entre bloques: `gap-6` · entre tarjetas
+  de una fila: `gap-4`
+- Padding de tarjeta: `p-5` (densa) o `p-6` (destacada). **No mezclar `p-4` y
+  `p-5` en la misma fila.**
+- El contenido vive en `mx-auto w-full max-w-[1600px]`.
+
+### 11.5 Carga
+
+**Cada bloque carga su propio esqueleto, con la forma final del contenido.**
+Nunca un spinner centrado, nunca un salto de layout.
+
+`QueryState` con `shape`: `stats` · `table` · `chart` · `card` · `list`. El
+catálogo vive en `components/ui/skeletons.tsx`; una forma nueva se agrega ahí,
+no en la ruta.
+
+- `isLoading` (primera carga) → esqueleto.
+- `isFetching` (refetch) → `fetching`, que atenúa lo que ya está. **No se vacía
+  una tabla que ya tenía filas.**
+- **Prohibidos los mínimos artificiales de carga.** El parpadeo se resuelve con
+  umbral de aparición (`GlobalProgress` espera 150 ms), no retrasando la app.
+
+### 11.6 Motion
+
+Una sola animación de entrada por pantalla, siempre con `useReducedMotion()`.
+
+Retirados a propósito: el stagger de filas de `DataTable`, el `SpotlightCard`
+dentro de `StatCard`, y todo `hover:-translate-y-*` (mueve el layout).
+`spin` es el único gesto en bucle del sistema y solo lo usa el spinner.
+
+### 11.7 Tablas
+
+- La tabla **no se envuelve en `Card`**: ya trae borde y fondo.
+- Un solo scroll por pantalla; el `<thead>` va `sticky top-14`.
+- Sin `shadow-lg`: elevación por borde y fondo.
+- `paginated` activo por defecto.
+- Números a la derecha con `meta: { align: 'right' }`.
+- Densidad y columnas visibles se persisten; lo segundo necesita `tableId`.
+- **"No hay datos" y "el filtro no encontró nada" son mensajes distintos.**
+- Si la búsqueda debe encontrar lo que se VE (un nombre resuelto, no un uuid), la
+  columna necesita `accessorFn`, no `accessorKey`: el filtro global mira el valor
+  de la celda, no lo que renderiza.
+
+### 11.8 Contenedores por tipo de tarea
+
+| Tarea | Contenedor |
+|---|---|
+| Formulario largo, detalle de un registro | **Drawer** (`Sheet`), header y footer fijos |
+| Confirmación destructiva | `Dialog`, con el **nombre del objeto** en el texto |
+| Formulario de ≤3 campos | `Dialog` |
+| Desglose de un KPI | `DrilldownDialog` |
+
+Los drawers de detalle son **enlazables** (`?sale=<id>`), para que una
+notificación apunte al registro exacto y no a la pantalla que lo contiene.
+
+### 11.9 Atajos
+
+`⌘K` paleta · `g`+`1..9` navegación · `?` hoja de atajos · `/` o `⌘F` buscador de
+tabla · `Esc` limpia.
+
+Todos se ignoran mientras el foco está en un campo de texto. Un atajo sin entrada
+en la hoja de `?` no existe para el usuario.
+
+### 11.10 Tokens
+
+Cero colores crudos de Tailwind, cero hex, cero `rgba()` en componentes. Si hace
+falta un color que no existe, primero se agrega el token en `:root` y
+`[data-theme="dark"]` + su registro en `@theme inline`.
+
+Ojo con `border`: **a secas fija el ancho en los CUATRO lados**. Para un
+subrayado va `border-b border-border`, nunca `border-b border`.

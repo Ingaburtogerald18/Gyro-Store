@@ -20,7 +20,18 @@ const kpiSchema = z.object({
   ganancia_tienda_total: z.number(),
   salary_acumulado: z.number(),
   // JSON con los montos recaudados por pozo a partir del coste F/U
-  pozos_recogidos: z.record(z.string(), z.number())
+  pozos_recogidos: z.record(z.string(), z.number()),
+
+  // ── Periodo inmediatamente anterior, de igual duración (0017) ──
+  // Es lo que convierte un dato en un reporte: sin comparación, "C$1.4M" no
+  // dice si el mes fue bueno. Vienen en 0 cuando el rango es abierto (no hay
+  // "anterior" que calcular) — el front muestra "—" en ese caso.
+  total_ventas_prev: z.number(),
+  total_unidades_prev: z.number(),
+  total_vendido_prev: z.number(),
+  coste_total_prev: z.number(),
+  comision_total_prev: z.number(),
+  ganancia_tienda_total_prev: z.number()
 });
 
 export type FinancialKPIs = z.infer<typeof kpiSchema>;

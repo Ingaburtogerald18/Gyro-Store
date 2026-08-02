@@ -1,6 +1,6 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, DashboardSquare01Icon, Delete02Icon, Edit02Icon, Package01Icon, Search01Icon, SquareIcon, Tag01Icon } from "@hugeicons/core-free-icons";
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { 
   useGetAdminCatalogQuery, 
@@ -18,13 +18,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/com
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
+import { PageHeader } from '~/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { QueryState } from '~/components/ui/QueryState';
 import { Skeleton } from '~/components/ui/skeleton';
+import { SkeletonCard } from '~/components/ui/skeletons';
 
 import { SortableCatalogGrid } from '~/components/catalog/SortableCatalogGrid';
-import { ProductEditorDialog } from '~/components/catalog/ProductEditorDialog';
-import { TemplatesPanel } from '~/components/catalog/TemplatesPanel';
+// Los dos más pesados del catálogo (27 KB y 21 KB) se descargaban al entrar,
+// aunque el usuario solo viniera a mirar la grilla.
+const ProductEditorDialog = lazy(() =>
+  import('~/components/catalog/ProductEditorDialog').then((m) => ({ default: m.ProductEditorDialog })),
+);
+const TemplatesPanel = lazy(() =>
+  import('~/components/catalog/TemplatesPanel').then((m) => ({ default: m.TemplatesPanel })),
+);
 import { ToneDot } from '~/components/catalog/ToneDot';
 import { toast } from 'sonner';
 
@@ -133,12 +141,11 @@ export default function AdminCatalogo() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Gestión de Catálogo</h2>
-          <p className="text-muted-foreground">Arrastra productos para reordenar, edítalos, o administra las plantillas.</p>
-        </div>
-        
+      <PageHeader
+        eyebrow="Tienda"
+        title="Gestión de Catálogo"
+        description="Arrastra productos para reordenar, edítalos, o administra las plantillas."
+        filters={
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList className="bg-card border">
             <TabsTrigger value="catalog" className="data-[state=active]:bg-muted"><AnimatedIcon icon={Package01Icon} size={16} strokeWidth={2} className="mr-2" /> Artículos</TabsTrigger>
@@ -147,7 +154,8 @@ export default function AdminCatalogo() {
             <TabsTrigger value="combos" className="data-[state=active]:bg-muted"><AnimatedIcon icon={SquareIcon} size={16} strokeWidth={2} className="mr-2" /> Combos</TabsTrigger>
           </TabsList>
         </Tabs>
-      </div>
+        }
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsContent value="catalog" className="space-y-4 outline-none">
@@ -280,7 +288,9 @@ export default function AdminCatalogo() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4 outline-none">
-          <TemplatesPanel categories={categories} />
+          <Suspense fallback={<SkeletonCard lines={6} />}>
+            <TemplatesPanel categories={categories} />
+          </Suspense>
         </TabsContent>
 
       <TabsContent value="combos" className="outline-none">
@@ -294,14 +304,20 @@ export default function AdminCatalogo() {
       </TabsContent>
       </Tabs>
 
-      <ProductEditorDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        product={editingProduct}
-        categories={categories}
-        isSaving={isCreating || isUpdating}
-        onSave={handleSave}
-      />
+      {/* Solo se monta cuando está abierto: `Suspense` sin nada que renderizar
+          no descarga el chunk, así que entrar al catálogo no paga los 27 KB. */}
+      {isDialogOpen && (
+        <Suspense fallback={null}>
+          <ProductEditorDialog
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            product={editingProduct}
+            categories={categories}
+            isSaving={isCreating || isUpdating}
+            onSave={handleSave}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

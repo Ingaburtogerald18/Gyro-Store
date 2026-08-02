@@ -57,7 +57,7 @@ function CartButton() {
 
 export function StoreHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         {/* El logo ahora tiene transición y efecto hover */}
         <Link 

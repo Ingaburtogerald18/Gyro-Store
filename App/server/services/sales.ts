@@ -571,6 +571,100 @@ export interface SaleListItem {
   createdAt: string;
 }
 
+/** Una venta con sus líneas. Lo que el drawer de detalle necesita. */
+export interface SaleWithItems extends SaleListItem {
+  items: {
+    productName: string;
+    quantity: number;
+    salePrice: number;
+    /** Costo de una unidad. Solo para admin: la ruta lo recorta. */
+    costeFinalSnap?: number;
+    comision?: number;
+    gananciaTienda?: number;
+  }[];
+}
+
+/**
+ * Una venta por id, con sus líneas.
+ *
+ * Faltaba: no existía ningún endpoint que devolviera una venta individual —
+ * `GET /api/sales` responde el listado sin `items`. Sin esto no se puede abrir
+ * el detalle de una venta desde un enlace (`?sale=<id>`), ni precargar el
+ * editor para corregirla, ni que una notificación apunte al registro exacto.
+ *
+ * SENSIBLE: los campos financieros por línea son la estructura de costos de la
+ * tienda. La ruta los recorta para quien no es admin, igual que en `/quote`.
+ */
+export async function getSaleById(id: string): Promise<SaleWithItems | null> {
+  const { data: order, error } = await db
+    .from('orders')
+    .select('id, status, sale_origin, seller_uid, seller_email, week_of, phone, total, created_at')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!order) return null;
+
+  const row = order as unknown as {
+    id: string;
+    status: string;
+    sale_origin: string;
+    seller_uid: string | null;
+    seller_email: string;
+    week_of: string | null;
+    phone: string | null;
+    total: number | null;
+    created_at: string;
+  };
+
+  const { data: items, error: itemsError } = await db
+    .from('order_items')
+    .select('sku, quantity, precio_unit, coste_final_snap, comision, ganancia_tienda')
+    .eq('order_id', id);
+
+  if (itemsError) throw itemsError;
+
+  // Igual que en `listSales`: el nombre sale de una segunda query y no de un
+  // embed. Un dato secundario no puede tumbar la respuesta entera.
+  let sellerName = '';
+  if (row.seller_uid) {
+    const { data: profile } = await db
+      .from('profiles')
+      .select('name')
+      .eq('id', row.seller_uid)
+      .maybeSingle();
+    if (profile?.name?.trim()) sellerName = profile.name.trim();
+  }
+
+  return {
+    id: row.id,
+    status: row.status,
+    saleOrigin: row.sale_origin,
+    sellerUid: row.seller_uid,
+    sellerEmail: row.seller_email,
+    sellerName,
+    weekOf: row.week_of,
+    phone: row.phone,
+    total: row.total ?? 0,
+    createdAt: row.created_at,
+    items: ((items ?? []) as unknown as {
+      sku: string | null;
+      quantity: number;
+      precio_unit: number | null;
+      coste_final_snap: number | null;
+      comision: number | null;
+      ganancia_tienda: number | null;
+    }[]).map((it) => ({
+      productName: it.sku ?? '',
+      quantity: it.quantity,
+      salePrice: it.precio_unit ?? 0,
+      costeFinalSnap: it.coste_final_snap ?? 0,
+      comision: it.comision ?? 0,
+      gananciaTienda: it.ganancia_tienda ?? 0,
+    })),
+  };
+}
+
 export async function listSales(filters: { sellerEmail?: string; status?: string }): Promise<SaleListItem[]> {
   let query = db
     .from('orders')

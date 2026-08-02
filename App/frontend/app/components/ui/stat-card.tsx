@@ -34,8 +34,18 @@ export function SpotlightCard({
     ref.current.style.setProperty("--spot-y", `${e.clientY - r.top}px`);
   }
 
-  const baseStyles = "rounded-card border bg-card shadow-lg transition-all duration-300 hover:shadow-2xl hover:border/80 hover:-translate-y-1";
+  // Tres arreglos sobre lo que había:
+  //  · `hover:border/80` NO es una clase válida — Tailwind no generaba nada, así
+  //    que el hover de borde nunca existió. Ahora es `hover:border-border/80`.
+  //  · Sin `hover:-translate-y-1`: mover el elemento al pasar el mouse desplaza
+  //    el layout y pelea con el `whileHover` que StatCard ya aplica afuera.
+  //  · Sin `shadow-2xl`: la elevación va por borde y fondo (ver Fase 7.1).
+  const baseStyles =
+    "rounded-card border bg-card shadow-sm transition-colors duration-200 hover:border-border/80";
   
+  // Sin `hover:-translate-y-1`: mover el elemento al pasar el mouse desplaza el
+  // layout y, en una grilla, hace que las tarjetas vecinas parezcan temblar.
+  // La elevación va por borde (ver `baseStyles`).
   if (variant === "highlight") {
     return (
       <div
@@ -63,7 +73,9 @@ export function SpotlightCard({
     <div
       className={cn(
         baseStyles,
-        variant === "interactive" && "transition-colors hover:border-white/10 hover:bg-primary",
+        // `hover:border-white/10` era color crudo: en tema claro pintaba blanco
+        // sobre blanco y el hover desaparecía.
+        variant === "interactive" && "transition-colors hover:border-border hover:bg-primary",
         className,
       )}
       {...props}
@@ -73,6 +85,14 @@ export function SpotlightCard({
   );
 }
 
+/**
+ * @deprecated Usar `SectionLabel` de `~/components/layout/SectionLabel`.
+ *
+ * Quedaban dos primitivas casi idénticas en archivos distintos —ésta y la
+ * etiqueta que las vistas escribían a mano— y ninguna era la canónica. La de
+ * `layout/` lo es. Este export se mantiene solo para no romper consumidores
+ * mientras se migran.
+ */
 export function SectionHeader({
   title,
   subtitle,
@@ -85,7 +105,7 @@ export function SectionHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3 border-b border px-5 py-4", className)}>
+    <div className={cn("flex items-start justify-between gap-3 border-b border-border px-5 py-4", className)}>
       <div className="min-w-0">
         <h3 className="truncate text-sm font-semibold text-foreground">{title}</h3>
         {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
@@ -98,7 +118,7 @@ export function SectionHeader({
 // ── StatCard unificado (mantiene su nombre y Props para retrocompatibilidad) ──
 export type StatCardColor = "neutral" | "indigo" | "sky" | "amber" | "emerald" | "rose" | "purple" | "red";
 
-const BASE_STAT = "bg-muted/30 border hover:border-white/10";
+const BASE_STAT = "bg-muted/30 border border-border hover:border-border/80";
 const COLOR_MAP: Record<StatCardColor, { card: string; icon: string; label: string; value: string }> = {
   neutral: { card: BASE_STAT, icon: "stat-card-icon text-muted-foreground", label: "text-muted-foreground/90", value: "text-foreground" },
   indigo: { card: `${BASE_STAT} hover:border-tone-indigo/30`, icon: "stat-card-icon text-tone-indigo", label: "text-muted-foreground/90", value: "text-tone-indigo" },
@@ -124,8 +144,13 @@ export function StatCard({
   const theme = COLOR_MAP[chosenColor];
   const interactive = Boolean(onClick || href);
 
+  // Sin `SpotlightCard` adentro (Fase 1.6). La StatCard montaba DOS capas de
+  // efecto sobre el mismo elemento: el `whileHover` del motion.div de abajo y,
+  // dentro, un spotlight con su propio `hover:-translate-y-1`. El resplandor se
+  // reserva para las dos tarjetas grandes de análisis, donde hay superficie
+  // suficiente para que se lea como intención y no como ruido.
   const inner = (
-    <SpotlightCard variant="highlight" className="p-4 shadow-none bg-transparent border-none">
+    <div className="p-4">
       <div className="flex items-center gap-2">
         {/* `view` y no `hover`: una StatCard no es un control, nadie le pasa
             el mouse por encima. El trazo se dibuja cuando la tarjeta entra en
@@ -138,7 +163,7 @@ export function StatCard({
         {countTo !== undefined ? <CountUp value={countTo} format={format} /> : value}
       </p>
       {sub && <p className="nums mt-0.5 text-sm font-medium text-muted-foreground">{sub}</p>}
-    </SpotlightCard>
+    </div>
   );
 
   const shell = (

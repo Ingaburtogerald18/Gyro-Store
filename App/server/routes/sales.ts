@@ -22,6 +22,7 @@ import {
   approveSale,
   rejectSale,
   listSales,
+  getSaleById,
   updateSale,
   deleteSale,
 } from '../services/sales';
@@ -147,6 +148,45 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = settleBalanceInputSchema.parse(req.body);
     res.status(201).json(await settleSellerBalance(data, req.user!.uid));
+  }),
+);
+
+/**
+ * GET /api/sales/:id — una venta con sus líneas.
+ *
+ * Va DESPUÉS de `/products`, `/quote`, `/payments`, `/balances` y `/my-*`: si
+ * estuviera antes, Express haría coincidir esas rutas con `:id` y las mandaría
+ * acá con un uuid inválido.
+ *
+ * Doble recorte:
+ *  · Un vendedor solo puede pedir SUS ventas. Cambiar el uuid en la URL no le
+ *    sirve — se compara contra el correo del token, no contra el query.
+ *  · Los campos financieros por línea (coste, ganancia) se podan para no-admin,
+ *    igual que en POST /quote.
+ */
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const id = parseUuidParam(req.params.id, 'Venta no encontrada.');
+    const sale = await getSaleById(id);
+    if (!sale) {
+      res.status(404).json({ error: 'Venta no encontrada.' });
+      return;
+    }
+
+    const admin = isAdminLike(req.user!.roles);
+    if (!admin && sale.sellerEmail !== req.user!.email) {
+      // 404 y no 403: confirmar que la venta existe pero es de otro ya es
+      // filtrar información.
+      res.status(404).json({ error: 'Venta no encontrada.' });
+      return;
+    }
+
+    if (!admin) {
+      sale.items = sale.items.map(({ costeFinalSnap, gananciaTienda, ...rest }) => rest);
+    }
+
+    res.json(sale);
   }),
 );
 

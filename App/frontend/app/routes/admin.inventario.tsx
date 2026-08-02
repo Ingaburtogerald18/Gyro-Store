@@ -11,6 +11,7 @@ import { PurchasesTable } from "~/components/admin/inventory/PurchasesTable";
 import { CurrentInventoryTable } from "~/components/admin/inventory/CurrentInventoryTable";
 import { PurchaseCommandPalette } from "~/components/admin/inventory/PurchaseCommandPalette";
 
+import { PageHeader } from "~/components/layout/PageHeader";
 import { Tabs, TabsContent } from "~/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { FilterSelect, type FilterSelectOption } from "~/components/ui/FilterSelect";
@@ -63,6 +64,16 @@ export default function AdminInventario() {
   const type: InvType = typeParam === "outOfStock" ? "outOfStock" : "current";
   const period = searchParams.get("period") || "all";
 
+  // El periodo solo tiene sentido en Registro de compras: ahí se mira "qué
+  // compré en marzo". El inventario es una FOTO del stock de hoy — filtrarlo
+  // por mes de compra escondería lotes que siguen en bodega.
+  //
+  // Se pasa "all" en vez de solo ocultar el control: si el usuario dejó marzo
+  // seleccionado y cambia de pestaña, el filtro seguiría aplicándose sin nada
+  // en pantalla que lo explique ni forma de quitarlo.
+  const showPeriod = tab === "purchases";
+  const effectivePeriod = showPeriod ? period : "all";
+
   const effectiveView = tab === "purchases" ? "purchases" : type;
 
   function updateParams(updates: Record<string, string | null>) {
@@ -81,23 +92,28 @@ export default function AdminInventario() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-2">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Control de Inventario</h2>
-          <p className="text-muted-foreground">Registro de compras en China y stock recibido en bodega.</p>
-        </div>
-        <div className="w-full sm:w-64">
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Periodo
-          </label>
-          <FilterSelect
-            value={period}
-            onChange={(p) => updateParams({ period: p })}
-            options={monthOptions}
-            icon={<AnimatedIcon icon={Calendar02Icon} size={14} />}
-          />
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Operación"
+        title="Control de Inventario"
+        description="Registro de compras en China y stock recibido en bodega."
+        // El periodo baja al slot de filtros: en su propia fila, sin competir
+        // con el título. Solo aplica a Registro de compras.
+        filters={
+          showPeriod ? (
+            <div className="w-full sm:w-64">
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Periodo
+              </label>
+              <FilterSelect
+                value={period}
+                onChange={(p) => updateParams({ period: p })}
+                options={monthOptions}
+                icon={<AnimatedIcon icon={Calendar02Icon} size={14} />}
+              />
+            </div>
+          ) : undefined
+        }
+      />
 
       <Tabs 
         value={tab} 
@@ -131,7 +147,7 @@ export default function AdminInventario() {
           ))}
         </div>
 
-        <InventoryKpis tab={effectiveView} period={period} />
+        <InventoryKpis tab={effectiveView} period={effectivePeriod} />
 
         <TabsContent value="purchases" className="space-y-6 outline-none">
           <PurchasesTable period={period} onOpenForm={() => setPurchaseFormOpen(true)} />
@@ -171,11 +187,11 @@ export default function AdminInventario() {
             </div>
 
             <TabsContent value="current" className="outline-none m-0">
-              <CurrentInventoryTable period={period} mode="inStock" />
+              <CurrentInventoryTable period={effectivePeriod} mode="inStock" />
             </TabsContent>
 
             <TabsContent value="outOfStock" className="outline-none m-0">
-              <CurrentInventoryTable period={period} mode="outOfStock" />
+              <CurrentInventoryTable period={effectivePeriod} mode="outOfStock" />
             </TabsContent>
           </Tabs>
         </TabsContent>

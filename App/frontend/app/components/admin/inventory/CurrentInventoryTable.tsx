@@ -245,7 +245,7 @@ export function CurrentInventoryTable({ period = "all", mode = "all" }: { period
           <Button variant="ghost" onClick={() => setRevertFor(null)}>
             Cancelar
           </Button>
-          <Button onClick={handleRevert} disabled={reverting} className="bg-destructive/90 hover:bg-destructive text-white">
+          <Button onClick={handleRevert} disabled={reverting} className="bg-destructive/90 text-destructive-foreground hover:bg-destructive">
         {reverting && <Spinner className="mr-2" />}
         Confirmar y Descartar
       </Button>

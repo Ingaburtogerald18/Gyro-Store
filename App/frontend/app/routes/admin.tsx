@@ -1,7 +1,7 @@
 import type { IconSvgElement } from "@hugeicons/react";
 import { AnimatedIcon, type IconGesture } from "~/components/ui/animated-icons";
-import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
-import { useEffect, useRef, useState } from 'react';
+import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Search01Icon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
@@ -27,6 +27,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import { Separator } from '~/components/ui/separator';
 import { NotificationsBell } from '~/components/admin/NotificationsBell';
+import { ThemeToggle } from '~/components/layout/ThemeToggle';
+import { CommandPalette, HOTKEY_DESTINATIONS } from '~/components/admin/CommandPalette';
+import { ShortcutsSheet } from '~/components/admin/ShortcutsSheet';
+import { useAdminHotkeys } from '~/hooks/useAdminHotkeys';
 import {
   Sidebar,
   SidebarContent,
@@ -40,7 +44,6 @@ import {
   SidebarRail,
   SidebarFooter,
   SidebarTrigger,
-  useSidebar,
 } from '~/components/ui/sidebar';
 import { cn } from '~/lib/utils';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
@@ -48,7 +51,7 @@ import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
 import { useGetMeQuery } from '~/store/api/authApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
-import { BrandLoader, ModuleLoader, useAnyQueryPending } from '~/components/ui/module-loader';
+import { BrandLoader } from '~/components/ui/module-loader';
 
 interface NavItem {
   name: string;
@@ -137,16 +140,17 @@ async function syncEntraPhoto(accessToken: string, providerToken: string): Promi
 }
 
 function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin: boolean; pathname: string }) {
-  const { setOpen } = useSidebar();
   const { data: config } = useGetConfigQuery();
   const reduceMotion = useReducedMotion();
   
+  // Sin `onMouseEnter`/`onMouseLeave`.
+  // La expansión por hover abría el menú cuando el mouse pasaba de camino a
+  // otra cosa —el sidebar se movía solo, sin que nadie lo pidiera— y no existe
+  // en trackpad ni en touch. Ahora abre y cierra con el `SidebarTrigger`, y
+  // `SidebarProvider` persiste el estado en cookie: la elección del usuario
+  // sobrevive al refresh.
   return (
-    <Sidebar 
-      collapsible="icon" 
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <Sidebar collapsible="icon">
       {/* La marca va DENTRO de SidebarContent, no en un SidebarHeader.
           `SidebarHeader` es un hermano flex del contenido, así que quedaba
           clavado arriba mientras el menú se centraba: logo y botones sin
@@ -163,22 +167,35 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
           to="/admin"
           className="flex shrink-0 flex-col items-center gap-2 rounded-lg px-2 py-4 transition-opacity hover:opacity-80 group-data-[collapsible=icon]:py-2"
         >
+          {/* Con `prefers-reduced-motion` se usa el logo ESTÁTICO, no el video.
+              Un video en loop es movimiento permanente en pantalla: es
+              exactamente lo que esa preferencia pide evitar, y además ahorra la
+              descarga. `preload="metadata"` para no bajar el archivo entero
+              antes de que haga falta. */}
           {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
-            config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
+            !reduceMotion &&
+            (config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) ||
+              config?.images?.logoAnimated?.includes('video')) ? (
               <video
                 src={config.images.logoAnimated}
                 autoPlay loop muted playsInline
-                className="size-12 shrink-0 rounded-full object-contain transition-[width,height] duration-200 group-data-[collapsible=icon]:size-8"
+                preload="metadata"
+                aria-hidden
+                className="size-9 shrink-0 rounded-full object-contain transition-[width,height] duration-200 group-data-[collapsible=icon]:size-7"
               />
             ) : (
               <img
                 src={config?.images?.logoStatic || config?.images?.logoAnimated}
                 alt="Gyro Store"
-                className="size-12 shrink-0 object-contain transition-[width,height] duration-200 group-data-[collapsible=icon]:size-8"
+                width={36}
+                height={36}
+                loading="lazy"
+                decoding="async"
+                className="size-9 shrink-0 object-contain transition-[width,height] duration-200 group-data-[collapsible=icon]:size-7"
               />
             )
           ) : (
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-[width,height] duration-200 group-data-[collapsible=icon]:size-8">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-[width,height] duration-200 group-data-[collapsible=icon]:size-7">
               <AnimatedIcon icon={Store01Icon} size={24} strokeWidth={2} />
             </div>
           )}
@@ -202,24 +219,35 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
 
           return (
             <SidebarGroup key={group.label}>
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              {/* `hidden` en rail: la etiqueta del grupo se recortaba a dos
+                  letras ilegibles y dejaba un hueco entre bloques de iconos. */}
+              <SidebarGroupLabel className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground/70 group-data-[collapsible=icon]:hidden">
+                {group.label}
+              </SidebarGroupLabel>
               <SidebarMenu>
                 {allowedItems.map((item) => {
                   const isActive = item.end
                     ? pathname === item.to
                     : pathname.startsWith(item.to);
 
-                  // Los módulos que aún no existen se muestran, pero apagados:
+                  // Los módulos que aún no existen se muestran con un badge
+                  // "Pronto" en vez de atenuados al 40 %: un ítem medio borrado
+                  // se lee como un bug de renderizado, no como roadmap.
+                  // `aria-disabled` en lugar de `disabled` para que el lector de
+                  // pantalla lo anuncie y no lo omita.
                   if (!item.ready) {
                     return (
                       <SidebarMenuItem key={item.name}>
                         <SidebarMenuButton
-                          disabled
-                          tooltip="Próximamente"
-                          className="cursor-not-allowed opacity-40 [&_svg]:size-6 group-data-[collapsible=icon]:size-10!"
+                          aria-disabled
+                          tooltip={`${item.name} · Próximamente`}
+                          className="cursor-default text-muted-foreground [&_svg]:size-6 group-data-[collapsible=icon]:size-10!"
                         >
                           <AnimatedIcon icon={item.icon} size={24} strokeWidth={2} />
                           <span className="text-[17px]">{item.name}</span>
+                          <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide group-data-[collapsible=icon]:hidden">
+                            Pronto
+                          </span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -303,35 +331,27 @@ export default function AdminLayout() {
   // Entra ese metadata viene vacío.
   const profilePhoto = useAppSelector(selectUserPhoto);
 
-  // ── Overlay de transición entre módulos ──
-  // Se muestra al cambiar de ruta y se queda hasta que las queries del módulo
-  // nuevo respondan (con un mínimo anti-parpadeo y un tope de seguridad), para
-  // no revelar la vista hasta que el backend haya contestado.
-  const anyPending = useAnyQueryPending();
+  // ── Sin overlay entre módulos ──
+  // Acá vivía un `ModuleLoader` que tapaba el contenido en CADA cambio de ruta,
+  // con un mínimo anti-parpadeo de 450 ms y un tope de 6 s. El mínimo se pagaba
+  // siempre: con el backend respondiendo en 80 ms, la navegación igual costaba
+  // medio segundo de pantalla tapada. Un mínimo artificial no arregla el
+  // parpadeo, solo lo convierte en lentitud constante.
+  //
+  // Lo reemplaza la barra fina de `GlobalProgress` (que aparece recién a los
+  // 150 ms, así que en las cargas rápidas no se ve nada) más los skeletons de
+  // cada bloque, que ocupan la forma final del contenido. Ver Docs/16.
   const reduceMotion = useReducedMotion();
-  const [moduleLoading, setModuleLoading] = useState(false);
-  const loadStartRef = useRef(0);
 
-  useEffect(() => {
-    loadStartRef.current = Date.now();
-    setModuleLoading(true);
-  }, [location.pathname]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  useEffect(() => {
-    // Aún hay requests en vuelo: mantené el overlay.
-    if (!moduleLoading || anyPending) return;
-    const MIN = reduceMotion ? 0 : 450;
-    const remaining = Math.max(0, MIN - (Date.now() - loadStartRef.current));
-    const t = setTimeout(() => setModuleLoading(false), remaining);
-    return () => clearTimeout(t);
-  }, [anyPending, moduleLoading, reduceMotion]);
-
-  useEffect(() => {
-    // Tope: si algo se cuelga, nunca dejar el overlay pegado.
-    if (!moduleLoading) return;
-    const t = setTimeout(() => setModuleLoading(false), 6000);
-    return () => clearTimeout(t);
-  }, [moduleLoading]);
+  useAdminHotkeys({
+    destinations: HOTKEY_DESTINATIONS,
+    isAdmin,
+    onOpenPalette: () => setPaletteOpen(true),
+    onOpenShortcuts: () => setShortcutsOpen(true),
+  });
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -412,25 +432,29 @@ export default function AdminLayout() {
     <SidebarProvider data-skin="admin" defaultOpen={false}>
       <AdminSidebar user={user} isAdmin={isAdmin} pathname={location.pathname} />
 
+      {/* La barra de progreso NO se monta acá: `root.tsx` ya tiene una para
+          toda la app y dos instancias dibujarían dos barras. */}
       <SidebarInset className="relative">
-        <ModuleLoader show={moduleLoading} />
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border bg-background/80 px-4 backdrop-blur-md">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
 
+          {/* Breadcrumb REDUCIDO: solo la ruta, en `text-sm` y sin icono.
+              El icono y el peso duplicaban el `PageHeader` de abajo, que dice
+              exactamente lo mismo tres centímetros más abajo y más grande. Acá
+              la función es ubicar, no titular. */}
           <Breadcrumb>
-            <BreadcrumbList>
+            <BreadcrumbList className="text-sm">
               <BreadcrumbItem className="hidden sm:block">
                 <BreadcrumbLink asChild>
-                  <NavLink to="/admin">Admin</NavLink>
+                  <NavLink to="/admin" className="text-muted-foreground">Admin</NavLink>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               {current && (
                 <>
                   <BreadcrumbSeparator className="hidden sm:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbPage className="flex items-center gap-1.5">
-                      <AnimatedIcon icon={current.icon} size={16} strokeWidth={2} className="shrink-0" />
+                    <BreadcrumbPage className="font-normal text-foreground">
                       {current.name}
                     </BreadcrumbPage>
                   </BreadcrumbItem>
@@ -439,7 +463,20 @@ export default function AdminLayout() {
             </BreadcrumbList>
           </Breadcrumb>
 
+          {/* Disparador visible de ⌘K. Un atajo que nadie sabe que existe no
+              sirve: el botón es la única forma de que se descubra. */}
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="ml-4 hidden items-center gap-2 rounded-pill border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex sm:w-full sm:max-w-xs"
+          >
+            <AnimatedIcon icon={Search01Icon} size={14} strokeWidth={2} />
+            <span>Buscar…</span>
+            <kbd className="ml-auto rounded border border-border px-1 text-[10px]">⌘K</kbd>
+          </button>
+
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
             <NotificationsBell />
 
             {user && (
@@ -477,16 +514,29 @@ export default function AdminLayout() {
           </div>
         </header>
 
+        {/* Solo opacidad, sin `y`. El desplazamiento vertical al entrar hacía
+            parecer que la página reflowea, y además competía con la entrada de
+            cada bloque de contenido. Una sola animación de entrada por
+            pantalla. */}
+        {/* `max-w-[1600px]` + `mx-auto`: sin tope de ancho, en un monitor de
+            27" las tablas y los KPIs se estiraban a ~2400 px. Una fila de datos
+            de dos metros de ancho es imposible de seguir con la vista, y es lo
+            que más delata a una herramienta interna. */}
         <motion.main
           key={location.pathname}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: reduceMotion ? 0 : 0.15, ease: 'easeOut' }}
+          className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 py-6 lg:px-8 lg:py-8"
         >
           <Outlet />
         </motion.main>
       </SidebarInset>
+
+      {/* Montados UNA vez en el shell, no por ruta: los atajos tienen que
+          funcionar desde cualquier módulo. */}
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} isAdmin={isAdmin} />
+      <ShortcutsSheet open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </SidebarProvider>
   );
 }

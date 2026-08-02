@@ -3,6 +3,10 @@
 // agrega un campo público, se refleja acá.
 import { baseApi } from './baseApi';
 
+// La configuración del negocio (tasa de cambio, pozos, escalas, logos) cambia
+// una vez cada varios días y la consultan casi todas las pantallas. 5 minutos.
+const CONFIG_CACHE_SECONDS = 300;
+
 export interface StoreCategory {
   id: string;
   name: string;
@@ -30,6 +34,7 @@ export const configApi = baseApi.injectEndpoints({
     getConfig: build.query<StoreConfig, void>({
       query: () => 'config',
       providesTags: ['Config'],
+      keepUnusedDataFor: CONFIG_CACHE_SECONDS,
     }),
   }),
 });

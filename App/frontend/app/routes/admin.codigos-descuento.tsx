@@ -19,6 +19,7 @@ import type { MetaFunction } from '@remix-run/node';
 import { toast } from 'sonner';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
+import { PageHeader } from '~/components/layout/PageHeader';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Textarea } from '~/components/ui/textarea';
@@ -106,13 +107,11 @@ export default function AdminDiscountCodes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Códigos de descuento</h2>
-          <p className="text-muted-foreground mt-1">
-            Gestión de cupones de único uso. Rastrea canjes en pedidos web y punto de venta.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Tienda"
+        title="Códigos de descuento"
+        description="Gestión de cupones de único uso. Rastrea canjes en pedidos web y punto de venta."
+        actions={
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -183,7 +182,8 @@ export default function AdminDiscountCodes() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+        }
+      />
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

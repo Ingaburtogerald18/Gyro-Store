@@ -47,11 +47,14 @@ const STATUS_OPTIONS: FilterSelectOption[] = [
   { value: "received", label: "Recibido" },
 ];
 
+// Sin emojis (DESIGN.md §8): no siguen el tema, se ven distinto en cada sistema
+// operativo y un lector de pantalla los lee como "círculo verde grande".
+// El rango en la etiqueta ya dice cuál es cuál sin necesidad de color.
 const TRANSIT_OPTIONS: FilterSelectOption[] = [
   ALL_OPT,
-  { value: "good", label: `🟢 Bueno (< ${TRANSIT_BANDS.good} días)` },
-  { value: "regular", label: `🟠 Regular (${TRANSIT_BANDS.good}–${TRANSIT_BANDS.regular} días)` },
-  { value: "bad", label: `🔴 Atrasado (> ${TRANSIT_BANDS.regular} días)` },
+  { value: "good", label: `Bueno · menos de ${TRANSIT_BANDS.good} días` },
+  { value: "regular", label: `Regular · ${TRANSIT_BANDS.good}–${TRANSIT_BANDS.regular} días` },
+  { value: "bad", label: `Atrasado · más de ${TRANSIT_BANDS.regular} días` },
   { value: "transit", label: "En tránsito" },
   { value: "arrived", label: "Ya llegaron" },
   { value: "waiting", label: "Sin zarpar" },

@@ -91,13 +91,18 @@ export interface UpdateSaleInput {
 }
 
 /**
- * Una venta con sus líneas, que es lo que el editor necesita para precargar.
- * OJO: hoy NINGÚN endpoint la devuelve — `GET /api/sales` responde
- * `SaleListItem[]` sin `items` y no existe `GET /api/sales/:id`. El tipo vive
- * acá para que `SaleEditor` esté listo el día que el backend lo exponga.
+ * Una venta con sus líneas. La devuelve `GET /api/sales/:id`.
+ *
+ * Los campos financieros por línea son OPCIONALES porque el backend los recorta
+ * por rol: un vendedor recibe qué vendió y a cuánto, nunca el costo ni la
+ * ganancia de la tienda.
  */
 export interface SaleWithItems extends SaleListItem {
-  items: SaleLineInput[];
+  items: (SaleLineInput & {
+    costeFinalSnap?: number;
+    comision?: number;
+    gananciaTienda?: number;
+  })[];
 }
 
 export interface SaleListItem {
@@ -179,6 +184,35 @@ export const salesApi = baseApi.injectEndpoints({
     approveSale: build.mutation<{ ok: boolean }, string>({
       query: (id) => ({ url: `sales/${id}/approve`, method: 'POST' }),
       invalidatesTags: ['Sale'],
+      // ── Optimistic update ──
+      // Aprobar es un click sobre una fila que el admin está mirando. Esperar
+      // el round-trip para que la fila cambie de estado hace que el panel se
+      // sienta lento aunque el backend responda rápido. Acá la fila cambia al
+      // instante y, si el servidor rechaza, `undo()` la devuelve exactamente a
+      // donde estaba — no a un estado "refrescado" que podría diferir.
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patches = [
+          // La venta desaparece del listado de pendientes…
+          dispatch(
+            salesApi.util.updateQueryData('getSales', { status: 'pending_approval' }, (draft) => {
+              const i = draft.findIndex((s) => s.id === id);
+              if (i !== -1) draft.splice(i, 1);
+            }),
+          ),
+          // …y en "Todas" solo cambia de estado.
+          dispatch(
+            salesApi.util.updateQueryData('getSales', { status: undefined }, (draft) => {
+              const sale = draft.find((s) => s.id === id);
+              if (sale) sale.status = 'approved';
+            }),
+          ),
+        ];
+        try {
+          await queryFulfilled;
+        } catch {
+          patches.forEach((p) => p.undo());
+        }
+      },
     }),
     rejectSale: build.mutation<{ ok: boolean }, { id: string; reason: string }>({
       query: ({ id, reason }) => ({ url: `sales/${id}/reject`, method: 'POST', body: { reason } }),
@@ -186,6 +220,11 @@ export const salesApi = baseApi.injectEndpoints({
     }),
     getSales: build.query<SaleListItem[], { status?: string; sellerEmail?: string } | void>({
       query: (params) => ({ url: 'sales', params: params ?? undefined }),
+      providesTags: ['Sale'],
+    }),
+    /** Una venta con sus líneas. Alimenta el drawer de detalle (`?sale=<id>`). */
+    getSale: build.query<SaleWithItems, string>({
+      query: (id) => `sales/${id}`,
       providesTags: ['Sale'],
     }),
 
@@ -233,6 +272,7 @@ export const {
   useApproveSaleMutation,
   useRejectSaleMutation,
   useGetSalesQuery,
+  useGetSaleQuery,
   useGetCommissionPaymentsQuery,
   useGetSellerBalancesQuery,
   usePayCommissionsMutation,

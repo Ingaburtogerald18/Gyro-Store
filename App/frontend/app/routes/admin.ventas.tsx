@@ -15,7 +15,7 @@
 // reservas" de v1).
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { CancelCircleIcon, CheckmarkCircle01Icon, ShoppingCart02Icon, Add01Icon } from "@hugeicons/core-free-icons";
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -25,14 +25,17 @@ import React from 'react';
 import { AnimatedCheck } from '~/components/ui/animated-icons';
 
 
-import { Card, CardContent } from '~/components/ui/card';
+import { PageHeader } from '~/components/layout/PageHeader';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
 import { QueryState } from '~/components/ui/QueryState';
+import { SkeletonCard } from '~/components/ui/skeletons';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
-import { StatusBadge, type BadgeStatus } from '~/components/ui/StatusBadge';
+import { StatusBadge } from '~/components/ui/StatusBadge';
+import { SALE_STATUS, statusMeta } from '~/lib/status';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
@@ -44,17 +47,16 @@ import {
   type SaleListItem,
 } from '~/store/api/salesApi';
 import { Spinner } from "~/components/ui/spinner";
-import { SaleEditor } from '~/components/admin/sales/SaleEditor';
+// `SaleEditor` son 22 KB que hoy se descargaban al abrir Ventas aunque nadie
+// registrara nada. Con `lazy` el chunk viaja recién al abrir el diálogo — y
+// para entonces el usuario ya decidió esperar.
+const SaleEditor = lazy(() =>
+  import('~/components/admin/sales/SaleEditor').then((m) => ({ default: m.SaleEditor })),
+);
 import { SellerPerformance } from '~/components/admin/sales/SellerPerformance';
+import { SaleDetailDrawer } from '~/components/admin/sales/SaleDetailDrawer';
 
 export const meta: MetaFunction = () => [{ title: 'Ventas | Gyro Store Admin' }];
-
-const STATUS_META: Record<string, { label: string; status: BadgeStatus }> = {
-  pending_approval: { label: 'Pendiente', status: 'pending' },
-  approved: { label: 'Aprobada', status: 'success' },
-  paid: { label: 'Pagada', status: 'success' },
-  rejected: { label: 'Rechazada', status: 'error' },
-};
 
 const STATUS_TABS = [
   { value: 'pending_approval', label: 'Pendientes' },
@@ -77,6 +79,42 @@ export default function AdminVentas() {
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get('status') ?? 'pending_approval';
 
+  // `?nueva=1` abre el editor. Es lo que permite que "Registrar venta" de la
+  // paleta funcione desde cualquier módulo sin subir el estado del diálogo a un
+  // store global: la acción navega acá y la ruta interpreta el parámetro.
+  // Efecto secundario útil: la acción queda enlazable desde una notificación o
+  // un mensaje.
+  useEffect(() => {
+    if (searchParams.get('nueva') === '1') {
+      setIsEditorOpen(true);
+      // Se consume el parámetro para que cerrar el diálogo y recargar no lo
+      // vuelva a abrir.
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('nueva');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
+
+  // `?sale=<id>` abre el detalle. Vive en la URL, no en estado local, para que
+  // una notificación pueda enlazar al REGISTRO exacto y no solo a la pestaña
+  // que lo contiene.
+  const openSaleId = searchParams.get('sale');
+  const openSale = (id: string | null) =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (id) next.set('sale', id);
+        else next.delete('sale');
+        return next;
+      },
+      { replace: true },
+    );
+
   function setStatusFilter(next: string) {
     // `replace` para no llenar el historial con cada cambio de pestaña: volver
     // atrás debería salir de Ventas, no recorrer los filtros que se probaron.
@@ -86,7 +124,9 @@ export default function AdminVentas() {
   const {
     data: sales = [],
     isLoading: loadingSales,
+    isFetching: fetchingSales,
     isError: salesError,
+    refetch: refetchSales,
   } = useGetSalesQuery({
     status: statusFilter === 'all' ? undefined : statusFilter,
   });
@@ -94,16 +134,24 @@ export default function AdminVentas() {
   const [rejectFor, setRejectFor] = useState<SaleListItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  async function handleApprove(id: string) {
-    try {
-      await approveSale(id).unwrap();
-      toast.success('Venta aprobada.', {
-        icon: React.createElement(AnimatedCheck, { size: 18, autoPlay: true }),
-      });
-    } catch (err) {
-      toast.error(errMsg(err, 'No se pudo aprobar la venta.'));
-    }
-  }
+  // `useCallback` para poder incluirlo en las dependencias del `useMemo` de
+  // columnas. Antes se silenciaba la regla con un `eslint-disable`: la función
+  // se recreaba en cada render, así que incluirla habría reconstruido todas las
+  // columnas siempre. Silenciar la regla no arreglaba nada — solo escondía que
+  // las columnas capturaban una versión vieja de la función.
+  const handleApprove = useCallback(
+    async (id: string) => {
+      try {
+        await approveSale(id).unwrap();
+        toast.success('Venta aprobada.', {
+          icon: React.createElement(AnimatedCheck, { size: 18, autoPlay: true }),
+        });
+      } catch (err) {
+        toast.error(errMsg(err, 'No se pudo aprobar la venta.'));
+      }
+    },
+    [approveSale],
+  );
 
   async function handleReject() {
     if (!rejectFor || !rejectReason.trim()) {
@@ -125,16 +173,35 @@ export default function AdminVentas() {
     const actionsColumn: ColumnDef<SaleListItem, unknown> = {
       id: 'actions',
       header: '',
+      // `stopPropagation` en los dos: la fila ahora abre el drawer de detalle,
+      // así que sin esto aprobar una venta además abriría el panel de la venta
+      // que se acaba de aprobar.
       cell: ({ row }) =>
         row.original.status === 'pending_approval' ? (
           <div className="flex justify-end gap-1.5">
             {/* Aprobar / rechazar solo admin. */}
             {isAdmin && (
               <>
-                <Button size="sm" variant="ghost" onClick={() => handleApprove(row.original.id)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Aprobar venta"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleApprove(row.original.id);
+                  }}
+                >
                   <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="text-success" aria-hidden />
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setRejectFor(row.original)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Rechazar venta"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRejectFor(row.original);
+                  }}
+                >
                   <AnimatedIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="text-destructive" aria-hidden />
                 </Button>
               </>
@@ -178,36 +245,52 @@ export default function AdminVentas() {
         accessorKey: 'status',
         header: 'Estado',
         cell: ({ row }) => {
-          const meta = STATUS_META[row.original.status] ?? { label: row.original.status, status: 'neutral' as const };
+          const meta = statusMeta(SALE_STATUS, row.original.status);
           return <StatusBadge status={meta.status} label={meta.label} />;
         },
       },
       actionsColumn,
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [isAdmin, handleApprove]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Ventas</h2>
-          <p className="text-muted-foreground">Listado general y registro de ventas.</p>
-        </div>
-        <Button onClick={() => setIsEditorOpen(true)}>
-          <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
-          Registrar Venta
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Operación"
+        title="Ventas"
+        description="Listado general y registro de ventas."
+        actions={
+          <Button onClick={() => setIsEditorOpen(true)}>
+            <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+            Registrar Venta
+          </Button>
+        }
+      />
 
-      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
-          <DialogHeader>
-            <DialogTitle>Registrar Venta</DialogTitle>
-          </DialogHeader>
-          <SaleEditor onDone={() => setIsEditorOpen(false)} />
-        </DialogContent>
-      </Dialog>
+      {/* Drawer y no modal. Un `Dialog` de 5xl con scroll interno es el peor
+          contenedor para un formulario largo: se pierde el listado de
+          referencia y el scroll de adentro pelea con el de la página. Acá el
+          header queda fijo, el cuerpo scrollea solo, y las ventas pendientes se
+          siguen viendo detrás. */}
+      <Sheet open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl lg:max-w-3xl">
+          <SheetHeader className="shrink-0 border-b border-border px-5 py-4">
+            <SheetTitle>Registrar venta</SheetTitle>
+            <SheetDescription>
+              El stock se reserva al registrar y se descuenta al aprobar.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {/* El fallback tiene la ALTURA aproximada del editor: con un spinner
+                chico el panel se abriría casi vacío y saltaría al llegar el
+                chunk. */}
+            <Suspense fallback={<SkeletonCard lines={8} className="border-none" />}>
+              <SaleEditor onDone={() => setIsEditorOpen(false)} />
+            </Suspense>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* El vendedor no tiene Dashboard en su nav, así que su reportería propia
           vive acá. Al admin no se le muestra: ya la tiene completa (y de todo
@@ -225,18 +308,43 @@ export default function AdminVentas() {
           </TabsList>
         </Tabs>
 
-        <Card className="bg-card border shadow-sm">
-          <CardContent className="pt-6">
-            <QueryState
-              loading={loadingSales}
-              error={salesError}
-              loadingFallback={<div className="h-48 animate-pulse rounded-lg bg-muted" />}
-            >
-              <DataTable columns={columns} data={sales} searchPlaceholder="Buscar por vendedor…" emptyText="No hay ventas en este estado." />
-            </QueryState>
-          </CardContent>
-        </Card>
+        {/* Sin `<Card>` envolvente: `DataTable` ya trae su borde y su fondo, así
+            que envolverla daba doble borde y una sombra de más sobre el
+            contenido más importante de la pantalla. La tabla va directo en el
+            flujo, a ancho completo. */}
+        {/* `isLoading` (primera vez) → esqueleto; `isFetching` (refetch)
+            → los datos que ya estaban, atenuados. Cambiar de pestaña no
+            debería vaciar la tabla. */}
+        <QueryState
+          loading={loadingSales}
+          fetching={fetchingSales}
+          error={salesError}
+          onRetry={refetchSales}
+          shape="table"
+          shapeCount={6}
+        >
+          <DataTable
+            tableId="ventas"
+            columns={columns}
+            data={sales}
+            searchPlaceholder="Buscar por vendedor…"
+            exportFilename="ventas"
+            emptyText="No hay ventas en este estado."
+            onRowClick={(row) => openSale(row.id)}
+          />
+        </QueryState>
       </div>
+
+      <SaleDetailDrawer
+        saleId={openSaleId}
+        onClose={() => openSale(null)}
+        isAdmin={isAdmin}
+        onApprove={handleApprove}
+        onReject={(id) => {
+          const sale = sales.find((s) => s.id === id);
+          if (sale) setRejectFor(sale);
+        }}
+      />
 
       <Dialog open={!!rejectFor} onOpenChange={(open) => !open && setRejectFor(null)}>
         <DialogContent>

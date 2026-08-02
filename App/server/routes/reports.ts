@@ -94,7 +94,19 @@ router.get(
       // El vendedor ve SU volumen y SU comisión; no la estructura de costos de
       // la tienda. Mismo criterio que POST /api/sales/quote: con el coste y el
       // precio se despeja el margen, así que se recortan juntos.
-      const { coste_total, ganancia_tienda_total, salary_acumulado, pozos_recogidos, ...rest } = kpis;
+      //
+      // Los `_prev` de esos mismos campos se recortan también: con el valor del
+      // mes pasado y el delta se reconstruye el actual, así que dejarlos sería
+      // filtrar por la ventana de al lado lo que se cerró por la puerta.
+      const {
+        coste_total,
+        ganancia_tienda_total,
+        salary_acumulado,
+        pozos_recogidos,
+        coste_total_prev,
+        ganancia_tienda_total_prev,
+        ...rest
+      } = kpis;
       res.json(rest);
       return;
     }

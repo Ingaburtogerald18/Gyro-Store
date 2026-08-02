@@ -112,8 +112,16 @@
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-html {
+/* `color-scheme` tiene que SEGUIR a `data-theme`, no quedar fijo en dark.
+   Fijo, el navegador pintaba scrollbars, `<select>` nativos y el autofill en
+   oscuro incluso con el tema claro activo — controles negros sobre una interfaz
+   blanca. */
+html[data-theme='dark'] {
   color-scheme: dark;
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
 }
 
 body {
@@ -158,11 +166,21 @@ body {
   --border: oklch(0.925 0.005 214.3);
   --input: oklch(0.925 0.005 214.3);
   --ring: oklch(0.723 0.014 214.4);
-  --chart-1: oklch(0.871 0.15 154.449);
-  --chart-2: oklch(0.723 0.219 149.579);
-  --chart-3: oklch(0.627 0.194 149.214);
-  --chart-4: oklch(0.527 0.154 150.069);
-  --chart-5: oklch(0.448 0.119 151.328);
+  /* ── Escala de gráficos (CLARO) ──
+     Un solo hue (el primary, ~152) variando lightness, más un neutro para
+     "otros". Dos correcciones sobre lo que había:
+
+     1. Saltos PAREJOS de 0.13 en L. Antes iban de 0.148 a 0.079, así que los
+        dos segmentos más oscuros del donut se confundían entre sí.
+     2. Rango propio por tema. Los cinco valores eran IDÉNTICOS en claro y
+        oscuro, con L de 0.871 a 0.448: sobre fondo blanco el más claro casi no
+        se veía, y sobre fondo oscuro el más oscuro tampoco. Acá el rango baja
+        (0.74 → 0.35) para contrastar contra el blanco. */
+  --chart-1: oklch(0.74 0.14 152);
+  --chart-2: oklch(0.61 0.16 152);
+  --chart-3: oklch(0.48 0.14 152);
+  --chart-4: oklch(0.35 0.10 152);
+  --chart-5: oklch(0.62 0.02 150);
   --radius: 0.625rem;
   --sidebar: oklch(0.987 0.002 197.1);
   --sidebar-foreground: oklch(0.148 0.004 228.8);
@@ -216,11 +234,13 @@ body {
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.56 0.021 213.5);
-  --chart-1: oklch(0.871 0.15 154.449);
-  --chart-2: oklch(0.723 0.219 149.579);
-  --chart-3: oklch(0.627 0.194 149.214);
-  --chart-4: oklch(0.527 0.154 150.069);
-  --chart-5: oklch(0.448 0.119 151.328);
+  /* Escala de gráficos (OSCURO). Mismo hue y mismos saltos de 0.13, pero el
+     rango sube (0.88 → 0.49) para contrastar contra el fondo oscuro. */
+  --chart-1: oklch(0.88 0.13 152);
+  --chart-2: oklch(0.75 0.17 152);
+  --chart-3: oklch(0.62 0.16 152);
+  --chart-4: oklch(0.49 0.12 152);
+  --chart-5: oklch(0.60 0.02 150);
   --sidebar: oklch(0.218 0.008 223.9);
   --sidebar-foreground: oklch(0.987 0.002 197.1);
   --sidebar-primary: oklch(0.696 0.17 162.48);

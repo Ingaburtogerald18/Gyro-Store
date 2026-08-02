@@ -63,7 +63,7 @@ export function CartDrawer() {
           side={isDesktop ? 'right' : 'top'}
           className="flex flex-col bg-card p-0 max-md:h-[85dvh] max-md:rounded-b-3xl md:max-w-md"
         >
-          <SheetHeader className="shrink-0 border-b border p-4">
+          <SheetHeader className="shrink-0 border-b border-border p-4">
             <SheetTitle className="text-lg font-bold text-foreground">Tu carrito</SheetTitle>
             <SheetDescription className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {items.length > 0 ? (
@@ -175,7 +175,7 @@ export function CartDrawer() {
           </div>
 
           {items.length > 0 && (
-            <footer className="shrink-0 border-t border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <footer className="shrink-0 border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-muted-foreground">Total</span>
                 <span className="text-xl font-bold text-foreground tabular-nums">

@@ -1,12 +1,14 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Copy01Icon, Delete02Icon, Edit02Icon, File01Icon, Invoice01Icon, PlusSignIcon, Tick01Icon, Time02Icon, ViewIcon } from "@hugeicons/core-free-icons";
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 
 import { cn } from '~/lib/utils';
 
+import { PageHeader } from '~/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { DataTable } from '~/components/ui/DataTable';
@@ -15,6 +17,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Spinner } from '~/components/ui/spinner';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
+import { SkeletonCard } from '~/components/ui/skeletons';
 import { RowActionsMenu } from '~/components/ui/RowActionsMenu';
 import { errMsg, formatCordobas } from "~/lib/formatters";
 import {
@@ -25,7 +29,10 @@ import {
 } from '~/store/api/invoicesApi';
 import { TicketPrintModal } from '~/components/admin/invoices/TicketPrintModal';
 import { InvoiceEditDialog } from '~/components/admin/invoices/InvoiceEditDialog';
-import { InvoiceEditor } from "~/components/admin/invoices/InvoiceEditor";
+// 21 KB que se descargaban al abrir Facturación aunque nadie emitiera nada.
+const InvoiceEditor = lazy(() =>
+  import('~/components/admin/invoices/InvoiceEditor').then((m) => ({ default: m.InvoiceEditor })),
+);
 
 export const meta: MetaFunction = () => [{ title: 'Facturación | Gyro Store Admin' }];
 
@@ -82,6 +89,23 @@ export default function AdminFacturacion() {
   const { data: voidInvoices = [], isLoading: loadingVoid, isError: voidError } = useGetInvoicesQuery({ status: 'void' });
 
   const [isCreating, setIsCreating] = useState(false);
+
+  // `?nueva=1` abre el editor: así "Emitir factura" de la paleta (⌘K) funciona
+  // desde cualquier módulo. Ver la nota en `CommandPalette.tsx`.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('nueva') === '1') {
+      setIsCreating(true);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('nueva');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
   const [printInvoiceId, setPrintInvoiceId] = useState<string | null>(null);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   // Una sola confirmación para las dos acciones destructivas: `mode` decide si
@@ -313,21 +337,22 @@ export default function AdminFacturacion() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Facturación</h2>
-          <p className="text-muted-foreground">Genera facturas (ticket) y luego liganlas al registrar la venta.</p>
-        </div>
-        <Button onClick={() => setIsCreating(true)} size="lg" className="shrink-0 shadow-sm">
-          <AnimatedIcon icon={PlusSignIcon} size={18} strokeWidth={2.5} className="mr-1.5" />
-          Nueva Factura
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Tienda"
+        title="Facturación"
+        description="Genera facturas (ticket) y luego liganlas al registrar la venta."
+        actions={
+          <Button onClick={() => setIsCreating(true)}>
+            <AnimatedIcon icon={PlusSignIcon} size={16} strokeWidth={2} className="mr-1.5" />
+            Nueva Factura
+          </Button>
+        }
+      />
 
       <Card className="bg-card border shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg text-foreground flex items-center gap-2">
-            <AnimatedIcon icon={Invoice01Icon} size={20} className="text-amber-500" />
+            <AnimatedIcon icon={Invoice01Icon} size={20} className="text-warning" />
             Facturas pendientes de vincular
           </CardTitle>
           <CardDescription className="text-muted-foreground">
@@ -347,7 +372,7 @@ export default function AdminFacturacion() {
               </div>
             }
           >
-            <DataTable columns={unlinkedColumns} data={unlinkedInvoices} hideSearch emptyText="No hay facturas pendientes." />
+            <DataTable tableId="facturas-pendientes" columns={unlinkedColumns} data={unlinkedInvoices} hideSearch emptyText="No hay facturas pendientes." />
           </QueryState>
         </CardContent>
       </Card>
@@ -362,7 +387,14 @@ export default function AdminFacturacion() {
             error={linkedError}
             loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-muted" />}
           >
-            <DataTable columns={linkedColumns} data={linkedInvoices} searchPlaceholder="Buscar…" emptyText="No hay facturas vinculadas." />
+            <DataTable
+              tableId="facturas-vinculadas"
+              columns={linkedColumns}
+              data={linkedInvoices}
+              searchPlaceholder="Buscar por número o cliente…"
+              exportFilename="facturas"
+              emptyText="No hay facturas vinculadas."
+            />
           </QueryState>
         </CardContent>
       </Card>
@@ -455,20 +487,32 @@ export default function AdminFacturacion() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isCreating} onOpenChange={setIsCreating}>
-        <DialogContent className="w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nueva Factura (POS)</DialogTitle>
-          </DialogHeader>
-          
-          <div className="pt-2">
-            <InvoiceEditor onCreated={(id) => {
-              setIsCreating(false);
-              setPrintInvoiceId(id);
-            }} />
+      {/* Drawer y no modal: el formulario es largo y un `Dialog` con
+          `max-h-[90vh] overflow-y-auto` mete un scroll interno que compite con
+          el de la página. Acá el header queda fijo, el cuerpo scrollea solo, y
+          el listado de facturas se sigue viendo detrás — que es el contexto que
+          el cajero necesita para saber en qué número va. */}
+      <Sheet open={isCreating} onOpenChange={setIsCreating}>
+        <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl lg:max-w-3xl">
+          <SheetHeader className="shrink-0 border-b border-border px-5 py-4">
+            <SheetTitle>Nueva factura (POS)</SheetTitle>
+            <SheetDescription>
+              Se emite el ticket y después se vincula al registrar la venta.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <Suspense fallback={<SkeletonCard lines={8} className="border-none" />}>
+              <InvoiceEditor
+                onCreated={(id) => {
+                  setIsCreating(false);
+                  setPrintInvoiceId(id);
+                }}
+              />
+            </Suspense>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

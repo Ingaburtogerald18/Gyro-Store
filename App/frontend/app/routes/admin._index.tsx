@@ -1,11 +1,12 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Alert02Icon, CheckmarkCircle01Icon, DollarSquareIcon, DropletIcon, Package01Icon, PercentIcon, PieChartIcon, PlusSignSquareIcon, ShoppingCart02Icon, TruckIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
-import { useState, useMemo, useEffect } from 'react';
+import { lazy, Suspense, useState, useMemo, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 // SpotlightCard es nuestro (resplandor que sigue al cursor), distinto del `Card`
 // de shadcn: por eso lleva nombre propio y no colisiona al importar.
-import { SpotlightCard, StatCard } from '~/components/ui/stat-card';
+import { SpotlightCard } from '~/components/ui/stat-card';
 import { QueryState } from '~/components/ui/QueryState';
+import { SkeletonChart } from '~/components/ui/skeletons';
 import {
   ChartContainer,
   ChartTooltip,
@@ -17,7 +18,7 @@ import { Pie, PieChart } from 'recharts';
 
 import { NavLink } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
-import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetDeliveryInvoicesQuery } from '~/store/api/reportsApi';
+import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetDeliveryInvoicesQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
 import { useGetCuadreQuery } from '~/store/api/cuadreApi';
 import { useGetAccountsQuery } from '~/store/api/cajaApi';
 import { useAppSelector } from '~/store/hooks';
@@ -27,13 +28,21 @@ import { cn } from '~/lib/utils';
 
 // Reportería de ventas. Vive en components/admin/reports/ porque el panel del
 // vendedor en /admin/ventas reusa la tendencia y el top de productos.
+import { PageHeader } from '~/components/layout/PageHeader';
+import { SectionLabel } from '~/components/layout/SectionLabel';
+import { CompactKpi, HeroMetric } from '~/components/admin/reports/HeroMetric';
 import { PeriodPicker } from '~/components/admin/reports/PeriodPicker';
-import { SalesTrendChart } from '~/components/admin/reports/SalesTrendChart';
+// recharts es la dependencia más pesada del panel y solo la usa Reportería.
+// Con `lazy`, abrir Ventas o Inventario ya no descarga una librería de gráficos
+// que esas pantallas no dibujan.
+const SalesTrendChart = lazy(() =>
+  import('~/components/admin/reports/SalesTrendChart').then((m) => ({ default: m.SalesTrendChart })),
+);
 import { TopProductsTable } from '~/components/admin/reports/TopProductsTable';
 import { SalesBreakdownCards } from '~/components/admin/reports/SalesBreakdownCards';
 import { ExportSalesCsvButton } from '~/components/admin/reports/ExportSalesCsvButton';
 import { DrilldownDialog } from '~/components/admin/reports/DrilldownDialog';
-import { getPeriodRange, isPeriodReady, type CustomRange, type PeriodId, type PeriodRange } from '~/components/admin/reports/period';
+import { getPeriodRange, isPeriodReady, pickBucket, type CustomRange, type PeriodId, type PeriodRange } from '~/components/admin/reports/period';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Reportería | Gyro Store Admin' }];
@@ -65,7 +74,9 @@ function CuadreBanner({ range }: { range: PeriodRange }) {
   const { data: cuadre } = useGetCuadreQuery();
   const { data: accounts = [] } = useGetAccountsQuery();
   const [deliveryOpen, setDeliveryOpen] = useState(false);
-  const { data: deliveryInvoices = [] } = useGetDeliveryInvoicesQuery(range, { skip: !deliveryOpen });
+  // Sin `skip`: la tarjeta ahora muestra el MONTO, no un "Ver detalle". El dato
+  // tiene que estar antes de abrir el pop-up, no después.
+  const { data: deliveryInvoices = [] } = useGetDeliveryInvoicesQuery(range);
 
   if (!cuadre) return null;
 
@@ -76,8 +87,8 @@ function CuadreBanner({ range }: { range: PeriodRange }) {
   const deliveryTotal = deliveryInvoices.reduce((sum, inv) => sum + inv.delivery_fee, 0);
 
   return (
-    <section className="mb-6 space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Estado del negocio</h3>
+    <section className="space-y-3">
+      <SectionLabel>Estado del negocio</SectionLabel>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Ventas pendientes — link a /admin/ventas?status=pending_approval */}
         <NavLink
@@ -113,26 +124,33 @@ function CuadreBanner({ range }: { range: PeriodRange }) {
           </p>
         </NavLink>
 
-        {/* Delivery del periodo — botón que abre pop-up */}
+        {/* Delivery del periodo.
+            Antes mostraba el TEXTO "Ver detalle" donde sus tres vecinas
+            muestran una cifra, y usaba un icono con `opacity-0` como espaciador.
+            Ahora muestra el monto real: la tarjeta responde la pregunta sin
+            obligar a abrirla, y el pop-up queda para el desglose. */}
         <button
           onClick={() => setDeliveryOpen(true)}
-          className="rounded-card border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
+          className="rounded-card border border-border bg-card p-4 text-left transition-colors hover:border-primary/40"
         >
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-2 text-sm text-muted-foreground">
-              <AnimatedIcon icon={TruckIcon} size={16} strokeWidth={2} />
-              Delivery del periodo
-            </span>
-          </div>
+          <span className="flex items-center gap-2 text-sm text-muted-foreground">
+            <AnimatedIcon icon={TruckIcon} size={16} strokeWidth={2} />
+            Delivery del periodo
+          </span>
           <p className="nums mt-2 text-2xl font-bold text-foreground">
-            {/* Muestra el total de delivery del cuadre de hoy como preview */}
-            <AnimatedIcon icon={TruckIcon} size={16} strokeWidth={2} className="inline mr-1 opacity-0" />
-            Ver detalle
+            {formatCordobas(deliveryTotal)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Facturas con envío en el periodo</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {deliveryInvoices.length > 0
+              ? `${deliveryInvoices.length} facturas con envío`
+              : 'Ver facturas con envío'}
+          </p>
         </button>
 
-        {cuadre.saldosCuentas.map((s) => (
+        {/* Máximo dos cuentas. Con cinco, la grilla de cuatro columnas se
+            desarmaba y el banner pasaba a dos filas de tarjetas secundarias,
+            robándole espacio al héroe. El resto vive en Caja y Bancos. */}
+        {cuadre.saldosCuentas.slice(0, 2).map((s) => (
           <div key={s.accountId} className="rounded-card border border-border bg-card p-4">
             <span className="flex items-center gap-2 text-sm text-muted-foreground">
               <AnimatedIcon icon={Wallet01Icon} size={16} strokeWidth={2} />
@@ -142,6 +160,18 @@ function CuadreBanner({ range }: { range: PeriodRange }) {
             <p className="mt-1 text-xs text-muted-foreground">Saldo actual</p>
           </div>
         ))}
+
+        {cuadre.saldosCuentas.length > 2 && (
+          <NavLink
+            to="/admin/caja"
+            className="flex flex-col justify-center rounded-card border border-dashed border-border p-4 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            <span className="font-medium">
+              +{cuadre.saldosCuentas.length - 2} cuentas más
+            </span>
+            <span className="mt-1 text-xs">Ver todas en Caja y Bancos</span>
+          </NavLink>
+        )}
       </div>
 
       {/* Pop-up de delivery del periodo */}
@@ -204,6 +234,11 @@ export default function AdminDashboard() {
 
   const { data: kpis, isLoading, isError } = useGetKpisQuery(queryParams, { skip: !periodReady });
 
+  // Se pide acá además de dentro de `CuadreBanner` solo para saber DÓNDE
+  // colocarlo. RTK Query deduplica: es la misma entrada de caché, un request.
+  const { data: cuadreForPlacement } = useGetCuadreQuery();
+  const bannerOnTop = (cuadreForPlacement?.ventasPendientes ?? 0) > 0;
+
   // ── Drilldown state ──
   const [drilldown, setDrilldown] = useState<DrilldownType>(null);
 
@@ -220,6 +255,18 @@ export default function AdminDashboard() {
   // el llenado. Si el usuario pidió menos movimiento, van directo al valor.
   const reduce = useReducedMotion();
   const [barsReady, setBarsReady] = useState(false);
+
+  // La dependencia es una CLAVE PRIMITIVA, no el objeto `kpis`.
+  //
+  // `kpis` es el objeto de RTK Query: cambia de referencia en cada refetch
+  // aunque los datos sean idénticos. Dependiendo de él, este efecto reiniciaba
+  // la animación de las barras en cada revalidación —las barras volvían a cero
+  // y subían de nuevo sin que nada hubiera cambiado—. Con la suma de los pozos,
+  // solo se reinicia cuando el reparto cambió de verdad.
+  const pozosKey = kpis
+    ? Object.values(kpis.pozos_recogidos || {}).reduce((s, v) => s + (v || 0), 0)
+    : 0;
+
   useEffect(() => {
     if (reduce) {
       setBarsReady(true);
@@ -228,7 +275,7 @@ export default function AdminDashboard() {
     setBarsReady(false);
     const id = requestAnimationFrame(() => setBarsReady(true));
     return () => cancelAnimationFrame(id);
-  }, [reduce, kpis]);
+  }, [reduce, pozosKey]);
 
   // A dónde va cada córdoba vendido. Se descartan los tramos en cero para que
   // el donut no dibuje segmentos invisibles.
@@ -247,6 +294,20 @@ export default function AdminDashboard() {
     [kpis],
   );
 
+  // Sparkline del héroe.
+  //
+  // Reusa la serie del gráfico de tendencia en vez de pedir un endpoint nuevo.
+  // Los argumentos son EXACTAMENTE los mismos que usa `SalesTrendChart`
+  // (`{...range, bucket, sellerUid}`), así que RTK Query reconoce la misma
+  // entrada de caché y sale UN solo request, no dos. Si algún día cambian los
+  // argumentos de uno de los dos, se duplica el pedido en silencio.
+  const { data: trend = [] } = useGetSalesTrendQuery(
+    { ...queryParams, bucket: pickBucket(queryParams), sellerUid: undefined },
+    { skip: !periodReady || !isAdmin },
+  );
+
+  const heroSeries = useMemo(() => trend.map((p) => ({ value: p.total_vendido })), [trend]);
+
   // Totales para los footers de los pop-ups
   const ledgerTotalVendido = ledger.reduce((s, r) => s + r.total_vendido, 0);
   const ledgerTotalCoste = ledger.reduce((s, r) => s + r.coste, 0);
@@ -254,14 +315,14 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Reportería</h2>
-          {isAdmin && (
-            <p className="text-muted-foreground">Reportería de ventas del periodo elegido.</p>
-          )}
-        </div>
-        <div className="flex flex-col items-start gap-3 sm:items-end">
+      <PageHeader
+        eyebrow="Operación"
+        title="Reportería"
+        description={isAdmin ? 'Ventas del periodo elegido.' : undefined}
+        actions={isAdmin ? <ExportSalesCsvButton range={queryParams} /> : undefined}
+        // El selector de periodo baja a su propia fila. Apilado a la derecha del
+        // título competía con él y en móvil se acomodaba de forma impredecible.
+        filters={
           <PeriodPicker
             period={range}
             onPeriodChange={setRange}
@@ -269,11 +330,17 @@ export default function AdminDashboard() {
             onCustomChange={setCustom}
             layoutId="dashboard-range"
           />
-          {isAdmin && <ExportSalesCsvButton range={queryParams} />}
-        </div>
-      </div>
+        }
+      />
 
-      <CuadreBanner range={queryParams} />
+      {/* El banner sube arriba del héroe SOLO si hay algo que resolver. El
+          espacio caro de la parte superior es para lo que requiere acción; si
+          todo está al día, esos números son referencia y van abajo. */}
+      {bannerOnTop && (
+        <div className="mb-6">
+          <CuadreBanner range={queryParams} />
+        </div>
+      )}
 
       {!periodReady ? (
         <div className="rounded-card border border-dashed py-16 text-center">
@@ -286,75 +353,87 @@ export default function AdminDashboard() {
         loading={isLoading}
         error={isError}
         empty={!kpis}
-        loadingFallback={
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="h-32 rounded-card bg-muted animate-pulse" />
-            <div className="h-32 rounded-card bg-muted animate-pulse" />
-            <div className="h-32 rounded-card bg-muted animate-pulse" />
-            <div className="h-32 rounded-card bg-muted animate-pulse" />
-          </div>
-        }
+        // Cinco, no cuatro: el esqueleto tiene que tener la MISMA grilla que el
+        // contenido. Con cuatro `div` sueltos, al llegar los datos aparecía una
+        // quinta tarjeta y toda la fila saltaba.
+        shape="stats"
+        shapeCount={isAdmin ? 5 : 3}
       >
         {kpis && (
           <div className="space-y-6">
-            <div className={cn('grid gap-4 md:grid-cols-2', isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-3')}>
-              <StatCard
-                icon={ShoppingCart02Icon}
-                label="Ventas"
-                countTo={kpis.total_ventas}
-                sub={`${kpis.total_unidades} unidades`}
-                color="indigo"
-                delay={0}
-                href="/admin/ventas?status=approved"
-              />
-              <StatCard
+            {/* Un solo elemento domina: Total Vendido a 48 px con su delta y
+                su sparkline. El resto pasa a compacto — el peso no se reparte,
+                o ninguno gana. */}
+            <div className="grid grid-cols-12 gap-4">
+              <HeroMetric
+                className="col-span-12 lg:col-span-5"
                 icon={DollarSquareIcon}
-                label="Total Vendido"
-                countTo={kpis.total_vendido}
+                eyebrow="Total vendido"
+                value={kpis.total_vendido}
+                prev={kpis.total_vendido_prev}
                 format={formatMoney}
-                color="emerald"
-                delay={0.05}
+                series={heroSeries}
                 onClick={() => setDrilldown('vendido')}
               />
-              {isAdmin && (
-                <StatCard
-                  icon={Package01Icon}
-                  label="Coste Total"
-                  countTo={kpis.coste_total ?? 0}
-                  format={formatMoney}
-                  color="amber"
-                  delay={0.1}
-                  onClick={() => setDrilldown('coste')}
+
+              <div className="col-span-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-7">
+                <CompactKpi
+                  icon={ShoppingCart02Icon}
+                  label="Ventas"
+                  value={kpis.total_ventas}
+                  prev={kpis.total_ventas_prev}
+                  sub={`${kpis.total_unidades} unidades`}
+                  href="/admin/ventas?status=approved"
                 />
-              )}
-              <StatCard
-                icon={PercentIcon}
-                label="Comisiones"
-                countTo={kpis.comision_total}
-                format={formatMoney}
-                color="purple"
-                delay={0.15}
-                onClick={() => setDrilldown('comisiones')}
-              />
-              {isAdmin && (
-                <StatCard
-                  icon={PlusSignSquareIcon}
-                  label="Ganancia Tienda"
-                  countTo={kpis.ganancia_tienda_total ?? 0}
+                <CompactKpi
+                  icon={PercentIcon}
+                  label="Comisiones"
+                  value={kpis.comision_total}
+                  prev={kpis.comision_total_prev}
                   format={formatMoney}
-                  color="sky"
-                  delay={0.2}
-                  onClick={() => setDrilldown('ganancia')}
+                  onClick={() => setDrilldown('comisiones')}
                 />
-              )}
+                {isAdmin && (
+                  <CompactKpi
+                    icon={Package01Icon}
+                    label="Coste total"
+                    value={kpis.coste_total ?? 0}
+                    prev={kpis.coste_total_prev}
+                    format={formatMoney}
+                    // Subir el coste NO es una buena noticia: sin `invert` el
+                    // delta lo pintaría de verde.
+                    invert
+                    onClick={() => setDrilldown('coste')}
+                  />
+                )}
+                {isAdmin && (
+                  <CompactKpi
+                    icon={PlusSignSquareIcon}
+                    label="Ganancia tienda"
+                    value={kpis.ganancia_tienda_total ?? 0}
+                    prev={kpis.ganancia_tienda_total_prev}
+                    format={formatMoney}
+                    onClick={() => setDrilldown('ganancia')}
+                  />
+                )}
+              </div>
             </div>
 
             {isAdmin && (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <SpotlightCard variant="highlight" className="col-span-7 lg:col-span-4 p-5">
-                <div className="mb-5 flex items-center gap-2 border-b pb-4">
-                  <AnimatedIcon icon={DropletIcon} size={20} strokeWidth={2} className="text-primary" />
-                  <h3 className="font-semibold text-foreground">Distribución de costos fijos</h3>
+                <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-b pb-4">
+                  <span className="flex items-center gap-2">
+                    <AnimatedIcon icon={DropletIcon} size={20} strokeWidth={2} className="text-primary" />
+                    <h3 className="font-semibold text-foreground">Distribución de costos fijos</h3>
+                  </span>
+                  {/* El total repartido: sin él, los porcentajes de abajo son
+                      proporciones de una cifra que no está en ningún lado. */}
+                  <span className="nums text-sm font-medium text-muted-foreground">
+                    {formatMoney(
+                      Object.values(kpis.pozos_recogidos || {}).reduce((s, v) => s + (v || 0), 0),
+                    )}
+                  </span>
                 </div>
                 
                 {/* La barra mide el % SOBRE EL TOTAL repartido, no sobre el
@@ -369,9 +448,22 @@ export default function AdminDashboard() {
                       0,
                     );
 
-                    return POZOS.map((pozoKey) => {
-                      const amount = kpis.pozos_recogidos?.[pozoKey] || 0;
+                    // De mayor a menor, no en el orden fijo del array `POZOS`:
+                    // esto es un ranking de a dónde se va el costo fijo, y un
+                    // ranking se lee ordenado.
+                    const ordenados = [...POZOS]
+                      .map((pozoKey) => ({
+                        pozoKey,
+                        amount: kpis.pozos_recogidos?.[pozoKey] || 0,
+                      }))
+                      .sort((a, b) => b.amount - a.amount);
+
+                    return ordenados.map(({ pozoKey, amount }, i) => {
                       const pct = totalPozos > 0 ? (amount / totalPozos) * 100 : 0;
+                      // Los tres mayores en primary pleno; los cuatro restantes
+                      // atenuados. Siete barras del mismo color son monótonas y
+                      // hay que leer los siete números para encontrar el mayor.
+                      const destacado = i < 3;
 
                       return (
                         <div key={pozoKey} className="flex flex-col gap-1">
@@ -388,7 +480,12 @@ export default function AdminDashboard() {
                           <Progress
                             value={barsReady ? pct : 0}
                             aria-label={`${pozoKey}: ${pct.toFixed(1)}% del costo fijo repartido`}
-                            className="h-1.5 bg-primary/10 [&>[data-slot=progress-indicator]]:bg-primary"
+                            className={cn(
+                              'h-1.5 bg-primary/10',
+                              destacado
+                                ? '[&>[data-slot=progress-indicator]]:bg-primary'
+                                : '[&>[data-slot=progress-indicator]]:bg-primary/40',
+                            )}
                           />
                         </div>
                       );
@@ -456,16 +553,18 @@ export default function AdminDashboard() {
                 El vendedor tiene su propio panel en /admin/ventas. */}
             {isAdmin && (
               <div className="space-y-6">
-                <SalesTrendChart range={queryParams} />
+                <Suspense fallback={<SkeletonChart />}>
+                  <SalesTrendChart range={queryParams} />
+                </Suspense>
 
                 <TopProductsTable range={queryParams} />
 
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Desglose del periodo
-                  </h3>
+                  <SectionLabel>Desglose del periodo</SectionLabel>
                   <SalesBreakdownCards range={queryParams} />
                 </section>
+
+                {!bannerOnTop && <CuadreBanner range={queryParams} />}
               </div>
             )}
           </div>

@@ -1,9 +1,15 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
-import { ArrowDown02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp02Icon, InboxIcon, Search01Icon, Tick01Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp02Icon, Download04Icon, InboxIcon, LayoutTable01Icon, MenuSquareIcon, Search01Icon, Tick01Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Skeleton } from "~/components/ui/skeleton";
 // Tabla de datos genérica sobre TanStack Table v8: ordenable, con búsqueda
 // global y paginación. Se reutiliza en todos los portales del admin.
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -17,16 +23,17 @@ import {
   type Table as TableInstance,
 } from "@tanstack/react-table";
 
-import { motion, useReducedMotion } from "framer-motion";
 
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "./empty";
 import { cn } from "~/lib/utils";
 
-// Tope de filas para la entrada escalonada: por encima, se renderiza sin motion
-// para no castigar tablas largas (regla "stagger O virtualización, no ambas").
-const STAGGER_MAX_ROWS = 60;
-// Curva de salida exponencial (misma que `ease-expo` en globals.css).
-const EASE_EXPO = [0.16, 1, 0.3, 1] as const;
+// La entrada escalonada de filas se retiró en la Fase 1.6.
+//
+// Costaba un `motion.tr` por fila (hasta 60) y, sumada al fade del contenedor,
+// al CountUp de los KPIs y al pill del sidebar, hacía que entrar a un módulo se
+// leyera como inquieto en vez de refinado. Es además el efecto que peor
+// envejece: se nota la primera vez y estorba las otras cincuenta. Las filas
+// aparecen con el fade del contenedor, que ya está.
 
 // Alineación por columna vía `meta` (texto a la izquierda, números a la derecha).
 declare module "@tanstack/react-table" {
@@ -55,9 +62,42 @@ interface DataTableProps<T> {
   onGlobalFilterChange?: (value: string) => void;
   // Si se provee, en móvil se renderiza cada fila como tarjeta (la tabla queda solo en desktop).
   mobileCard?: (row: T) => ReactNode;
-  // Paginación en cliente (opt-in). Sin esto se muestran TODAS las filas (comportamiento previo).
-  // Úsala en tablas que cargan su dataset completo y pueden crecer sin límite.
+  /**
+   * Paginación en cliente. Por DEFECTO activada: una tabla que renderiza 4000
+   * filas de una es un problema de rendimiento esperando ocurrir. Las tablas
+   * que muestran totales en `<tfoot>` y necesitan ver todo pasan `false`.
+   */
   paginated?: boolean;
+  /**
+   * Identificador estable de la tabla. Necesario para persistir columnas
+   * visibles por tabla; sin él, todas compartirían la misma preferencia.
+   */
+  tableId?: string;
+  /** Vacío por FILTRO, distinto del vacío real. Ver nota en el render. */
+  emptyFilteredText?: ReactNode;
+  /** Si se pasa, el vacío por filtro ofrece limpiar. */
+  onClearFilters?: () => void;
+  /** Nombre base del CSV. Sin esto no se muestra el botón de exportar. */
+  exportFilename?: string;
+}
+
+type Density = "compact" | "normal";
+
+const DENSITY_KEY = "gyro.table.density";
+
+/** Lee la preferencia guardada. SSR-safe: en el server siempre "normal". */
+function readDensity(): Density {
+  if (typeof window === "undefined") return "normal";
+  return window.localStorage.getItem(DENSITY_KEY) === "compact" ? "compact" : "normal";
+}
+
+function readColumnVisibility(tableId?: string): Record<string, boolean> {
+  if (typeof window === "undefined" || !tableId) return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(`gyro.table.${tableId}.columns`) ?? "{}");
+  } catch {
+    return {};
+  }
 }
 
 export function DataTable<T>({
@@ -77,21 +117,80 @@ export function DataTable<T>({
   globalFilterValue,
   onGlobalFilterChange,
   mobileCard,
-  paginated = false,
+  paginated = true,
+  tableId,
+  emptyFilteredText,
+  onClearFilters,
+  exportFilename,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [internalGlobalFilter, setInternalGlobalFilter] = useState("");
-  const reduce = useReducedMotion();
+  const [density, setDensityState] = useState<Density>("normal");
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Las preferencias se leen en un efecto y no en el `useState` inicial: el
+  // servidor no tiene `localStorage`, y devolver algo distinto en el primer
+  // render del cliente rompe la hidratación.
+  useEffect(() => {
+    setDensityState(readDensity());
+    setColumnVisibility(readColumnVisibility(tableId));
+  }, [tableId]);
+
+  const setDensity = (next: Density) => {
+    setDensityState(next);
+    try {
+      window.localStorage.setItem(DENSITY_KEY, next);
+    } catch {
+      // Storage bloqueado: la densidad aplica igual, solo no persiste.
+    }
+  };
 
   const globalFilter = globalFilterValue !== undefined ? globalFilterValue : internalGlobalFilter;
   const setGlobalFilter = onGlobalFilterChange || setInternalGlobalFilter;
 
+  // `/` y ⌘F enfocan el buscador; Esc lo limpia. Se ignora si el foco ya está
+  // en un campo de texto: nadie quiere que escribir "/" en un input abra otra
+  // cosa.
+  useEffect(() => {
+    if (hideSearch) return;
+    function onKey(e: KeyboardEvent) {
+      const el = document.activeElement;
+      const typing =
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        (el as HTMLElement | null)?.isContentEditable;
+
+      if (!typing && (e.key === "/" || ((e.metaKey || e.ctrlKey) && e.key === "f"))) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === "Escape" && el === searchRef.current) {
+        setGlobalFilter("");
+        searchRef.current?.blur();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hideSearch, setGlobalFilter]);
+
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting, globalFilter, columnVisibility },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: (updater) => {
+      const next = typeof updater === "function" ? updater(columnVisibility) : updater;
+      setColumnVisibility(next);
+      if (tableId) {
+        try {
+          window.localStorage.setItem(`gyro.table.${tableId}.columns`, JSON.stringify(next));
+        } catch {
+          // idem densidad.
+        }
+      }
+    },
     globalFilterFn: (row, columnId, filterValue) => {
       const value = row.getValue(columnId);
       if (value == null) return false;
@@ -106,19 +205,129 @@ export function DataTable<T>({
     ...(paginated ? { initialState: { pagination: { pageSize } } } : {}),
   });
 
+  const filteredRows = table.getFilteredRowModel().rows;
+  const hasFilter = globalFilter.trim().length > 0;
+  const compact = density === "compact";
+
+  // La columna de casillas depende de la SELECCIÓN, no de `onRowClick`.
+  // Estaban atadas: cualquier tabla que quisiera abrir un detalle al hacer
+  // click en la fila se llevaba de regalo una columna de checkboxes vacíos que
+  // no seleccionaban nada.
+  const selectable = !!onSelectAll || !!selectedRowIds || selectedRowId !== undefined;
+
+  /**
+   * Exporta LO QUE EL USUARIO VE: columnas visibles, filtro aplicado y orden
+   * actual. Exportar el dataset crudo entrega un archivo que no se parece a la
+   * pantalla desde la que se pidió.
+   */
+  function exportCsv() {
+    const visible = table.getVisibleLeafColumns().filter((c) => c.id !== "actions");
+    const headers = visible.map((c) => {
+      const h = c.columnDef.header;
+      return typeof h === "string" ? h : c.id;
+    });
+    const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [
+      headers.map(escape).join(","),
+      ...filteredRows.map((row) =>
+        visible.map((c) => escape(row.getValue(c.id))).join(","),
+      ),
+    ];
+    // BOM: sin él Excel en Windows abre el archivo en ANSI y "Audífonos" sale
+    // como "AudÃ­fonos".
+    const blob = new Blob([`﻿${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${exportFilename}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-3">
-      {!hideSearch && (
-        <div className="flex items-center gap-2 rounded-pill border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:max-w-xs">
-          <AnimatedIcon icon={Search01Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
-          <input
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
-          />
+      <div className="flex flex-wrap items-center gap-2">
+        {!hideSearch && (
+          <div className="flex flex-1 items-center gap-2 rounded-pill border border-border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:max-w-xs sm:flex-none">
+            <AnimatedIcon icon={Search01Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
+            <input
+              ref={searchRef}
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+              className="w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <kbd className="hidden shrink-0 rounded border border-border px-1 text-[10px] text-muted-foreground sm:inline">
+              /
+            </kbd>
+          </div>
+        )}
+
+        {/* Contador SIEMPRE visible, no solo con paginación: saber cuántas
+            filas quedaron tras filtrar es la mitad de la respuesta. */}
+        <span className="nums text-xs text-muted-foreground">
+          {filteredRows.length === data.length
+            ? `${data.length} ${data.length === 1 ? "registro" : "registros"}`
+            : `${filteredRows.length} de ${data.length}`}
+        </span>
+
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setDensity(compact ? "normal" : "compact")}
+            title={compact ? "Filas normales" : "Filas compactas"}
+            aria-label={compact ? "Cambiar a filas normales" : "Cambiar a filas compactas"}
+            aria-pressed={compact}
+            className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <AnimatedIcon icon={MenuSquareIcon} gesture="pop" size={16} strokeWidth={2} />
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                title="Columnas"
+                aria-label="Elegir columnas visibles"
+                className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <AnimatedIcon icon={LayoutTable01Icon} gesture="pop" size={16} strokeWidth={2} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {table
+                .getAllLeafColumns()
+                .filter((c) => c.id !== "actions" && c.getCanHide())
+                .map((c) => {
+                  const h = c.columnDef.header;
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={c.id}
+                      checked={c.getIsVisible()}
+                      onCheckedChange={(v) => c.toggleVisibility(!!v)}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {typeof h === "string" ? h : c.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {exportFilename && (
+            <button
+              type="button"
+              onClick={exportCsv}
+              title="Exportar CSV"
+              aria-label="Exportar a CSV lo que se ve en la tabla"
+              className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <AnimatedIcon icon={Download04Icon} gesture="nudge-y" size={16} strokeWidth={2} />
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {isLoading ? (
         <div className="space-y-4 pt-4">
@@ -130,19 +339,26 @@ export function DataTable<T>({
         </div>
       ) : (
       <>
-      <div className="hidden md:block overflow-auto max-h-[75vh] rounded-card border bg-card shadow-lg relative">
-        <table className="w-full text-sm">
-          <thead className="table-header-brand text-left sticky top-0 z-20 shadow-sm">
+      {/* Tres cambios sobre lo que había:
+          · Sin `max-h-[75vh] overflow-auto`: la PÁGINA scrollea, la tabla no.
+            Dos scrolls anidados obligan a adivinar cuál se va a mover.
+          · `sticky top-14` en el <thead>, justo debajo del topbar, en vez de
+            `top-0` dentro de un contenedor con scroll propio.
+          · Sin `shadow-lg`: elevación por borde y fondo. En oscuro la sombra no
+            se veía y en claro se veía barata. */}
+      <div className="relative hidden overflow-hidden rounded-card border border-border bg-card md:block">
+        <table className={cn("w-full", compact ? "text-[13px]" : "text-sm")}>
+          <thead className="table-header-brand sticky top-14 z-20 text-left">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
-                {onRowClick && (
+                {selectable && (
                   <th className="w-10 px-3 py-2.5">
                     {onSelectAll && (
                       <div
                         onClick={() => onSelectAll(!allSelected)}
                         className={`flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded border transition-colors ${
                           allSelected
-                            ? "border-primary-2 bg-primary-2 text-white"
+                            ? "border-primary-2 bg-primary-2 text-primary-foreground"
                             : "border bg-card hover:bg-muted"
                         }`}
                       >
@@ -203,60 +419,71 @@ export function DataTable<T>({
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={onRowClick ? columns.length + 1 : columns.length} className="px-3 py-6">
-                  {/* Primitiva Empty: da jerarquía (ícono + título) donde antes
-                      había una sola línea de texto suelta. `emptyText` sigue
-                      siendo el título, así que las vistas que lo pasan no cambian. */}
+                <td colSpan={selectable ? columns.length + 1 : columns.length} className="px-3 py-6">
+                  {/* "No hay datos" y "el filtro no encontró nada" son cosas
+                      distintas. Mostrar el mismo texto en los dos casos hace
+                      que el usuario crea que la tabla está vacía cuando en
+                      realidad tiene una búsqueda puesta — y no hay nada en
+                      pantalla que se lo diga. */}
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
-                        <AnimatedIcon icon={InboxIcon} trigger="view" size={16} strokeWidth={2} />
+                        <AnimatedIcon icon={hasFilter ? Search01Icon : InboxIcon} trigger="view" size={16} strokeWidth={2} />
                       </EmptyMedia>
-                      <EmptyTitle>{emptyText}</EmptyTitle>
+                      <EmptyTitle>
+                        {hasFilter
+                          ? (emptyFilteredText ?? <>Ningún resultado para «{globalFilter}»</>)
+                          : emptyText}
+                      </EmptyTitle>
                     </EmptyHeader>
+                    {hasFilter && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGlobalFilter("");
+                          onClearFilters?.();
+                        }}
+                        className="mt-3 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        Limpiar filtros
+                      </button>
+                    )}
                   </Empty>
                 </td>
               </tr>
             ) : (
               (() => {
                 const rows = table.getRowModel().rows;
-                // Entrada escalonada solo en tablas cortas y si el usuario no pidió menos motion.
-                const animate = !reduce && rows.length <= STAGGER_MAX_ROWS;
                 return rows.map((row, idx) => {
                 const rowId = (row.original as any).id;
                 const isSelected =
                   (selectedRowIds && selectedRowIds.has(rowId)) ||
                   (selectedRowId && rowId === selectedRowId);
+                // `border-border/50`, no `border/50`: `border` a secas fija el
+                // ancho en los cuatro lados con `currentColor`, así que cada
+                // fila venía con una caja completa en vez de una línea arriba.
+                // Zebra SOLO en compacto. Con zebra + hover + bordes al mismo
+                // tiempo la tabla es ruido; pero con filas muy juntas la zebra
+                // sí ayuda a no perder el renglón. En normal manda el hover.
                 const rowClass = cn(
-                  "group/row border-t border/50 transition-colors",
+                  "group/row border-t border-border/60 transition-colors",
                   onRowClick && "cursor-pointer",
                   isSelected
                     ? "bg-primary-2/10 hover:bg-primary-2/20"
-                    : cn(idx % 2 === 1 && "bg-muted/50", "hover:bg-muted/80"),
+                    : cn(compact && idx % 2 === 1 && "bg-muted/40", "hover:bg-muted/50"),
                 );
-                // El tope del delay evita que la fila 40 entre con casi 1s de retraso.
-                const rowAnim = animate
-                  ? {
-                      initial: { opacity: 0, y: 8 },
-                      animate: { opacity: 1, y: 0 },
-                      transition: { duration: 0.25, ease: EASE_EXPO, delay: Math.min(idx, 12) * 0.025 },
-                    }
-                  : {};
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const RowTag: any = animate ? motion.tr : "tr";
                 return (
-                  <RowTag
+                  <tr
                     key={row.id}
                     onClick={() => onRowClick?.(row.original)}
                     className={rowClass}
-                    {...rowAnim}
                   >
-                    {onRowClick && (
+                    {selectable && (
                       <td className="w-10 px-3 py-2.5">
                         <div
                           className={`flex h-[18px] w-[18px] items-center justify-center rounded border transition-colors ${
                             isSelected
-                              ? "border-primary-2 bg-primary-2 text-white"
+                              ? "border-primary-2 bg-primary-2 text-primary-foreground"
                               : "border bg-card"
                           }`}
                         >
@@ -270,7 +497,8 @@ export function DataTable<T>({
                         <td
                           key={cell.id}
                           className={cn(
-                            "whitespace-nowrap px-3 py-2.5",
+                            "whitespace-nowrap px-3",
+                            compact ? "py-1.5" : "py-2.5",
                             align === "right" && "text-right tabular-nums",
                             align === "center" && "text-center",
                             cell.column.columnDef.meta?.className
@@ -280,17 +508,20 @@ export function DataTable<T>({
                         </td>
                       );
                     })}
-                  </RowTag>
+                  </tr>
                 );
                 });
               })()
             )}
           </tbody>
+          {/* Elevación por borde + fondo, no por sombra: la que había estaba
+              hardcodeada en negro al 25 % (`rgba(0,0,0,.25)`), que en tema claro
+              se ve barata y en oscuro no se ve. */}
           {table.getFooterGroups().some(fg => fg.headers.some(h => h.column.columnDef.footer)) && (
-            <tfoot className="sticky bottom-0 z-20 bg-background/80 backdrop-blur-md border-t border shadow-[0_-5px_20px_rgba(0,0,0,0.25)] font-bold">
+            <tfoot className="sticky bottom-0 z-20 border-t border-border bg-background/95 font-bold backdrop-blur-md">
               {table.getFooterGroups().map((fg) => (
                 <tr key={fg.id}>
-                  {onRowClick && <td className="px-3 py-2.5"></td>}
+                  {selectable && <td className="px-3 py-2.5"></td>}
                   {fg.headers.map((header) => {
                     const align = header.column.columnDef.meta?.align;
                     return (
@@ -316,7 +547,9 @@ export function DataTable<T>({
       {/* Vista móvil: tarjetas (bonitas si el panel define mobileCard; genéricas si no). */}
       <div className="space-y-3 md:hidden">
         {table.getRowModel().rows.length === 0 ? (
-          <p className="rounded-card border bg-card shadow-lg py-8 text-center text-muted-foreground">{emptyText}</p>
+          <p className="rounded-card border border-border bg-card py-8 text-center text-muted-foreground">
+            {hasFilter ? <>Ningún resultado para «{globalFilter}»</> : emptyText}
+          </p>
         ) : (
           table.getRowModel().rows.map((row) => {
             const rowId = (row.original as any).id;

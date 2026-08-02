@@ -14,6 +14,18 @@ export interface FinancialKPIs {
   ganancia_tienda_total?: number;
   salary_acumulado?: number;
   pozos_recogidos?: Record<string, number>;
+
+  // ── Periodo anterior de igual duración (migración 0017) ──
+  // `coste_total_prev` y `ganancia_tienda_total_prev` son opcionales por el
+  // mismo motivo que sus pares actuales: el backend los recorta para quien no
+  // es admin. Con el valor anterior y el delta se reconstruye el actual, así
+  // que se podan juntos.
+  total_ventas_prev?: number;
+  total_unidades_prev?: number;
+  total_vendido_prev?: number;
+  comision_total_prev?: number;
+  coste_total_prev?: number;
+  ganancia_tienda_total_prev?: number;
 }
 
 export interface KpiParams {

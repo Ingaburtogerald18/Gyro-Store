@@ -18,6 +18,7 @@ import type { MetaFunction } from '@remix-run/node';
 import { toast } from 'sonner';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import { PageHeader } from '~/components/layout/PageHeader';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
@@ -214,7 +215,7 @@ function PlanCard({ plan, onPay }: { plan: InstallmentPlan; onPay: () => void })
       </div>
 
       {expanded && plan.payments.length > 0 && (
-        <div className="divide-y divide-border border-t border">
+        <div className="divide-y divide-border border-t border-border">
           {plan.payments.map((p) => (
             <div key={p.id} className="flex items-center justify-between px-4 py-2 text-sm">
               <div>
@@ -315,11 +316,11 @@ export default function AdminCuotas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Ventas en Cuotas</h2>
-          <p className="text-muted-foreground">Seguimiento de pagos hasta saldar el total.</p>
-        </div>
+      <PageHeader
+        eyebrow="Operación"
+        title="Ventas en Cuotas"
+        description="Seguimiento de pagos hasta saldar el total."
+        actions={
         <div className="flex items-center gap-3">
           {activeCount > 0 && (
             <span className="rounded-full bg-warning/15 px-3 py-1.5 text-sm font-medium text-warning">
@@ -330,7 +331,8 @@ export default function AdminCuotas() {
             <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Nuevo plan
           </Button>
         </div>
-      </div>
+        }
+      />
 
       <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
         <TabsList className="bg-card border">

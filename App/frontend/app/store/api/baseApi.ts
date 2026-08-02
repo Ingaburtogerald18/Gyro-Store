@@ -6,6 +6,12 @@ import { getAccessToken } from '~/lib/supabase.client';
 
 export const baseApi = createApi({
   reducerPath: 'api',
+  // 60 s de caché tras el último consumidor (el default de RTK son 60 s
+  // también, pero acá queda explícito porque es una decisión de producto, no un
+  // default heredado): volver a un módulo visitado hace menos de un minuto
+  // pinta al instante y revalida en segundo plano, en vez de mostrar esqueleto
+  // otra vez. Los endpoints que necesiten otra ventana la declaran ellos.
+  keepUnusedDataFor: 60,
   baseQuery: fetchBaseQuery({
     // En dev, Vite proxya /api → Express :3000; en prod es el mismo origen
     // (monolito híbrido, doc 02): la URL relativa sirve en ambos casos.

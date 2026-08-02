@@ -318,7 +318,7 @@ export function CheckoutDialog({
             )}
           </div>
 
-          <div className="space-y-1 border-t border pt-3">
+          <div className="space-y-1 border-t border-border pt-3">
             {codeDiscount > 0 && (
               <>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">

@@ -43,6 +43,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/com
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { StatusBadge } from "~/components/ui/StatusBadge";
+import { PageHeader } from "~/components/layout/PageHeader";
 import { AnimatedTabs } from "~/components/ui/AnimatedTabs";
 import {
   DropdownMenu,
@@ -504,17 +505,12 @@ export default function AdminUsuarios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="font-heading text-3xl font-extrabold tracking-tight text-foreground">
-            Gestión de Personal
-          </h2>
-          <p className="text-muted-foreground">
-            Administra los roles y el acceso del equipo a Gyro Store.
-          </p>
-        </div>
-
-        {isAdmin && (
+      <PageHeader
+        eyebrow="Análisis y sistema"
+        title="Gestión de Personal"
+        description="Administra los roles y el acceso del equipo a Gyro Store."
+        actions={
+        isAdmin ? (
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="default">
@@ -576,13 +572,14 @@ export default function AdminUsuarios() {
               </form>
             </DialogContent>
           </Dialog>
-        )}
-      </div>
+        ) : undefined
+        }
+      />
 
       <AnimatedTabs items={tabs} value={currentTab} onChange={setCurrentTab} layoutId="users-tabs" />
 
       <Card>
-        <CardHeader className="border-b border pb-4">
+        <CardHeader className="border-b border-border pb-4">
           <CardTitle className="flex items-center gap-2 text-lg">
             {currentTab === "activos" ? (
               <>
