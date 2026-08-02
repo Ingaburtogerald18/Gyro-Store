@@ -1670,3 +1670,24 @@
     @apply ring-foreground/5 bg-popover text-popover-foreground min-w-36 rounded-2xl p-1 shadow-2xl ring-1 duration-100;
   }
 }
+
+/* MARK: Iconos animados en hover — rollout system-wide.
+   Anima el <svg> de HugeIcons dentro de los controles interactivos al hacer
+   hover. Centralizado (no en los ~296 call-sites) y sin alcanzar los <svg> de
+   recharts (no viven dentro de estas primitivas). Guardado por
+   prefers-reduced-motion (DESIGN.md §8). Los iconos itshover conservan su
+   animación propia: su transform inline de framer-motion tiene prioridad. */
+@media (prefers-reduced-motion: no-preference) {
+  .style-maia
+    :is(.cn-button, .cn-dropdown-menu-item, .cn-select-trigger,
+        .cn-sidebar-menu-button, .cn-tabs-trigger, .cn-command-item,
+        .cn-toggle) svg {
+    transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .style-maia
+    :is(.cn-button, .cn-dropdown-menu-item, .cn-select-trigger,
+        .cn-sidebar-menu-button, .cn-tabs-trigger, .cn-command-item,
+        .cn-toggle):hover svg {
+    transform: scale(1.16);
+  }
+}
