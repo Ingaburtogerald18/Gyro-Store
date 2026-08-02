@@ -5,7 +5,6 @@ import { motion, useReducedMotion } from 'framer-motion';
 // SpotlightCard es nuestro (resplandor que sigue al cursor), distinto del `Card`
 // de shadcn: por eso lleva nombre propio y no colisiona al importar.
 import { SpotlightCard, StatCard } from '~/components/ui/stat-card';
-import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
 import { QueryState } from '~/components/ui/QueryState';
 import {
   ChartContainer,
@@ -21,31 +20,25 @@ import type { MetaFunction } from '@remix-run/node';
 import { useGetKpisQuery } from '~/store/api/reportsApi';
 import { useGetCuadreQuery } from '~/store/api/cuadreApi';
 import { useGetAccountsQuery } from '~/store/api/cajaApi';
+import { useAppSelector } from '~/store/hooks';
+import { selectIsAdmin } from '~/store/slices/authSlice';
 import { formatCordobas } from '~/lib/formatters';
 import { cn } from '~/lib/utils';
+
+// Reportería de ventas. Vive en components/admin/reports/ porque el panel del
+// vendedor en /admin/ventas reusa la tendencia y el top de productos.
+import { PeriodPicker } from '~/components/admin/reports/PeriodPicker';
+import { SalesTrendChart } from '~/components/admin/reports/SalesTrendChart';
+import { SellerRanking } from '~/components/admin/reports/SellerRanking';
+import { TopProductsTable } from '~/components/admin/reports/TopProductsTable';
+import { SalesBreakdownCards } from '~/components/admin/reports/SalesBreakdownCards';
+import { DeliveryCard } from '~/components/admin/reports/DeliveryCard';
+import { ExportSalesCsvButton } from '~/components/admin/reports/ExportSalesCsvButton';
+import { getPeriodRange, isPeriodReady, type CustomRange, type PeriodId } from '~/components/admin/reports/period';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Dashboard | Gyro Store Admin' }];
 };
-
-// Date math helper (simple)
-function getDateRange(range: string) {
-  const end = new Date();
-  const start = new Date();
-  if (range === 'today') {
-    start.setHours(0, 0, 0, 0);
-  } else if (range === '7d') {
-    start.setDate(start.getDate() - 7);
-  } else if (range === '30d') {
-    start.setDate(start.getDate() - 30);
-  } else if (range === 'month') {
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-  } else {
-    return {};
-  }
-  return { startDate: start.toISOString(), endDate: end.toISOString() };
-}
 
 // Los 7 pozos del doc 11, en el orden en que se reparte el Costo F/U.
 const POZOS = [
@@ -152,20 +145,24 @@ function CuadreBanner() {
 }
 
 export default function AdminDashboard() {
-  const [range, setRange] = useState('month');
-  
-  const queryParams = useMemo(() => getDateRange(range), [range]);
-  
-  const { data: kpis, isLoading, isError } = useGetKpisQuery(queryParams);
+  const [range, setRange] = useState<PeriodId>('month');
+  // Rango libre: solo se usa cuando `range === 'range'`, pero se conserva al
+  // saltar entre presets para no perder lo que el usuario ya había elegido.
+  const [custom, setCustom] = useState<CustomRange>({ from: '', to: '' });
+
+  const queryParams = useMemo(() => getPeriodRange(range, custom), [range, custom]);
+  // Con el rango libre a medio llenar no hay filtro que mandar: pedirlo igual
+  // traería el histórico completo rotulado como "el periodo elegido".
+  const periodReady = isPeriodReady(queryParams);
+
+  // El Dashboard es de admin, pero la ruta /admin no lo bloquea por rol: si un
+  // vendedor entra por URL, el backend ya le recorta los KPIs y acá se ocultan
+  // las secciones que no le corresponden. La UI acompaña al backend, no lo suple.
+  const isAdmin = useAppSelector(selectIsAdmin);
+
+  const { data: kpis, isLoading, isError } = useGetKpisQuery(queryParams, { skip: !periodReady });
 
   const formatMoney = (n: number) => formatCordobas(n, 'C$', 2);
-  
-  const tabs = [
-    { id: 'today', label: 'Hoy' },
-    { id: '7d', label: '7 Días' },
-    { id: '30d', label: '30 Días' },
-    { id: 'month', label: 'Este Mes' },
-  ];
 
   // Las barras entran desde 0 en el primer frame tras montar, para que se vea
   // el llenado. Si el usuario pidió menos movimiento, van directo al valor.
@@ -183,14 +180,16 @@ export default function AdminDashboard() {
 
   // A dónde va cada córdoba vendido. Se descartan los tramos en cero para que
   // el donut no dibuje segmentos invisibles.
+  // `?? 0` porque el backend recorta estos campos cuando quien pregunta no es
+  // admin (ver routes/reports.ts): sin el fallback el donut recibiría undefined.
   const incomeBreakdown = useMemo(
     () =>
       kpis
         ? [
-            { key: 'coste', label: 'Coste', value: kpis.coste_total, fill: 'var(--color-chart-1)' },
+            { key: 'coste', label: 'Coste', value: kpis.coste_total ?? 0, fill: 'var(--color-chart-1)' },
             { key: 'comision', label: 'Comisiones', value: kpis.comision_total, fill: 'var(--color-chart-2)' },
-            { key: 'salary', label: 'Salary', value: kpis.salary_acumulado, fill: 'var(--color-chart-3)' },
-            { key: 'ganancia', label: 'Ganancia tienda', value: kpis.ganancia_tienda_total, fill: 'var(--color-chart-4)' },
+            { key: 'salary', label: 'Salary', value: kpis.salary_acumulado ?? 0, fill: 'var(--color-chart-3)' },
+            { key: 'ganancia', label: 'Ganancia tienda', value: kpis.ganancia_tienda_total ?? 0, fill: 'var(--color-chart-4)' },
           ].filter((slice) => slice.value > 0)
         : [],
     [kpis],
@@ -198,18 +197,34 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Dashboard</h2>
-        <AnimatedTabs
-          items={tabs}
-          value={range}
-          onChange={setRange}
-          layoutId="dashboard-range"
-        />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Dashboard</h2>
+          {isAdmin && (
+            <p className="text-muted-foreground">Reportería de ventas del periodo elegido.</p>
+          )}
+        </div>
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          <PeriodPicker
+            period={range}
+            onPeriodChange={setRange}
+            custom={custom}
+            onCustomChange={setCustom}
+            layoutId="dashboard-range"
+          />
+          {isAdmin && <ExportSalesCsvButton range={queryParams} />}
+        </div>
       </div>
 
       <CuadreBanner />
 
+      {!periodReady ? (
+        <div className="rounded-card border border-dashed py-16 text-center">
+          <p className="text-sm text-muted-foreground">
+            Elegí la fecha de inicio y la de fin para ver el reporte del periodo.
+          </p>
+        </div>
+      ) : (
       <QueryState
         loading={isLoading}
         error={isError}
@@ -225,7 +240,7 @@ export default function AdminDashboard() {
       >
         {kpis && (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className={cn('grid gap-4 md:grid-cols-2', isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-3')}>
               <StatCard
                 icon={ShoppingCart02Icon}
                 label="Ventas"
@@ -242,14 +257,16 @@ export default function AdminDashboard() {
                 color="emerald"
                 delay={0.05}
               />
-              <StatCard
-                icon={Package01Icon}
-                label="Coste Total"
-                countTo={kpis.coste_total}
-                format={formatMoney}
-                color="amber"
-                delay={0.1}
-              />
+              {isAdmin && (
+                <StatCard
+                  icon={Package01Icon}
+                  label="Coste Total"
+                  countTo={kpis.coste_total ?? 0}
+                  format={formatMoney}
+                  color="amber"
+                  delay={0.1}
+                />
+              )}
               <StatCard
                 icon={PercentIcon}
                 label="Comisiones"
@@ -258,16 +275,19 @@ export default function AdminDashboard() {
                 color="purple"
                 delay={0.15}
               />
-              <StatCard
-                icon={PlusSignSquareIcon}
-                label="Ganancia Tienda"
-                countTo={kpis.ganancia_tienda_total}
-                format={formatMoney}
-                color="sky"
-                delay={0.2}
-              />
+              {isAdmin && (
+                <StatCard
+                  icon={PlusSignSquareIcon}
+                  label="Ganancia Tienda"
+                  countTo={kpis.ganancia_tienda_total ?? 0}
+                  format={formatMoney}
+                  color="sky"
+                  delay={0.2}
+                />
+              )}
             </div>
 
+            {isAdmin && (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <SpotlightCard variant="highlight" className="col-span-7 lg:col-span-4 p-5">
                 <div className="mb-6 flex items-center gap-2 border-b border pb-4">
@@ -343,9 +363,35 @@ export default function AdminDashboard() {
                 </ul>
               </SpotlightCard>
             </div>
+            )}
+
+            {/* ── Reportería de ventas del periodo ──
+                Todo lo de abajo es admin: son datos del negocio (márgenes de
+                todos, ranking del equipo, delivery), no de una venta propia.
+                El vendedor tiene su propio panel en /admin/ventas. */}
+            {isAdmin && (
+              <div className="space-y-6">
+                <SalesTrendChart range={queryParams} />
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <SellerRanking range={queryParams} />
+                  <TopProductsTable range={queryParams} />
+                </div>
+
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Desglose del periodo
+                  </h3>
+                  <SalesBreakdownCards range={queryParams} />
+                </section>
+
+                <DeliveryCard range={queryParams} />
+              </div>
+            )}
           </div>
         )}
       </QueryState>
+      )}
     </>
   );
 }

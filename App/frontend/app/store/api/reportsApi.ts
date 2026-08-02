@@ -1,14 +1,19 @@
 import { baseApi } from './baseApi';
 
+// Los campos de estructura de costos son OPCIONALES porque el backend los
+// recorta por rol (server/routes/reports.ts): un vendedor recibe su volumen y
+// su comisión, nunca el coste, la ganancia de la tienda ni los pozos. Marcarlos
+// `?` es lo que obliga al panel a contemplar el caso en vez de imprimir
+// `undefined`.
 export interface FinancialKPIs {
   total_ventas: number;
   total_unidades: number;
   total_vendido: number;
-  coste_total: number;
   comision_total: number;
-  ganancia_tienda_total: number;
-  salary_acumulado: number;
-  pozos_recogidos: Record<string, number>;
+  coste_total?: number;
+  ganancia_tienda_total?: number;
+  salary_acumulado?: number;
+  pozos_recogidos?: Record<string, number>;
 }
 
 export interface KpiParams {
@@ -20,6 +25,59 @@ export interface KpiParams {
 export interface ExpensePozoItem {
   pozo: string;
   total_gastado: number;
+}
+
+// ── Reportería de ventas ──
+
+/** Corte del eje temporal. Lo elige la UI según el largo del rango. */
+export type TrendBucket = 'day' | 'week' | 'month';
+
+export interface SalesTrendPoint {
+  /** Inicio del bucket, ISO. */
+  bucket_start: string;
+  total_vendido: number;
+  comision: number;
+  num_ventas: number;
+  /** Ganancia de la TIENDA: solo llega si quien pregunta es admin. */
+  ganancia?: number;
+}
+
+export interface SellerPerformanceRow {
+  seller_uid: string | null;
+  seller_email: string;
+  /** Nombre registrado en `profiles`; vacío si la cuenta nunca se completó. */
+  seller_name: string;
+  total_vendido: number;
+  comision: number;
+  num_ventas: number;
+  unidades: number;
+}
+
+export interface TopProductRow {
+  sku: string;
+  unidades: number;
+  ingreso: number;
+}
+
+/** Todos los cortes comparten forma: la UI solo traduce `key` a español. */
+export interface BreakdownGroup {
+  key: string;
+  count: number;
+  total: number;
+}
+
+export interface SalesBreakdown {
+  by_method: BreakdownGroup[];
+  by_origin: BreakdownGroup[];
+  by_invoiced: BreakdownGroup[];
+  by_discount: BreakdownGroup[];
+  by_installment: BreakdownGroup[];
+}
+
+export interface DeliverySummary {
+  total_delivery: number;
+  num_deliveries: number;
+  by_repartidor: { repartidor: string; total: number; count: number }[];
 }
 
 export const reportsApi = baseApi.injectEndpoints({
@@ -38,6 +96,27 @@ export const reportsApi = baseApi.injectEndpoints({
       query: (params) => ({ url: 'reports/expenses', params: params ?? undefined }),
       providesTags: ['Sale'],
     }),
+
+    getSalesTrend: build.query<SalesTrendPoint[], KpiParams & { bucket?: TrendBucket }>({
+      query: (params) => ({ url: 'reports/trend', params }),
+      providesTags: ['Sale'],
+    }),
+    getSellerPerformance: build.query<SellerPerformanceRow[], KpiParams | void>({
+      query: (params) => ({ url: 'reports/sellers', params: params ?? undefined }),
+      providesTags: ['Sale'],
+    }),
+    getTopProducts: build.query<TopProductRow[], KpiParams & { limit?: number }>({
+      query: (params) => ({ url: 'reports/top-products', params }),
+      providesTags: ['Sale', 'Product'],
+    }),
+    getSalesBreakdown: build.query<SalesBreakdown, KpiParams | void>({
+      query: (params) => ({ url: 'reports/breakdown', params: params ?? undefined }),
+      providesTags: ['Sale', 'Invoice'],
+    }),
+    getDeliverySummary: build.query<DeliverySummary, KpiParams | void>({
+      query: (params) => ({ url: 'reports/delivery', params: params ?? undefined }),
+      providesTags: ['Invoice'],
+    }),
   }),
 });
 
@@ -45,5 +124,11 @@ export const {
   useGetKpisQuery,
   useGetLossesQuery,
   useGetSalesExportQuery,
+  useLazyGetSalesExportQuery,
   useGetExpensesByPozoQuery,
+  useGetSalesTrendQuery,
+  useGetSellerPerformanceQuery,
+  useGetTopProductsQuery,
+  useGetSalesBreakdownQuery,
+  useGetDeliverySummaryQuery,
 } = reportsApi;

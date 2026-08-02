@@ -40,6 +40,29 @@ idempotentes**, y re-correrlos sobre una base ya creada falla. Es lo correcto
 para un baseline. `0005_seed.sql` **sí** es idempotente (`on conflict` /
 `where not exists`) porque el seed puede volver a correrse.
 
+## Migraciones posteriores al baseline
+
+Del `0006` en adelante sí son **incrementales**: cambios que llegaron después de
+que el baseline ya estaba aplicado en una base con datos, así que no se pueden
+plegar hacia atrás sin recrear la base. Se aplican una vez, en orden.
+
+6. `0006_profiles_contact.sql`: `profiles.phone`, `personal_email`,
+   `bank_account` (jsonb) y `last_login`.
+7. `0007_invoices_v2.sql`: factura primero → venta ligada. `invoice_items`,
+   datos de cliente/subtotal/descuento en `invoices`.
+8. `0008_invoices_delivery_name.sql`: `invoices.delivery_name` (repartidor).
+9. `0009_discount_codes.sql`: `discount_codes` + `redeem_discount_code()`.
+10. `0010_discount_redemptions.sql`: `discount_code_redemptions` y el canje con
+    trazabilidad.
+11. `0011_discount_code_sequence.sql`: correlativo `GS-DC-N` por secuencia.
+12. `0012_invoice_code.sql`: `invoices.invoice_code` generada (`GS-PR-N`). El
+    `invoice_number::text` es obligatorio: sin el cast la expresión no es
+    IMMUTABLE y Postgres rechaza la columna generada.
+13. `0013_reports_rpc.sql`: RPCs de reportería de ventas (`get_sales_trend`,
+    `get_seller_performance`, `get_top_products`, `get_sales_breakdown`,
+    `get_delivery_summary`). Es `create or replace` en todo, así que **sí** es
+    re-ejecutable.
+
 ## Cómo Aplicarlas
 
 Aplicar una por una secuencialmente:
