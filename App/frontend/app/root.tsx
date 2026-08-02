@@ -16,6 +16,7 @@ import { Toaster } from 'sonner';
 import { store } from '~/store/store';
 import tailwindHref from './tailwind.css?url';
 
+<<<<<<< Updated upstream
 export const links: LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
@@ -24,6 +25,18 @@ export const links: LinksFunction = () => [
     href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
   },
   { rel: 'stylesheet', href: tailwindHref },
+=======
+// Sin Google Fonts: Figtree (body) y Geist (headings) se sirven localmente
+// vía @fontsource-variable, importados desde tailwind.css.
+//
+// El `rel="icon"` NO es decorativo: sin un icono declarado, el navegador pide
+// `/favicon.ico` por su cuenta, Remix no tiene esa ruta y cada carga de página
+// escupe un `No route matches URL "/favicon.ico"` con stack en la consola del
+// dev server. Declarándolo, el navegador ya no sondea esa URL.
+export const links: LinksFunction = () => [
+  { rel: 'stylesheet', href: tailwindHref },
+  { rel: 'icon', href: '/gyro-emblem.png', type: 'image/png' },
+>>>>>>> Stashed changes
 ];
 
 // Único lugar donde el server pasa config al cliente. Solo llaves PÚBLICAS:
