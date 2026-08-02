@@ -1,6 +1,6 @@
 /*
- * Sistema de diseño Gyro Store — preset shadcn "b3ae24HXW4"
- * (style Maia · theme Emerald · charts Green · Figtree + Geist).
+ * Sistema de diseño Gyro Store — preset shadcn "b2DeDk3s1"
+ * (style Rhea · base Mist · theme Emerald · charts Emerald · Geist).
  *
  * Migración nativa: los tokens los define el preset en `:root` / `[data-theme="dark"]`
  * (más abajo). Este archivo agrega lo único que el preset no trae:
@@ -17,10 +17,8 @@
 /* Utilidades del preset (variantes data-open/data-closed, no-scrollbar, scroll-fade,
    shimmer). Los componentes las usan; sin este import quedan sin estilo. */
 @import "shadcn/tailwind.css";
-/* El style del preset: define `.style-maia`, la clase que root.tsx pone en <html>.
-   (El style-rhea anterior nunca se importó, así que esas reglas nunca se aplicaron.) */
-@import "./style-maia.css";
-@import "@fontsource-variable/figtree";
+/* El style del preset: define `.style-rhea`, la clase que root.tsx pone en <html>. */
+@import "./style-rhea.css";
 @import "@fontsource-variable/geist";
 
 /* La variante `dark:` sigue a nuestro data-theme, no al prefers-color-scheme del
@@ -94,10 +92,10 @@
   --radius-card: 0.75rem;
   --radius-pill: 9999px;
 
-  /* Tipografía del preset: Figtree body, Geist headings.
+  /* Tipografía del preset Rhea: Geist en todo (font + heading = geist/inherit).
      Registrar --font-heading acá es lo que hace que Tailwind genere la clase
      `font-heading` que ya usan varios componentes. */
-  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -144,7 +142,7 @@ body {
 .login-enter-item { animation: login-enter-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 
 /* ──────────────────────────────────────────────────────────────
-   Tokens del preset b2DeDSSjx. Light en :root, dark en [data-theme="dark"].
+   Tokens del preset b2DeDk3s1. Light en :root, dark en [data-theme="dark"].
    Los 4 extras (whatsapp/success/warning/info) se agregan a ambos.
    ────────────────────────────────────────────────────────────── */
 :root {

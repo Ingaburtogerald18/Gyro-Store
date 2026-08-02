@@ -123,9 +123,8 @@ Si un call-site ya rota o escala el icono por CSS, **hay que pasarle
 se queda a mitad de camino o un chevron apuntando al lado equivocado.
 
 Casos activos hoy: `Spinner` (`animate-spin`) y `FilterSelect`
-(`open && rotate-180`). Por esta misma razón se eliminó el bloque
-`transform: scale(1.16)` de `style-maia.css` — ver el comentario que quedó en su
-lugar.
+(`open && rotate-180`). Por esta misma razón, el skin del preset (`style-rhea.css`)
+no aplica ningún `transform: scale(...)` sobre los iconos.
 
 ## Accesibilidad y theming
 
