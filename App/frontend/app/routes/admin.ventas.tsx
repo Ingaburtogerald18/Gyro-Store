@@ -20,6 +20,9 @@ import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
+import React from 'react';
+
+import { AnimatedCheck } from '~/components/ui/animated-icons';
 
 
 import { Card, CardContent } from '~/components/ui/card';
@@ -43,6 +46,7 @@ import {
 import { useGetSalidasQuery, useVincularSalidaMutation } from '~/store/api/salidasApi';
 import { Spinner } from "~/components/ui/spinner";
 import { SaleEditor } from '~/components/admin/sales/SaleEditor';
+import { SellerPerformance } from '~/components/admin/sales/SellerPerformance';
 
 export const meta: MetaFunction = () => [{ title: 'Ventas | Gyro Store Admin' }];
 
@@ -98,7 +102,9 @@ export default function AdminVentas() {
   async function handleApprove(id: string) {
     try {
       await approveSale(id).unwrap();
-      toast.success('Venta aprobada.');
+      toast.success('Venta aprobada.', {
+        icon: React.createElement(AnimatedCheck, { size: 18, autoPlay: true }),
+      });
     } catch (err) {
       toast.error(errMsg(err, 'No se pudo aprobar la venta.'));
     }
@@ -208,6 +214,11 @@ export default function AdminVentas() {
           <SaleEditor onDone={() => setIsEditorOpen(false)} />
         </DialogContent>
       </Dialog>
+
+      {/* El vendedor no tiene Dashboard en su nav, así que su reportería propia
+          vive acá. Al admin no se le muestra: ya la tiene completa (y de todo
+          el equipo) en /admin. */}
+      {!isAdmin && <SellerPerformance />}
 
       <div className="space-y-4">
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>

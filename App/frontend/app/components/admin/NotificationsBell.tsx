@@ -17,9 +17,10 @@ import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
   MoneyBag02Icon,
-  Notification03Icon,
 } from '@hugeicons/core-free-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+import { AnimatedBell, type AnimatedIconHandle } from '~/components/ui/animated-icons';
 import { useNavigate } from '@remix-run/react';
 
 import { Badge } from '~/components/ui/badge';
@@ -65,6 +66,7 @@ const STATE_META: Record<
 const money = (value: number) => formatCordobas(value, 'C$', 2);
 
 export function NotificationsBell() {
+  const bellRef = useRef<AnimatedIconHandle>(null);
   const isAdmin = useAppSelector(selectIsAdmin);
   const user = useAppSelector(selectUser);
   const myEmail = user?.email?.toLowerCase() ?? '';
@@ -135,8 +137,20 @@ export function NotificationsBell() {
 
   // Abrir la campana marca lo mostrado como visto. Es el gesto que v1 usaba y
   // se sostiene: si lo tuviste enfrente, ya no es novedad.
+  // Animar la campana cuando llegan notificaciones nuevas.
+  const prevBadge = useRef(badge);
+  useEffect(() => {
+    if (badge > 0 && badge > prevBadge.current) {
+      bellRef.current?.start();
+    }
+    prevBadge.current = badge;
+  }, [badge]);
+
   function handleOpenChange(next: boolean) {
     setOpen(next);
+    if (next) {
+      bellRef.current?.start();
+    }
     if (next && isHydrated && allIds.length > 0) {
       const merged = new Set([...seen, ...allIds]);
       setSeen(merged);
@@ -167,7 +181,7 @@ export function NotificationsBell() {
           className="relative"
           aria-label={badge > 0 ? `Notificaciones: ${badge} sin ver` : 'Notificaciones'}
         >
-          <HugeiconsIcon icon={Notification03Icon} size={18} strokeWidth={2} />
+          <AnimatedBell ref={bellRef} size={18} strokeWidth={2} />
           {badge > 0 && (
             <span
               className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-background"

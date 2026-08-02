@@ -1,11 +1,10 @@
 // Header del catálogo público (Amazon-style): logo · búsqueda (próximamente) ·
 // carrito con contador animado · acceso (HeaderSettingsMenu).
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef } from 'react';
 
 import { Link } from '@remix-run/react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
+import { AnimatedCart, type AnimatedIconHandle } from '~/components/ui/animated-icons';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { selectCartCount, toggleCart } from '~/store/slices/cartSlice';
 import { HeaderSettingsMenu } from './header-settings-menu';
@@ -16,11 +15,13 @@ function CartButton() {
   const dispatch = useAppDispatch();
   const count = useAppSelector(selectCartCount);
   const controls = useAnimationControls();
+  const cartIconRef = useRef<AnimatedIconHandle>(null);
   const prev = useRef(count);
 
   useEffect(() => {
     if (count > prev.current) {
       controls.start({ scale: [1, 1.25, 0.95, 1], transition: { duration: 0.4, ease: "easeOut" } });
+      cartIconRef.current?.start();
     }
     prev.current = count;
   }, [count, controls]);
@@ -34,7 +35,7 @@ function CartButton() {
       aria-label={count > 0 ? `Abrir carrito, ${count} artículo${count === 1 ? "" : "s"}` : "Abrir carrito"}
       className="relative grid h-10 w-10 place-items-center rounded-full border bg-card text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
-      <HugeiconsIcon icon={ShoppingCart02Icon} size={20} strokeWidth={2} />
+      <AnimatedCart ref={cartIconRef} size={20} strokeWidth={2} />
       <AnimatePresence>
         {count > 0 && (
           <motion.span

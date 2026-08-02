@@ -8,6 +8,9 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Alert02Icon, CheckmarkCircle01Icon, PackageIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import React from 'react';
+
+import { AnimatedCheck } from '~/components/ui/animated-icons';
 
 import { Button } from '~/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '~/components/ui/field';
@@ -288,7 +291,9 @@ export function SaleEditor({
           reason: editReason.trim() || undefined,
           ...overridePayload
         }).unwrap();
-        toast.success('Venta actualizada.');
+        toast.success('Venta actualizada.', {
+          icon: React.createElement(AnimatedCheck, { size: 18, autoPlay: true }),
+        });
         onDone?.();
         return;
       }
@@ -302,7 +307,9 @@ export function SaleEditor({
         invoiceNumber: useInvoice ? invoiceNumber.trim() || undefined : undefined,
         ...overridePayload
       }).unwrap();
-      toast.success('Venta registrada. Pendiente de aprobación.');
+      toast.success('Venta registrada. Pendiente de aprobación.', {
+        icon: React.createElement(AnimatedCheck, { size: 18, autoPlay: true }),
+      });
       resetEditor();
       onDone?.();
     } catch (err) {
