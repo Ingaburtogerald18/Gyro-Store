@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Add01Icon, Delete01Icon, UserIcon, Coupon01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { Add01Icon, Alert02Icon, Delete01Icon, UserIcon, Coupon01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -44,8 +44,10 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
   const [deliveryFee, setDeliveryFee] = useState<number | ''>('');
   const [deliveryName, setDeliveryName] = useState('');
   const [includeDelivery, setIncludeDelivery] = useState(false);
-  const [discount, setDiscount] = useState<number | ''>('');
   const [includeCustomer, setIncludeCustomer] = useState(false);
+  // El descuento ya no es un monto que se teclea: se activa con el switch y
+  // entonces se pide el CÓDIGO. Sin switch, no hay descuento.
+  const [includeDiscount, setIncludeDiscount] = useState(false);
 
   // Código de descuento: el preview (validate) NO consume uso; el canje real lo
   // hace el servidor al crear la factura. El monto acá es solo informativo.
@@ -70,18 +72,41 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
     }));
   };
 
-  const validLines = lines.filter(l => l.productName && typeof l.quantity === 'number' && typeof l.unitPrice === 'number');
-  const subtotal = validLines.reduce((acc, l) => acc + (l.quantity as number) * (l.unitPrice as number), 0);
+  // `Number.isFinite` y no `typeof === 'number'`: un `parseInt('-')` devuelve
+  // NaN, que ES un number y pasaba el filtro — la línea se contaba como válida
+  // y el total salía NaN.
+  const validLines = lines.filter(
+    (l) =>
+      l.productName &&
+      Number.isFinite(Number(l.quantity)) &&
+      Number(l.quantity) > 0 &&
+      Number.isFinite(Number(l.unitPrice)) &&
+      Number(l.unitPrice) >= 0,
+  );
+  const subtotal = validLines.reduce((acc, l) => acc + Number(l.quantity) * Number(l.unitPrice), 0);
   const effectiveDeliveryFee = includeDelivery ? (Number(deliveryFee) || 0) : 0;
-  // El descuento del código se suma al manual, topado al subtotal (misma regla
-  // que el servidor en createInvoice).
-  const codeDiscount = appliedCode
-    ? appliedCode.type === 'percent'
-      ? subtotal * (appliedCode.value / 100)
-      : Math.min(appliedCode.value, subtotal)
-    : 0;
-  const totalDiscount = Math.min((Number(discount) || 0) + codeDiscount, subtotal);
+  // Solo cuenta el código, y solo si el switch está encendido.
+  const codeDiscount =
+    includeDiscount && appliedCode
+      ? appliedCode.type === 'percent'
+        ? subtotal * (appliedCode.value / 100)
+        : Math.min(appliedCode.value, subtotal)
+      : 0;
+  const totalDiscount = Math.min(codeDiscount, subtotal);
   const total = Math.max(0, subtotal - totalDiscount + effectiveDeliveryFee);
+
+  // UNA sola razón visible a la vez: el botón deshabilitado SIEMPRE explica por
+  // qué. Sin esto, "Crear e Imprimir" se veía apagado sin ninguna pista — y si
+  // no hay stock en bodega, el desplegable de productos viene vacío y no había
+  // forma de habilitarlo nunca.
+  const disabledReason =
+    products.length === 0
+      ? 'No hay productos con stock disponible en bodega.'
+      : validLines.length === 0
+        ? 'Agregá al menos un producto con cantidad y precio.'
+        : includeDiscount && !appliedCode
+          ? 'Aplicá el código de descuento o apagá el switch.'
+          : null;
 
   async function applyCode() {
     const code = codeInput.trim();
@@ -102,11 +127,8 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
   }
 
   const handleCreate = async () => {
-    if (validLines.length === 0) {
-      toast.error('Agrega al menos un producto válido.');
-      return;
-    }
-    
+    if (disabledReason) return;
+
     try {
       const result = await createInvoice({
         customerName: includeCustomer ? customerName || undefined : undefined,
@@ -114,12 +136,13 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
         method,
         deliveryFee: includeDelivery ? Number(deliveryFee) || 0 : 0,
         deliveryName: includeDelivery ? deliveryName || undefined : undefined,
-        discount: Number(discount) || 0,
-        discountCode: appliedCode?.code,
+        // Ya no hay descuento manual: el único descuento es el del código.
+        discount: 0,
+        discountCode: includeDiscount ? appliedCode?.code : undefined,
         items: validLines.map(l => ({
           productName: l.productName,
-          quantity: l.quantity as number,
-          unitPrice: l.unitPrice as number
+          quantity: Number(l.quantity),
+          unitPrice: Number(l.unitPrice)
         }))
       }).unwrap();
       
@@ -184,11 +207,17 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
                     <SelectValue placeholder="Seleccionar producto..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {products.map(p => (
-                      <SelectItem key={p.productName} value={p.productName}>
-                        {p.productName} — {formatCordobas(p.price)}
-                      </SelectItem>
-                    ))}
+                    {products.length === 0 ? (
+                      <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+                        Sin productos con stock. Recibí una compra en Inventario.
+                      </div>
+                    ) : (
+                      products.map(p => (
+                        <SelectItem key={p.productName} value={p.productName}>
+                          {p.productName} — {formatCordobas(p.price)}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -242,14 +271,36 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label>Descuento (C$)</Label>
-            <Input type="number" min="0" step="0.01" value={discount} onChange={e => setDiscount(e.target.value === '' ? '' : Number(e.target.value))} />
-          </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Código de descuento (opcional)</Label>
+        {/* ── Descuento ──
+            Switch, no campo libre: si está apagado NO hay descuento. Al
+            encenderlo se pide el código, que es lo único que descuenta. */}
+        <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HugeiconsIcon icon={Coupon01Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+              <h3 className="text-sm font-semibold text-foreground">Descuento</h3>
+            </div>
+            <Switch
+              id="include-discount-invoice"
+              checked={includeDiscount}
+              onCheckedChange={(v) => {
+                setIncludeDiscount(v);
+                // Apagar el switch descarta el código: si no, seguiría contando
+                // en el total con la sección colapsada y sin forma de verlo.
+                if (!v) removeCode();
+              }}
+            />
+          </div>
+          <div
+            className={cn(
+              'overflow-hidden transition-all duration-300 motion-reduce:transition-none',
+              includeDiscount ? 'mt-2 max-h-40 opacity-100' : 'mt-0 max-h-0 opacity-0',
+            )}
+          >
+            <Label htmlFor="discount-code">Código de descuento</Label>
+            <div className="mt-1.5">
           {appliedCode ? (
             <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 px-3 py-2">
               <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
@@ -271,6 +322,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
           ) : (
             <div className="flex gap-2">
               <Input
+                id="discount-code"
                 value={codeInput}
                 onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
                 onKeyDown={(e) => {
@@ -279,16 +331,19 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
                     applyCode();
                   }
                 }}
-                placeholder="Ej. RESENA-JUAN10"
+                placeholder="Ej. GS-DC-1"
                 className="uppercase"
                 maxLength={30}
+                disabled={!includeDiscount}
               />
               <Button type="button" variant="outline" onClick={applyCode} disabled={validatingCode || !codeInput.trim()}>
                 {validatingCode ? 'Validando…' : 'Aplicar'}
               </Button>
             </div>
           )}
-        </div>
+            </div>
+          </div>
+        </section>
 
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -340,12 +395,6 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
           <span>Subtotal:</span>
           <span>{formatCordobas(subtotal)}</span>
         </div>
-        {(discount || 0) > 0 && (
-          <div className="text-sm text-destructive flex justify-between w-full max-w-xs">
-            <span>Descuento:</span>
-            <span>-{formatCordobas(Number(discount) || 0)}</span>
-          </div>
-        )}
         {codeDiscount > 0 && (
           <div className="text-sm text-primary flex justify-between w-full max-w-xs">
             <span>Código {appliedCode?.code}:</span>
@@ -364,11 +413,17 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button size="lg" onClick={handleCreate} disabled={creating || validLines.length === 0}>
+      <div className="flex flex-col items-end gap-2">
+        <Button size="lg" onClick={handleCreate} disabled={creating || !!disabledReason}>
           {creating && <Spinner className="mr-2" />}
           Crear e Imprimir Factura
         </Button>
+        {disabledReason && (
+          <p className="flex items-center gap-1.5 text-xs text-warning">
+            <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
+            {disabledReason}
+          </p>
+        )}
       </div>
     </div>
   );

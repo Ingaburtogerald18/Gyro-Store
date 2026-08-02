@@ -29,7 +29,7 @@ import {
   releaseConsumedReservations,
   type InventoryRow,
 } from './inventory';
-import { linkInvoiceToSale } from './invoice';
+import { formatInvoiceCode, linkInvoiceToSale, parseInvoiceCode } from './invoice';
 import { BadRequestError } from '../utils/httpError';
 import { applyWholesaleDiscount, computeLineCommission, computeOrderLineSnapshot } from './commission';
 import type { SaleLineInput, RegisterSaleInput, UpdateSaleInput } from '../../shared/schemas';
@@ -224,28 +224,39 @@ export async function registerSale(
   const minMargin = config.minMarginMultiplier ?? 1.15;
 
   if (!input.invoiceNumber && !seller.isGlobalAdmin) {
-    throw new BadRequestError('El número de factura es obligatorio para registrar la venta (excepción: global_admin).');
+    throw new BadRequestError('El código de factura es obligatorio para registrar la venta (excepción: global_admin).');
   }
 
   let finalItems = input.items;
   let finalCustomerName = input.customerName;
   let finalPhone = input.phone;
   let invoiceIdToLink: number | null = null;
+  // Importe REALMENTE cobrado cuando la venta nace de una factura: es el total
+  // de la factura, que ya tiene aplicado el descuento (manual y/o por código).
+  let invoiceTotal: number | null = null;
 
   if (input.invoiceNumber) {
+    // El vendedor tipea lo que ve impreso ("GS-PR-12"); acá se resuelve al
+    // correlativo numérico, que es por lo que se busca en la tabla.
+    const invoiceNumber = parseInvoiceCode(input.invoiceNumber);
+    if (invoiceNumber === null) {
+      throw new BadRequestError(`Código de factura inválido. Se espera algo como ${formatInvoiceCode(1)}.`);
+    }
+
     const { data: existing, error: invError } = await db
       .from('invoices')
-      .select('id, status, customer_name, phone')
-      .eq('invoice_number', input.invoiceNumber)
+      .select('id, status, customer_name, phone, total, discount')
+      .eq('invoice_number', invoiceNumber)
       .maybeSingle();
 
     if (invError) throw invError;
-    if (!existing) throw new BadRequestError('Factura no encontrada.');
+    if (!existing) throw new BadRequestError(`La factura ${formatInvoiceCode(invoiceNumber)} no existe.`);
     if (existing.status !== 'unlinked') throw new BadRequestError('Esta factura ya está vinculada o anulada.');
 
-    invoiceIdToLink = input.invoiceNumber;
+    invoiceIdToLink = invoiceNumber;
     finalCustomerName = existing.customer_name || input.customerName;
     finalPhone = existing.phone || input.phone;
+    invoiceTotal = existing.total ?? null;
 
     const { data: invItems, error: itemsError } = await db
       .from('invoice_items')
@@ -255,10 +266,30 @@ export async function registerSale(
     if (itemsError) throw itemsError;
     if (!invItems || invItems.length === 0) throw new BadRequestError('La factura no tiene productos.');
 
+    // ── El descuento de la factura se PRORRATEA sobre las líneas ──
+    // El cliente pagó menos, así que el precio efectivo de cada unidad es menor.
+    // Bajarlo acá — antes de `computeOrderLineSnapshot` — hace que TODA la
+    // cadena financiera (utilidad bruta → salary → utilidad neta → comisión →
+    // ganancia tienda) se recalcule sobre lo realmente cobrado, sin tocar
+    // `commission.ts`. Si no se prorratea, la tienda paga comisión sobre plata
+    // que nunca entró.
+    //
+    // Se reparte proporcional al peso de cada línea: una línea que es el 70% del
+    // subtotal absorbe el 70% del descuento.
+    const rawSubtotal = round(
+      invItems.reduce((sum, it) => sum + it.quantity * (it.unit_price ?? 0), 0),
+      2,
+    );
+    const invoiceDiscount = round(existing.discount ?? 0, 2);
+    const discountFactor =
+      rawSubtotal > 0 ? Math.max(0, (rawSubtotal - invoiceDiscount) / rawSubtotal) : 1;
+
     finalItems = invItems.map((item) => ({
       productName: item.sku!,
       quantity: item.quantity,
-      salePrice: item.unit_price!,
+      // Se redondea el UNITARIO: es lo que se congela en `order_items.precio_unit`
+      // y lo que se audita después, así que tiene que ser una cifra exacta.
+      salePrice: round((item.unit_price ?? 0) * discountFactor, 2),
       applyWholesale: false,
     }));
   }
@@ -290,10 +321,20 @@ export async function registerSale(
     return { productName: item.productName, quantity: item.quantity, precioUnit: snapshot.precioUnit };
   });
 
-  const total = round(
+  // Si la venta viene de una factura, el total es EL DE LA FACTURA: es lo que el
+  // cliente pagó de verdad, con el descuento ya aplicado. Antes se recalculaba
+  // sumando las líneas, así que una venta con código de descuento quedaba
+  // registrada por el importe SIN descontar y descuadraba contra `invoices` y
+  // contra el arqueo de caja.
+  //
+  // La comisión ya viene descontada: `finalItems` trae los precios con el
+  // descuento prorrateado, así que `precio_unit` — que es lo que usa
+  // `approveSale` para la cadena de comisión — ya refleja lo cobrado.
+  const linesTotal = round(
     pricedLines.reduce((sum, line) => sum + line.precioUnit * line.quantity, 0),
     2,
   );
+  const total = invoiceTotal ?? linesTotal;
 
   let contactId: string | null = null;
   if (finalCustomerName || finalPhone) {

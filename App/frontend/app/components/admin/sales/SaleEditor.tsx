@@ -77,6 +77,9 @@ export function SaleEditor({
 
   const isGlobalAdmin = useAppSelector(selectIsGlobalAdmin);
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  // Factura ya verificada. Su `total` manda sobre el de la cotización: incluye
+  // el descuento (manual y por código) y el delivery.
+  const [linkedInvoice, setLinkedInvoice] = useState<Invoice | null>(null);
   const [useInvoice, setUseInvoice] = useState(!isGlobalAdmin);
 
   const [isRegisteredSeller, setIsRegisteredSeller] = useState(!!sale?.sellerUid || !sale);
@@ -149,6 +152,11 @@ export function SaleEditor({
     0,
   );
 
+  // El importe que se COBRA. Si la venta nace de una factura manda SU total: ya
+  // trae aplicados el descuento (manual y por código) y el delivery, que la
+  // cotización — que solo suma líneas — no conoce.
+  const displayTotal = linkedInvoice?.total ?? result?.total ?? localTotal;
+
   // UNA sola razón visible a la vez, en orden de prioridad: el botón
   // deshabilitado SIEMPRE explica por qué.
   const disabledReason =
@@ -198,14 +206,52 @@ export function SaleEditor({
   }, [linesKey, quoteSale]);
 
   async function handleLookupInvoice() {
-    if (!invoiceNumber || Number.isNaN(Number(invoiceNumber))) return;
+    // Se manda el texto tal cual: el backend acepta "GS-PR-12" o "12".
+    if (!invoiceNumber.trim()) return;
     try {
-      const inv = await lookupInvoice(Number(invoiceNumber)).unwrap();
+      const inv = await lookupInvoice(invoiceNumber.trim()).unwrap();
       if (inv.status === 'linked') {
         toast.error('Esta factura ya está vinculada a otra venta.');
         return;
       }
-      toast.success(`Factura #${inv.invoiceNumber} encontrada. Los productos se cargarán automáticamente al registrar la venta.`);
+
+      // Se precarga TODO lo que la factura ya sabe: líneas, cliente y teléfono.
+      // Antes solo se verificaba y el vendedor tenía que volver a tipear lo que
+      // ya estaba impreso — y además no veía la cotización hasta registrar.
+      // Al llenar las líneas, el debounce de 400 ms cotiza solo y el desglose
+      // financiero aparece al instante.
+      if (inv.items?.length) {
+        // Mismo prorrateo que hace el backend en `registerSale`: el descuento de
+        // la factura baja el precio efectivo de cada línea, así que la
+        // cotización en vivo muestra la comisión REAL y no una inflada que
+        // después no coincide con lo que se registra.
+        const rawSubtotal = inv.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+        const factor =
+          rawSubtotal > 0 ? Math.max(0, (rawSubtotal - (inv.discount ?? 0)) / rawSubtotal) : 1;
+
+        setLines(
+          inv.items.map((it) => ({
+            uid: crypto.randomUUID(),
+            productName: it.productName,
+            quantity: it.quantity,
+            salePrice: Math.round(it.unitPrice * factor * 100) / 100,
+          })),
+        );
+      }
+      if (inv.customerName || inv.phone) {
+        setIncludeCustomer(true);
+        setCustomerName(inv.customerName ?? '');
+        setPhone(inv.phone ?? '');
+      }
+      // Se guarda la factura para poder mostrar el importe REAL cobrado: la
+      // cotización solo suma las líneas y no sabe del descuento.
+      setLinkedInvoice(inv);
+
+      toast.success(
+        inv.items?.length
+          ? `Factura ${inv.invoiceCode}: ${inv.items.length} producto(s) cargados.`
+          : `Factura ${inv.invoiceCode} encontrada (sin líneas registradas).`,
+      );
     } catch (err) {
       toast.error(errMsg(err, 'Factura no encontrada.'));
     }
@@ -251,7 +297,9 @@ export function SaleEditor({
         customerName: includeCustomer ? customerName.trim() || undefined : undefined,
         phone: includeCustomer ? phone.trim() || undefined : undefined,
         items: validLines,
-        invoiceNumber: useInvoice ? Number(invoiceNumber) : undefined,
+        // El código va como TEXTO ("GS-PR-12"). Con `Number()` se volvía NaN y
+        // el backend lo rechazaba con "Invalid input".
+        invoiceNumber: useInvoice ? invoiceNumber.trim() || undefined : undefined,
         ...overridePayload
       }).unwrap();
       toast.success('Venta registrada. Pendiente de aprobación.');
@@ -331,16 +379,15 @@ export function SaleEditor({
             {useInvoice && (
               <div className="pt-2">
                 <Field>
-                  <FieldLabel htmlFor="invoice-number">N° de Factura del Ticket</FieldLabel>
+                  <FieldLabel htmlFor="invoice-number">Código de Factura del Ticket</FieldLabel>
                   <div className="flex gap-2">
                     <Input
                       id="invoice-number"
-                      type="number"
                       value={invoiceNumber}
-                      onChange={(e) => setInvoiceNumber(e.target.value)}
-                      placeholder="Ej. 12345"
+                      onChange={(e) => setInvoiceNumber(e.target.value.toUpperCase())}
+                      placeholder="Ej. GS-PR-12"
                       disabled={busy}
-                      className="max-w-[200px]"
+                      className="max-w-[200px] uppercase"
                     />
                     <Button 
                       type="button" 
@@ -472,7 +519,7 @@ export function SaleEditor({
               <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
             )}
             {isEdit ? 'Guardar cambios' : 'Registrar venta'} ·{' '}
-            <span className="nums ml-1">{formatCordobas(result?.total ?? localTotal)}</span>
+            <span className="nums ml-1">{formatCordobas(displayTotal)}</span>
           </Button>
 
           {disabledReason && (

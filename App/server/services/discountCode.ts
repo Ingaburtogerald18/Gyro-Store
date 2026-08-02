@@ -86,40 +86,66 @@ export function normalizeCode(raw: string): string {
   return String(raw || '').trim().toUpperCase().replace(/\s+/g, '');
 }
 
+// Dos queries en vez de un embed PostgREST, a propósito.
+//
+// El embed `discount_code_redemptions(...)` obliga a PostgREST a resolver la FK
+// por introspección. Si la FK falta o el schema cache quedó viejo tras un DDL,
+// la consulta falla ENTERA con PGRST200 y el panel muestra la lista vacía — o
+// sea, un dato secundario (¿ya se canjeó?) tumba el listado principal.
+//
+// Con dos queries el canje es información ADICIONAL: si su tabla no responde,
+// los códigos igual se listan y solo se pierde la columna de canje.
 export async function listDiscountCodes(): Promise<DiscountCode[]> {
   const { data, error } = await db
     .from('discount_codes')
-    .select(`
-      ${COLUMNS},
-      discount_code_redemptions (
-        source, reference_id, reference_label, method, amount, redeemed_by, redeemed_at
-      )
-    `)
+    .select(COLUMNS)
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) throw error;
-  return ((data ?? []) as unknown as DiscountCodeRow[]).map(toDiscountCode);
+
+  const rows = (data ?? []) as unknown as DiscountCodeRow[];
+  if (rows.length === 0) return [];
+
+  const { data: redemptions, error: redemptionError } = await db
+    .from('discount_code_redemptions')
+    .select('code, source, reference_id, reference_label, method, amount, redeemed_by, redeemed_at')
+    .in('code', rows.map((r) => r.code))
+    .order('redeemed_at', { ascending: false });
+
+  // No se relanza: sin canjes la lista sigue siendo útil.
+  if (redemptionError) {
+    console.warn('[discount-codes] No se pudieron leer los canjes:', redemptionError.message);
+  }
+
+  // Un código es de uso único (max_uses = 1), así que basta el más reciente.
+  const byCode = new Map<string, NonNullable<DiscountCodeRow['discount_code_redemptions']>[number]>();
+  for (const r of (redemptions ?? []) as unknown as Array<
+    NonNullable<DiscountCodeRow['discount_code_redemptions']>[number] & { code: string }
+  >) {
+    if (!byCode.has(r.code)) byCode.set(r.code, r);
+  }
+
+  return rows.map((row) => {
+    const redemption = byCode.get(row.code);
+    return toDiscountCode({
+      ...row,
+      discount_code_redemptions: redemption ? [redemption] : null,
+    });
+  });
 }
 
+// El código lo genera la BASE: `discount_codes.code` tiene como default
+// `'GS-DC-' || nextval('discount_code_seq')` (migración 0011). Por eso acá NO se
+// inserta `code` y no hay chequeo de duplicado: `nextval()` es atómico, así que
+// dos requests simultáneos no pueden sacar el mismo número — un chequeo
+// "¿existe?" en TypeScript sí podría dejarlos pasar a los dos.
 export async function createDiscountCode(
   input: DiscountCodeInput,
   createdBy: string,
 ): Promise<DiscountCode> {
-  const code = normalizeCode(input.code);
-  if (!code) throw new BadRequestError('Código inválido.');
-
-  const { data: existing, error: findError } = await db
-    .from('discount_codes')
-    .select('code')
-    .eq('code', code)
-    .maybeSingle();
-  if (findError) throw findError;
-  if (existing) throw new BadRequestError(`El código "${code}" ya existe.`);
-
   const { data, error } = await db
     .from('discount_codes')
     .insert({
-      code,
       type: input.type,
       value: input.value,
       max_uses: input.maxUses ?? 1,

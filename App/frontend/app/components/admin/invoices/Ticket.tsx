@@ -1,11 +1,19 @@
 import { forwardRef } from 'react';
 import type { TicketData } from '~/store/api/invoicesApi';
 import { formatCordobas } from '~/lib/formatters';
+import { useGetConfigQuery } from '~/store/api/configApi';
 
 export const Ticket = forwardRef<HTMLDivElement, { invoice: TicketData }>(function Ticket(
   { invoice },
   ref,
 ) {
+  const { data: config } = useGetConfigQuery();
+  // El logo sale de Configuración → Recursos de Imágenes. `posLogo` es el que se
+  // sube pensando en la térmica (300x300, blanco y negro puro); si todavía no
+  // hay uno cargado se cae al logo general, y si tampoco hay, el ticket sale
+  // solo con el nombre en texto — que ya está más abajo y se imprime perfecto.
+  const logoUrl = config?.images?.posLogo || config?.images?.logoStatic || '';
+
   const date = invoice.createdAt ? new Date(invoice.createdAt) : new Date();
   const hasDelivery = (invoice.deliveryFee || 0) > 0;
   const grandTotal = invoice.total; // En v2 total ya incluye delivery
@@ -27,14 +35,16 @@ export const Ticket = forwardRef<HTMLDivElement, { invoice: TicketData }>(functi
           CABECERA: Logo centrado + info de contacto
           ═══════════════════════════════════════════ */}
       <div className="mb-2 text-center">
-        {/* Contenedor recortado: oculta texto del logo si lo hubiera */}
-        <div className="mx-auto mb-1 h-16 w-28 overflow-hidden">
+        {logoUrl && (
+          // `object-contain` y sin recorte: `posLogo` se sube ya preparado para
+          // el ticket, así que se imprime entero. El `grayscale` protege de un
+          // logo a color en una impresora térmica, que es monocromo.
           <img
-            src="/logo.png"
-            alt="Gyro Store"
-            className="h-28 w-full object-cover object-top grayscale"
+            src={logoUrl}
+            alt=""
+            className="mx-auto mb-1 h-16 w-auto max-w-[60mm] object-contain grayscale"
           />
-        </div>
+        )}
         <p className="text-[18px] font-black uppercase tracking-widest">GYRO STORE</p>
         <p className="mt-1 text-[11px] tracking-wide text-black">
           Tu tienda de tecnología &amp; accesorios

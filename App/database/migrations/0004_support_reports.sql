@@ -136,19 +136,10 @@ create table feedback (
 
 alter table feedback enable row level security;
 
--- ============================================================================
--- Tabla: discount_codes
--- ============================================================================
-create table discount_codes (
-  id          uuid primary key default gen_random_uuid(),
-  code        text unique,
-  kind        text,
-  value       numeric(12,2),
-  active      boolean not null default true,
-  created_at  timestamptz not null default now()
-);
-
-alter table discount_codes enable row level security;
+-- `discount_codes` NO vive acá: nace en `0009_discount_codes.sql`, que es donde
+-- está su forma real (código como PK, tipo, usos, vencimiento). Tenerla también
+-- en este archivo con otra forma hacía que el orden de aplicación decidiera qué
+-- tabla quedaba, y el backend fallaba con "Could not find the 'type' column".
 
 -- ============================================================================
 -- Tabla: expenses

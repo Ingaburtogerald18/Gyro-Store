@@ -4,7 +4,11 @@
 -- Se guarda el rastro de CADA vez que se canjea un código de descuento.
 -- Esto permite armar el panel de uso, saber en qué factura se aplicó, etc.
 
-create type redemption_source as enum ('checkout', 'invoice', 'sale');
+do $$ begin
+  create type redemption_source as enum ('checkout', 'invoice', 'sale');
+exception
+  when duplicate_object then null;
+end $$;
 
 create table discount_code_redemptions (
   id              uuid primary key default gen_random_uuid(),

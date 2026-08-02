@@ -616,7 +616,10 @@ export const quoteInputSchema = z.object({
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
 
 export const registerSaleInputSchema = z.object({
-  invoiceNumber: z.number().int().positive().optional(),
+  // Código de la factura tal como se imprime (`GS-PR-12`). Se acepta string
+  // porque es lo que el vendedor copia del ticket; `parseInvoiceCode` en
+  // services/invoice.ts lo resuelve al correlativo numérico (y tolera "12").
+  invoiceNumber: z.union([z.string().trim().max(20), z.number().int().positive()]).optional(),
   customerName: z.string().max(100).optional(),
   phone: z.string().max(20).optional(),
   overrideSellerId: z.string().uuid().optional(),
@@ -740,18 +743,15 @@ export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;
 // atómicamente en server/services/discountCode.ts. `maxUses = 0` = ilimitado.
 export const DISCOUNT_TYPES = ['percent', 'fixed'] as const;
 
+// `code` NO está en el input: lo genera la base con la secuencia `GS-DC-N`
+// (migración 0011). El cliente no lo manda ni lo puede elegir.
 export const discountCodeSchema = z
   .object({
-    code: z
-      .string()
-      .trim()
-      .min(3, 'Mínimo 3 caracteres')
-      .max(30, 'Máximo 30 caracteres')
-      .regex(/^[a-zA-Z0-9-]+$/, 'Solo letras, números y guiones'),
     type: z.enum(DISCOUNT_TYPES),
     value: z.number().positive('Debe ser mayor a 0'),
     maxUses: z.number().int().nonnegative().optional().default(1), // 0 = ilimitado
     expiresAt: z.string().optional().or(z.literal('')), // yyyy-mm-dd o vacío = sin vencimiento
+    // En el panel se muestra como «Descripción»; la columna sigue siendo `note`.
     note: z.string().max(200).optional().default(''),
   })
   .refine((d) => d.type !== 'percent' || d.value <= 100, {

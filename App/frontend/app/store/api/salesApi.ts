@@ -58,7 +58,8 @@ export interface QuoteResult {
 }
 
 export interface RegisterSaleInput {
-  invoiceNumber?: number;
+  /** Código impreso de la factura (`GS-PR-12`). El backend también acepta "12". */
+  invoiceNumber?: string | number;
   customerName?: string;
   phone?: string;
   overrideSellerId?: string;

@@ -38,11 +38,12 @@ router.get(
 router.get(
   '/lookup',
   asyncHandler(async (req, res) => {
-    // El número es un bigint del correlativo, no un uuid: se valida como entero
-    // positivo para no mandarle basura a Postgres.
-    const parsed = z.coerce.number().int().positive().safeParse(req.query.number);
+    // Llega el código impreso (`GS-PR-12`) o el número pelado: `findInvoiceByNumber`
+    // lo normaliza al correlativo y devuelve null si no lo reconoce, así que no
+    // se le manda basura a Postgres.
+    const parsed = z.string().trim().min(1).max(20).safeParse(req.query.number);
     if (!parsed.success) {
-      res.status(400).json({ error: 'Número de factura inválido.' });
+      res.status(400).json({ error: 'Código de factura inválido.' });
       return;
     }
     const invoice = await findInvoiceByNumber(parsed.data);

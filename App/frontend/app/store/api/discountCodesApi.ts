@@ -23,12 +23,14 @@ export interface DiscountCode {
   redeemedAmount: number | null;
 }
 
+// Sin `code`: lo genera la base con la secuencia `GS-DC-N`. La respuesta del
+// POST trae el código ya asignado.
 export interface NewDiscountCode {
-  code: string;
   type: DiscountType;
   value: number;
   maxUses?: number;
   expiresAt?: string;
+  /** Se muestra como «Descripción» en el panel; la columna es `note`. */
   note?: string;
 }
 

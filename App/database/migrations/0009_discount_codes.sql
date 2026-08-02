@@ -8,10 +8,24 @@
 --
 -- El código en MAYÚSCULAS es la PRIMARY KEY natural → unicidad sin query extra,
 -- igual que el doc id de v1. `max_uses = 0` significa usos ilimitados.
+--
+-- ── Por qué el enum es reintentable y la tabla NO ──
+-- Un enum existe o no, con los mismos valores: saltearlo si ya está es seguro.
+-- Una tabla, en cambio, puede existir con OTRA FORMA — y eso ya pasó acá: había
+-- una `discount_codes` distinta en 0004 y el backend fallaba con "Could not find
+-- the 'type' column". Con `create table if not exists` ese caso se saltea EN
+-- SILENCIO y el error aparece después, en runtime. Sin él, revienta acá mismo,
+-- que es donde se puede leer y arreglar. Si este archivo falla porque la tabla
+-- ya existe, hay que borrarla a mano y volver a correrlo.
 
-create type discount_type as enum ('percent', 'fixed');
-
-drop table if exists discount_codes cascade;
+-- El enum se crea de forma reintentable: un `create type` pelado hace que
+-- re-correr el archivo falle en la PRIMERA línea y deje todo a medio aplicar.
+-- La tabla de abajo SÍ va sin `if not exists` a propósito (ver nota).
+do $$ begin
+  create type discount_type as enum ('percent', 'fixed');
+exception
+  when duplicate_object then null;
+end $$;
 
 create table discount_codes (
   code         text primary key,

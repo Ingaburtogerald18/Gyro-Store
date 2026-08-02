@@ -3,7 +3,12 @@ import { baseApi } from './baseApi';
 export interface Invoice {
   id: string;
   saleId: string | null;
+  /** Correlativo numérico interno (orden y unicidad). */
   invoiceNumber: number;
+  /** Código legible que se imprime y que el vendedor tipea: `GS-PR-12`. */
+  invoiceCode: string;
+  /** Solo viene del lookup: el editor de ventas se precarga con esto. */
+  items?: { productName: string; quantity: number; unitPrice: number; lineTotal: number }[];
   status: string;
   method: string | null;
   deliveryFee: number;
@@ -75,10 +80,11 @@ export const invoicesApi = baseApi.injectEndpoints({
       query: (body) => ({ url: 'invoices', method: 'POST', body }),
       invalidatesTags: ['Invoice', 'Sale', 'DiscountCode'],
     }),
-    // Búsqueda por el número impreso en el papel, que es lo que el cliente trae
-    // cuando vuelve al mostrador.
-    lookupInvoice: build.query<Invoice, number>({
-      query: (invoiceNumber) => ({ url: 'invoices/lookup', params: { number: invoiceNumber } }),
+    // Búsqueda por el código impreso en el papel (`GS-PR-12`), que es lo que el
+    // cliente trae cuando vuelve al mostrador.
+    lookupInvoice: build.query<Invoice, string | number>({
+      // Acepta el código impreso (`GS-PR-12`) o el número pelado.
+      query: (invoiceNumber: string | number) => ({ url: 'invoices/lookup', params: { number: invoiceNumber } }),
       providesTags: ['Invoice'],
     }),
     updateInvoice: build.mutation<

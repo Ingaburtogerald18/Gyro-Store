@@ -25,7 +25,7 @@ export default function AdminFacturacion() {
 
   const unlinkedColumns = useMemo<ColumnDef<Invoice, unknown>[]>(
     () => [
-      { accessorKey: 'invoiceNumber', header: 'N°', cell: ({ row }) => <span className="font-mono font-medium">#{row.original.invoiceNumber}</span> },
+      { accessorKey: 'invoiceCode', header: 'Código', cell: ({ row }) => <span className="font-mono font-medium">{row.original.invoiceCode}</span> },
       { accessorKey: 'customerName', header: 'Cliente', cell: ({ row }) => row.original.customerName || '—' },
       { accessorKey: 'method', header: 'Método', cell: ({ row }) => <span className="capitalize">{row.original.method ?? '—'}</span> },
       {
@@ -71,7 +71,7 @@ export default function AdminFacturacion() {
 
   const linkedColumns = useMemo<ColumnDef<Invoice, unknown>[]>(
     () => [
-      { accessorKey: 'invoiceNumber', header: 'N°', cell: ({ row }) => <span className="font-mono">#{row.original.invoiceNumber}</span> },
+      { accessorKey: 'invoiceCode', header: 'Código', cell: ({ row }) => <span className="font-mono">{row.original.invoiceCode}</span> },
       { accessorKey: 'customerName', header: 'Cliente', cell: ({ row }) => row.original.customerName || '—' },
       { accessorKey: 'method', header: 'Método', cell: ({ row }) => <span className="capitalize">{row.original.method ?? '—'}</span> },
       {

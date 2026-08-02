@@ -13,7 +13,6 @@ import {
   CheckmarkBadge01Icon,
   DollarCircleIcon,
   Link01Icon,
-  MagicWand01Icon
 } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
@@ -22,6 +21,8 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
+import { Textarea } from '~/components/ui/textarea';
+import { DatePicker } from '~/components/ui/date-picker';
 import { Label } from '~/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { Spinner } from '~/components/ui/spinner';
@@ -38,16 +39,8 @@ import {
 
 export const meta: MetaFunction = () => [{ title: 'Códigos de descuento | Gyro Store Admin' }];
 
-const EMPTY_FORM = { code: '', type: 'percent' as DiscountType, value: '', expiresAt: '', note: '' };
-
-function generateRandomCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = 'GYRO-';
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
+// Sin `code`: lo asigna la base (secuencia GS-DC-N) y viene en la respuesta.
+const EMPTY_FORM = { type: 'percent' as DiscountType, value: '', expiresAt: '', note: '' };
 
 export default function AdminDiscountCodes() {
   const { data = [], isLoading } = useGetDiscountCodesQuery();
@@ -62,18 +55,17 @@ export default function AdminDiscountCodes() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const value = Number(form.value);
-    if (!form.code.trim()) return toast.error('Escribí un código.');
     if (!value || value <= 0) return toast.error('El valor debe ser mayor a 0.');
     try {
-      await createCode({
-        code: form.code.trim(),
+      // El código lo devuelve el servidor ya generado (GS-DC-N).
+      const created = await createCode({
         type: form.type,
         value,
         maxUses: 1, // Ahora forzamos 1 por regla de negocio
         expiresAt: form.expiresAt || undefined,
         note: form.note.trim() || undefined,
       }).unwrap();
-      toast.success(`Código "${form.code.trim().toUpperCase()}" creado.`);
+      toast.success(`Código ${created.code} creado.`);
       setForm(EMPTY_FORM);
       setModalOpen(false);
     } catch (err) {
@@ -136,26 +128,6 @@ export default function AdminDiscountCodes() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={submit} className="grid gap-4 mt-2">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>Código *</Label>
-                  <button
-                    type="button"
-                    onClick={() => set('code', generateRandomCode())}
-                    className="text-xs text-primary flex items-center gap-1 hover:underline"
-                  >
-                    <HugeiconsIcon icon={MagicWand01Icon} size={12} /> Autogenerar
-                  </button>
-                </div>
-                <Input
-                  className="uppercase font-mono font-bold tracking-widest text-lg h-12"
-                  value={form.code}
-                  onChange={(e) => set('code', e.target.value.toUpperCase())}
-                  placeholder="GYRO-XXXX"
-                  maxLength={30}
-                />
-              </div>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Tipo</Label>
@@ -184,14 +156,20 @@ export default function AdminDiscountCodes() {
 
               <div className="space-y-1.5">
                 <Label>Vence (opcional)</Label>
-                <Input type="date" value={form.expiresAt} onChange={(e) => set('expiresAt', e.target.value)} />
+                <DatePicker
+                  value={form.expiresAt}
+                  onChange={(v) => set('expiresAt', v)}
+                  placeholder="Sin vencimiento"
+                />
               </div>
               <div className="space-y-1.5">
-                <Label>Nota (referencia interna)</Label>
-                <Input
+                <Label>Descripción (referencia interna)</Label>
+                {/* Se guarda en la columna `note`: solo cambia la etiqueta. */}
+                <Textarea
+                  rows={2}
                   value={form.note}
                   onChange={(e) => set('note', e.target.value)}
-                  placeholder="Ej. Reseña en Google"
+                  placeholder="Ej. Reseña en Google del cliente de la factura #120"
                   maxLength={200}
                 />
               </div>

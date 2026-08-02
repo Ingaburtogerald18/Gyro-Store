@@ -8,7 +8,10 @@ import { redeemDiscountCode, computeCodeDiscount, checkDiscountCode } from './di
 export interface Invoice {
   id: string;
   saleId: string | null;
+  /** Correlativo numérico: es el artefacto legal y el criterio de orden. */
   invoiceNumber: number;
+  /** Código legible derivado del correlativo: `GS-PR-12`. Es lo que se imprime. */
+  invoiceCode: string;
   status: string;
   method: string | null;
   deliveryFee: number;
@@ -19,12 +22,26 @@ export interface Invoice {
   subtotal?: number;
   discount?: number;
   deliveryName?: string | null;
+  /**
+   * Líneas de la factura. Solo las trae `findInvoiceByNumber` (el lookup del
+   * editor de ventas, que necesita precargarlas). `listInvoices` NO las pide:
+   * serían N+1 consultas para una tabla que no las muestra.
+   */
+  items?: InvoiceLineItem[];
+}
+
+export interface InvoiceLineItem {
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
 }
 
 interface InvoiceRow {
   id: string;
   sale_id: string | null;
   invoice_number: number;
+  invoice_code: string | null;
   status: string;
   method: string | null;
   delivery_fee: number | null;
@@ -42,6 +59,9 @@ function toInvoice(row: InvoiceRow): Invoice {
     id: row.id,
     saleId: row.sale_id,
     invoiceNumber: row.invoice_number,
+    // Fallback por si la migración 0012 todavía no corrió: el código se puede
+    // reconstruir del número, así que el panel no se queda sin identificador.
+    invoiceCode: row.invoice_code ?? formatInvoiceCode(row.invoice_number),
     status: row.status,
     method: row.method,
     deliveryFee: row.delivery_fee ?? 0,
@@ -55,7 +75,26 @@ function toInvoice(row: InvoiceRow): Invoice {
   };
 }
 
-const INVOICE_COLUMNS = 'id, sale_id, invoice_number, status, method, delivery_fee, total, created_at, customer_name, phone, subtotal, discount, delivery_name';
+const INVOICE_COLUMNS = 'id, sale_id, invoice_number, invoice_code, status, method, delivery_fee, total, created_at, customer_name, phone, subtotal, discount, delivery_name';
+
+export const INVOICE_CODE_PREFIX = 'GS-PR-';
+
+export function formatInvoiceCode(n: number): string {
+  return `${INVOICE_CODE_PREFIX}${n}`;
+}
+
+/**
+ * Acepta lo que el vendedor tenga a mano: `GS-PR-12`, `gs-pr-12`, `GSPR12` o
+ * simplemente `12`. Devuelve el correlativo numérico, o `null` si no se
+ * reconoce — el llamador decide el mensaje de error.
+ */
+export function parseInvoiceCode(raw: string | number | null | undefined): number | null {
+  const cleaned = String(raw ?? '').trim().toUpperCase().replace(/[\s-]/g, '');
+  const match = cleaned.match(/^(?:GSPR)?(\d+)$/);
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
 
 // Emite la factura como documento independiente (unlinked).
 export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice> {
@@ -113,7 +152,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
       await redeemDiscountCode(discountCode, {
         source: 'invoice',
         referenceId: invoice.id,
-        referenceLabel: 'Factura #' + invoice.invoice_number,
+        referenceLabel: 'Factura ' + (invoice.invoice_code ?? formatInvoiceCode(invoice.invoice_number)),
         method: input.method,
         amount: codeDiscount,
         redeemedBy: null, // Si tuvieramos usuario, se pasaría aquí
@@ -143,16 +182,21 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
 }
 
 // Liga una factura existente a una venta aprobada.
-export async function linkInvoiceToSale(invoiceNumber: number, saleId: string): Promise<Invoice> {
+export async function linkInvoiceToSale(rawCode: string | number, saleId: string): Promise<Invoice> {
+  const invoiceNumber = parseInvoiceCode(rawCode);
+  if (invoiceNumber === null) {
+    throw new BadRequestError(`Código de factura inválido. Se espera algo como ${formatInvoiceCode(1)}.`);
+  }
+
   const { data: existing, error: findError } = await db
     .from('invoices')
     .select('id, status')
     .eq('invoice_number', invoiceNumber)
     .maybeSingle();
-    
+
   if (findError) throw findError;
   if (!existing) {
-    throw new BadRequestError('El número de factura no existe.');
+    throw new BadRequestError(`La factura ${formatInvoiceCode(invoiceNumber)} no existe.`);
   }
 
   if (existing.status !== 'unlinked') {
@@ -182,14 +226,43 @@ export async function listInvoices(filters: { status?: string } = {}): Promise<I
   return ((data ?? []) as unknown as InvoiceRow[]).map(toInvoice);
 }
 
-export async function findInvoiceByNumber(invoiceNumber: number): Promise<Invoice | null> {
+// Devuelve la factura CON sus líneas: es lo que el editor de ventas usa para
+// precargarse entero (productos, cantidades, precios y datos del cliente) en vez
+// de obligar al vendedor a volver a tipear lo que ya está en el ticket.
+export async function findInvoiceByNumber(rawCode: string | number): Promise<Invoice | null> {
+  const invoiceNumber = parseInvoiceCode(rawCode);
+  if (invoiceNumber === null) return null;
+
   const { data, error } = await db
     .from('invoices')
     .select(INVOICE_COLUMNS)
     .eq('invoice_number', invoiceNumber)
     .maybeSingle();
   if (error) throw error;
-  return data ? toInvoice(data as unknown as InvoiceRow) : null;
+  if (!data) return null;
+
+  const invoice = toInvoice(data as unknown as InvoiceRow);
+
+  const { data: itemRows, error: itemsError } = await db
+    .from('invoice_items')
+    .select('sku, quantity, unit_price, line_total')
+    .eq('invoice_id', invoice.id);
+  if (itemsError) throw itemsError;
+
+  invoice.items = ((itemRows ?? []) as unknown as Array<{
+    sku: string | null;
+    quantity: number;
+    unit_price: number | null;
+    line_total: number | null;
+  }>).map((item) => ({
+    // `sku` guarda el nombre del producto (ver createInvoice).
+    productName: item.sku ?? '',
+    quantity: item.quantity,
+    unitPrice: item.unit_price ?? 0,
+    lineTotal: item.line_total ?? 0,
+  }));
+
+  return invoice;
 }
 
 export async function voidInvoice(
@@ -267,7 +340,8 @@ export async function updateInvoice(
 }
 
 export interface TicketData {
-  ticketNumber: number;
+  /** Código impreso en el ticket: `GS-PR-12`. */
+  ticketNumber: string;
   createdAt: string;
   customer: {
     name: string;
@@ -291,7 +365,7 @@ export interface TicketData {
 export async function getInvoiceTicket(invoiceId: string): Promise<TicketData | null> {
   const { data: invoice, error: invoiceError } = await db
     .from('invoices')
-    .select('id, invoice_number, method, delivery_fee, total, created_at, sale_id, customer_name, phone, subtotal, discount, delivery_name')
+    .select('id, invoice_number, invoice_code, method, delivery_fee, total, created_at, sale_id, customer_name, phone, subtotal, discount, delivery_name')
     .eq('id', invoiceId)
     .maybeSingle();
   if (invoiceError) throw invoiceError;
@@ -313,17 +387,16 @@ export async function getInvoiceTicket(invoiceId: string): Promise<TicketData | 
       .eq('id', invoice.sale_id)
       .maybeSingle();
     
-    if (!orderError && order) {
-      if (order.seller_uid) {
-        const { data: profile } = await db
-          .from('profiles')
-          .select('name')
-          .eq('id', order.seller_uid)
-          .maybeSingle();
-        if (profile?.name) sellerName = profile.name;
-      } else if (order.seller_email) {
-        sellerName = order.seller_email;
-      }
+    // Solo el NOMBRE registrado en `profiles`. Antes caía al `seller_email`
+    // cuando no había uid, y en el ticket impreso salía un correo completo
+    // (`juan.perez@gyrostorenic.com`) en vez de un nombre.
+    if (!orderError && order?.seller_uid) {
+      const { data: profile } = await db
+        .from('profiles')
+        .select('name')
+        .eq('id', order.seller_uid)
+        .maybeSingle();
+      if (profile?.name?.trim()) sellerName = profile.name.trim();
     }
   }
 
@@ -335,7 +408,7 @@ export async function getInvoiceTicket(invoiceId: string): Promise<TicketData | 
   }));
 
   return {
-    ticketNumber: invoice.invoice_number,
+    ticketNumber: invoice.invoice_code ?? formatInvoiceCode(invoice.invoice_number),
     createdAt: invoice.created_at,
     customer: {
       name: invoice.customer_name || 'Cliente General',

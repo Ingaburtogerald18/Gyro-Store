@@ -138,46 +138,52 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-28 flex items-center justify-center p-0">
-        
-        {/* Expanded View */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none gap-2">
-          {(config?.images?.logoStatic || config?.images?.logoAnimated) && (
-            config?.images?.logoAnimated?.match(/\.(webm|mp4|mov)($|\?)/i) ? (
-              <video 
-                src={config.images.logoAnimated} 
-                autoPlay loop muted playsInline 
-                className="h-10 w-auto object-contain rounded-full"
-              />
+      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-16 flex items-center justify-start p-4">
+          
+          {/* Expanded View */}
+          <div className="absolute inset-0 flex items-center justify-start px-4 opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none gap-3">
+            {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
+              config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
+                <video 
+                  src={config.images.logoAnimated} 
+                  autoPlay loop muted playsInline 
+                  className="size-10 object-contain rounded-full"
+                />
+              ) : (
+                <img 
+                  src={config?.images?.logoStatic || config?.images?.logoAnimated} 
+                  alt="Gyro Store Logo" 
+                  className="size-10 object-contain"
+                />
+              )
             ) : (
-              <img 
-                src={config?.images?.logoStatic || config?.images?.logoAnimated} 
-                alt="Gyro Store Logo" 
-                className="h-10 w-auto object-contain"
-              />
-            )
-          )}
-          <div className="flex flex-col items-center text-center leading-tight">
-            <span className="font-bold text-lg tracking-tight whitespace-nowrap">Gyro Store</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap uppercase tracking-wider font-medium">Panel admin</span>
+              <div className="flex size-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
+                <HugeiconsIcon icon={Store01Icon} size={24} strokeWidth={2} />
+              </div>
+            )}
+            <div className="flex flex-col items-start leading-tight">
+              <span className="font-bold text-lg tracking-tight whitespace-nowrap">Gyro Store</span>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap uppercase tracking-wider font-medium">Panel admin</span>
+            </div>
           </div>
-        </div>
-
-        {/* Collapsed View (Icon) */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
-          <NavLink to="/admin" className="flex aspect-square size-10 items-center justify-center hover:opacity-80 transition-opacity overflow-hidden">
-             {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
-               config?.images?.logoAnimated?.match(/\.(webm|mp4|mov)($|\?)/i) ? (
-                 <video src={config.images.logoAnimated} autoPlay loop muted playsInline className="w-full h-full object-contain rounded-full" />
+  
+          {/* Collapsed View (Icon) */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
+            <NavLink to="/admin" className="flex aspect-square size-10 items-center justify-center rounded-lg hover:opacity-80 transition-opacity overflow-hidden">
+               {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
+                 config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
+                   <video src={config.images.logoAnimated} autoPlay loop muted playsInline className="size-full object-contain rounded-full" />
+                 ) : (
+                   <img src={config?.images?.logoStatic || config?.images?.logoAnimated} alt="Logo" className="size-full object-contain" />
+                 )
                ) : (
-                 <img src={config?.images?.logoStatic || config?.images?.logoAnimated} alt="Logo" className="w-full h-full object-contain" />
-               )
-             ) : (
-               <HugeiconsIcon icon={Store01Icon} size={20} strokeWidth={2} className="text-foreground" />
-             )}
-          </NavLink>
-        </div>
-      </SidebarHeader>
+                 <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:opacity-90 transition-opacity">
+                   <HugeiconsIcon icon={Store01Icon} size={24} strokeWidth={2} />
+                 </div>
+               )}
+            </NavLink>
+          </div>
+        </SidebarHeader>
 
       <SidebarContent>
         {NAV_GROUPS.map((group) => {
