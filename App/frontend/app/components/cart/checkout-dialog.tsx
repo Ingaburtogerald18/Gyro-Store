@@ -5,7 +5,7 @@
 // schema Zod que valida el backend (shared/schemas.ts): una sola fuente de
 // verdad, sin reglas duplicadas que se desincronicen.
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Location01Icon, Store01Icon, TruckIcon } from "@hugeicons/core-free-icons";
+import { Location01Icon, Store01Icon, TruckIcon, Coupon01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -25,6 +25,10 @@ import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
 import { useGetConfigQuery } from '~/store/api/configApi';
 import { useCreatePublicOrderMutation } from '~/store/api/ordersApi';
+import {
+  useValidateDiscountCodeMutation,
+  type DiscountCodeValidation,
+} from '~/store/api/discountCodesApi';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import {
   clearCart,
@@ -51,7 +55,39 @@ export function CheckoutDialog({
   const subtotal = useAppSelector(selectCartSubtotal);
   const { data: config } = useGetConfigQuery();
   const [createOrder, { isLoading }] = useCreatePublicOrderMutation();
+  const [validateCode, { isLoading: validatingCode }] = useValidateDiscountCodeMutation();
   const [geoLoading, setGeoLoading] = useState(false);
+
+  // Código de descuento: el preview (validate) NO consume uso; el canje real lo
+  // hace el servidor al crear el pedido. El monto acá es solo informativo.
+  const [codeInput, setCodeInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState<DiscountCodeValidation | null>(null);
+  const codeDiscount = appliedCode
+    ? appliedCode.type === 'percent'
+      ? subtotal * (appliedCode.value / 100)
+      : Math.min(appliedCode.value, subtotal)
+    : 0;
+  const totalWithDiscount = Math.max(0, subtotal - codeDiscount);
+
+  async function applyCode() {
+    const code = codeInput.trim();
+    if (!code) return;
+    try {
+      const result = await validateCode(code).unwrap();
+      setAppliedCode(result);
+      toast.success(`Código ${result.code} aplicado.`);
+    } catch (err) {
+      setAppliedCode(null);
+      const message =
+        (err as { data?: { error?: string } })?.data?.error ?? 'Código inválido.';
+      toast.error(message);
+    }
+  }
+
+  function removeCode() {
+    setAppliedCode(null);
+    setCodeInput('');
+  }
 
   const {
     register,
@@ -104,7 +140,11 @@ export function CheckoutDialog({
 
     // Se valida con el schema compartido ANTES de salir: los mismos mensajes
     // que devolvería el backend, pero sin gastar el viaje.
-    const payload = { ...form, items: toOrderItems(items) };
+    const payload = {
+      ...form,
+      items: toOrderItems(items),
+      discountCode: appliedCode?.code,
+    };
     const parsed = publicOrderInputSchema.safeParse(payload);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? 'Revisá los datos del formulario.');
@@ -114,6 +154,7 @@ export function CheckoutDialog({
     try {
       const order = await createOrder(parsed.data).unwrap();
       reset();
+      removeCode();
       dispatch(clearCart());
       dispatch(closeCart());
       onOpenChange(false);
@@ -233,11 +274,69 @@ export function CheckoutDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between border-t border pt-3">
-            <span className="text-sm text-muted-foreground">Total estimado</span>
-            <span className="text-lg font-bold text-foreground tabular-nums">
-              {formatCordobas(subtotal, config?.currency)}
-            </span>
+          {/* Código de descuento (opcional) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="discountCode">Código de descuento (opcional)</Label>
+            {appliedCode ? (
+              <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/10 px-3 py-2">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+                  <HugeiconsIcon icon={Coupon01Icon} size={16} strokeWidth={2} aria-hidden />
+                  {appliedCode.code}
+                  <span className="font-normal text-muted-foreground">
+                    ({appliedCode.type === 'percent' ? `${appliedCode.value}%` : formatCordobas(appliedCode.value, config?.currency)})
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={removeCode}
+                  className="grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                  title="Quitar código"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} aria-hidden />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  id="discountCode"
+                  value={codeInput}
+                  onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      applyCode();
+                    }
+                  }}
+                  placeholder="Tenés un código?"
+                  className="uppercase"
+                  maxLength={30}
+                />
+                <Button type="button" variant="outline" onClick={applyCode} disabled={validatingCode || !codeInput.trim()}>
+                  {validatingCode ? 'Validando…' : 'Aplicar'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1 border-t border pt-3">
+            {codeDiscount > 0 && (
+              <>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">{formatCordobas(subtotal, config?.currency)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm text-primary">
+                  <span>Descuento ({appliedCode?.code})</span>
+                  <span className="tabular-nums">−{formatCordobas(codeDiscount, config?.currency)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total estimado</span>
+              <span className="text-lg font-bold text-foreground tabular-nums">
+                {formatCordobas(totalWithDiscount, config?.currency)}
+              </span>
+            </div>
           </div>
 
           <DialogFooter>

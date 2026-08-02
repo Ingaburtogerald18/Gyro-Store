@@ -2,7 +2,7 @@
 // admin. Dinero = sans con tabular-nums (clase `nums`); font-mono queda
 // reservado para códigos de producto.
 import { cn } from "~/lib/utils";
-import { formatCordobas } from "~/lib/formatters";
+import { formatCordobas, formatUsd } from "~/lib/formatters";
 
 type MoneyTone = "default" | "muted" | "strong" | "pos" | "neg";
 
@@ -19,23 +19,25 @@ export function MoneyCell({
   value,
   tone = "default",
   negative = false,
+  currency = "nio",
 }: {
   value?: number | null;
   tone?: MoneyTone;
   negative?: boolean;
+  currency?: "nio" | "usd";
 }) {
   if (value === undefined || value === null) return <span className="text-muted-foreground">—</span>;
   return (
     <span className={cn("nums", MONEY_TONE[tone])}>
       {negative ? "−" : ""}
-      {formatCordobas(value)}
+      {currency === "usd" ? formatUsd(value) : formatCordobas(value)}
     </span>
   );
 }
 
 /** Código de producto (mono, discreto). */
 export function CodeCell({ value }: { value?: string | null }) {
-  return <span className="font-mono text-xs text-muted-foreground">{value || "—"}</span>;
+  return <span className="font-mono font-normal text-sm text-foreground">{value || "—"}</span>;
 }
 
 /** 

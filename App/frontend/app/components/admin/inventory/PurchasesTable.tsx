@@ -21,7 +21,9 @@ import {
   type Purchase,
 } from "~/store/api/inventoryV1Api";
 import { formatUsd } from "~/lib/formatters";
+import { CodeCell, MoneyCell } from "~/components/ui/cells";
 import { Spinner } from "~/components/ui/spinner";
+import { useGetConfigQuery } from "~/store/api/configApi";
 
 // Tono del StatusBadge canónico por estado de la compra.
 const STATUS_META: Record<Purchase["status"], { label: string; status: BadgeStatus }> = {
@@ -47,7 +49,10 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
   const [filterLot, setFilterLot] = useState("all");
   const [filterCode, setFilterCode] = useState("all");
   const [filterProduct, setFilterProduct] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  const { data: config } = useGetConfigQuery();
 
   const [arrivalFor, setArrivalFor] = useState<Purchase | null>(null);
   const [editFor, setEditFor] = useState<Purchase | null>(null);
@@ -73,20 +78,33 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
     return [ALL_OPT, ...vals.map((v) => ({ value: v, label: v }))];
   }, [purchases]);
 
+  const categoryOptions = useMemo<FilterSelectOption[]>(() => {
+    const vals = Array.from(new Set(purchases.map((p) => p.category).filter(Boolean)));
+    return [
+      ALL_OPT,
+      ...vals.map((v) => {
+        const cat = config?.categories?.find((c) => c.id === v);
+        return { value: v as string, label: cat ? `${cat.icon} ${cat.name}` : (v as string) };
+      })
+    ];
+  }, [purchases, config]);
+
   const filteredPurchases = useMemo(() => {
-    const res = purchases.filter((p) => {
-      if (filterDate !== "all" && p.purchaseDate !== filterDate) return false;
-      if (filterLot !== "all" && p.lot !== filterLot) return false;
-      if (filterCode !== "all" && p.code !== filterCode) return false;
-      if (filterProduct !== "all" && p.productName !== filterProduct) return false;
-      if (filterStatus !== "all" && p.status !== filterStatus) return false;
-      return true;
-    });
-    
-    return res.sort((a, b) => 
+    let r = purchases;
+    if (filterDate !== "all") r = r.filter((p) => p.purchaseDate === filterDate);
+    if (filterLot !== "all") r = r.filter((p) => p.lot === filterLot);
+    if (filterCode !== "all") r = r.filter((p) => p.code === filterCode);
+    if (filterProduct !== "all") r = r.filter((p) => p.productName === filterProduct);
+    if (filterCategory !== "all") r = r.filter((p) => p.category === filterCategory);
+    if (filterStatus !== "all") r = r.filter((p) => p.status === filterStatus);
+    if (globalFilter.trim()) {
+      const q = globalFilter.toLowerCase();
+      r = r.filter((p) => p.code.toLowerCase().includes(q) || p.lot.toLowerCase().includes(q) || p.productName.toLowerCase().includes(q));
+    }
+    return [...r].sort((a, b) => 
       String(a.code || "").localeCompare(String(b.code || ""), undefined, { numeric: true })
     );
-  }, [purchases, filterDate, filterLot, filterCode, filterProduct, filterStatus]);
+  }, [purchases, filterDate, filterLot, filterCode, filterProduct, filterCategory, filterStatus, globalFilter]);
 
   async function handleDelete() {
     if (!deleteFor) return;
@@ -121,6 +139,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         header: () => (
           <FilterSelect variant="ghost" value={filterCode} onChange={setFilterCode} options={codeOptions} placeholder="Código" />
         ),
+        cell: (c) => <CodeCell value={c.getValue() as string} />,
       },
       {
         accessorKey: "productName",
@@ -128,6 +147,24 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         header: () => (
           <FilterSelect variant="ghost" value={filterProduct} onChange={setFilterProduct} options={productOptions} placeholder="Producto" />
         ),
+      },
+      {
+        accessorKey: "category",
+        enableSorting: false,
+        header: () => (
+          <FilterSelect variant="ghost" value={filterCategory} onChange={setFilterCategory} options={categoryOptions} placeholder="Categoría" />
+        ),
+        cell: (c) => {
+          const val = c.getValue() as string;
+          if (!val) return <span className="text-muted-foreground">—</span>;
+          const cat = config?.categories?.find((cat) => cat.id === val);
+          return (
+            <div className="flex items-center gap-1.5 whitespace-nowrap bg-muted px-2 py-0.5 rounded-full w-fit">
+              <span className="text-sm">{cat?.icon}</span>
+              <span className="text-xs font-medium text-foreground">{cat?.name || val}</span>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "status",
@@ -140,16 +177,26 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
           return <StatusBadge status={m.status} label={m.label} />;
         },
       },
-      { accessorKey: "quantity", header: "Cant.", meta: { align: "right" } },
+      { 
+        accessorKey: "quantity", 
+        header: "Cant.", 
+        meta: { align: "right" }
+      },
       // USD a 2 decimales visibles; precisión completa en el tooltip.
-      { accessorKey: "costUnit", header: "P. Base", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
-      { accessorKey: "taxUnit", header: "Imp. Unit.", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
-      { accessorKey: "priceUnit", header: "P. Unit.", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
-      { accessorKey: "total", header: "Total", meta: { align: "right" }, cell: (c) => <span className="font-semibold">{formatUsd(c.getValue())}</span> },
+      { accessorKey: "costUnit", header: "P. Base", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}><MoneyCell currency="usd" value={c.getValue() as number} /></span> },
+      { accessorKey: "taxUnit", header: "Imp. Unit.", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}><MoneyCell currency="usd" value={c.getValue() as number} /></span> },
+      { accessorKey: "priceUnit", header: "P. Unit.", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}><MoneyCell currency="usd" value={c.getValue() as number} /></span> },
+      { 
+        accessorKey: "total", 
+        header: "Total", 
+        meta: { align: "right" }, 
+        cell: (c) => <MoneyCell currency="usd" tone="strong" value={c.getValue() as number} />
+      },
       {
         id: "actions",
         header: "",
         enableSorting: false,
+        meta: { className: "w-[1%]" },
         cell: ({ row }) => {
           const p = row.original;
           if (p.status === "china") {
@@ -157,8 +204,8 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
               <div className="flex justify-end">
                 <RowActionsMenu
                   actions={[
-                    { label: "Reportar llegada", icon: <HugeiconsIcon icon={ShippingTruck01Icon} size={16} strokeWidth={2} />, onClick: () => setArrivalFor(p) },
-                    { label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
+                    { group: "Movimiento", label: "Reportar ingreso", icon: <HugeiconsIcon icon={ShippingTruck01Icon} size={16} strokeWidth={2} />, onClick: () => setArrivalFor(p) },
+                    { group: "Gestión", label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
                     { label: "Eliminar", icon: <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
                   ]}
                 />
@@ -170,9 +217,14 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
               <div className="flex items-center justify-end gap-1.5">
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-2.5 py-1.5 text-xs font-semibold text-primary-2">
                   <HugeiconsIcon icon={Store01Icon} size={14} strokeWidth={2} />
-                  Ingresado a bodega
+                  Bodega
                 </span>
-                <RowActionsMenu actions={[{ label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) }]} />
+                <RowActionsMenu
+                  actions={[
+                    { label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
+                    { label: "Eliminar", icon: <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
+                  ]}
+                />
               </div>
             );
           }
@@ -180,7 +232,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         },
       },
     ],
-    [filterDate, filterLot, filterCode, filterProduct, filterStatus, dateOptions, lotOptions, codeOptions, productOptions],
+    [filterDate, filterLot, filterCode, filterProduct, filterCategory, filterStatus, dateOptions, lotOptions, codeOptions, productOptions, categoryOptions, config],
   );
 
   if (isLoading) {

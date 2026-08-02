@@ -26,6 +26,38 @@ componentes solo declaran estructura y semántica; el vestido vive en `app/style
 **Regla base:** los componentes de `ui/` vienen del registry de shadcn (base `radix`) y se
 modifican **lo mínimo**. Todo lo que sea apariencia va al style, no al `.tsx`.
 
+### La excepción: `forwardRef` en los controles de formulario
+
+`Input`, `Textarea` y `NativeSelect` están envueltos en `React.forwardRef`. **No es un
+capricho ni una prop custom: es compatibilidad con React 18.** El registry de shadcn ya asume
+React 19, donde `ref` viaja como una prop normal; este proyecto está en `react@18.3.1`, cuyo
+jsx runtime intercepta `ref` del spread antes de que llegue al componente
+(`react-jsx-runtime.development.js` → `hasValidRef`). En un componente de función sin
+`forwardRef` eso significa que `<Input {...register("x")} />` registra el `onChange` pero
+**nunca el nodo del DOM**: `reset()` y `setValue()` de react-hook-form dejan de escribir en el
+campo — típicamente un modal de edición que abre con los campos en blanco.
+
+Cada `shadcn add --overwrite` sobre estos tres archivos se lleva el `forwardRef`. Hay que
+volver a ponerlo, o migrar el proyecto a React 19.
+
+### La otra excepción: el estado activo de `Tabs`
+
+`tabs.tsx` pinta la pestaña activa como un **pill lleno con `--primary`**, no con el
+`bg-background` / `dark:bg-input/30` del registry. El default no se veía:
+
+| | activo vs. su contenedor |
+|---|---|
+| Registry, oscuro (`bg-input/30` sobre `bg-muted`) | **1.62:1** |
+| Registry, claro (`bg-background` sobre `bg-muted`) | **1.11:1** |
+| Pill lleno, claro | **4.82:1** |
+
+En oscuro el borde del pill queda en 1.96:1, pero ahí el peso lo carga el texto:
+`--primary-foreground` sobre `--primary` da **7.2:1**. El estado nunca se apoya solo en
+color — también cambia el `font-weight` (§8).
+
+Esto además unifica los dos sistemas de tabs del panel: `AnimatedTabs` (el propio, con
+indicador deslizante) ya usaba un pill `bg-primary`, así que ahora los dos hablan igual.
+
 `style-maia.css` se carga con un `@import "./style-maia.css"` desde `tailwind.css`, y la clase
 `.style-maia` la pone `root.tsx` en el `<html>`. **Las dos cosas hacen falta**: sin el import, la
 clase no tiene CSS detrás y el style entero queda sin aplicar (le pasó al `style-rhea` anterior).
@@ -61,7 +93,13 @@ Viven en `tailwind.css` junto a los del preset, con valor por tema:
   identifica el contacto y el checkout. Se usa vía las variantes `whatsapp` / `whatsappOutline`
   de `Button`, nunca como hex suelto.
 - `--promo` — violeta de la etiqueta de promoción. Variante `promo` de `Badge`.
-- `--success` / `--warning` / `--info` — estados semánticos.
+- `--success` / `--warning` / `--info` — estados semánticos. **Tienen valor distinto por
+  tema y no es simetría decorativa**: los tres se usan también como color de *texto*, así que
+  en claro van oscuros (L≈0.52) para pasar 4.5:1 contra `--background`, y en oscuro van claros
+  (L≈0.72–0.8). Medidos contra el fondo de cada tema: warning 5.65 / 10.4, success 5.19 / 9.6,
+  info 5.46 / 8.9. Antes los tres compartían el tono pensado para oscuro y sobre blanco daban
+  2.54, 3.28 y 3.91 — por debajo del piso de §9. **Si se retoca alguno, se recalcula el
+  contraste; no se elige a ojo.**
 - `--tone-indigo|sky|amber|emerald|rose|purple|red` — los 7 acentos de `StatCard`.
   **No se mapean a `--chart-*`**: en este preset los charts son toda la escala Green y las
   tarjetas quedarían todas del mismo color.
@@ -72,6 +110,14 @@ Viven en `tailwind.css` junto a los del preset, con valor por tema:
 1. **Cero colores crudos de Tailwind** en componentes (`bg-slate-900`, `text-emerald-500`…) y
    **cero hex arbitrarios** (`bg-[#25D366]`). Todo sale de tokens semánticos.
 2. Nada de segundo acento decorativo. La jerarquía se hace con peso, tamaño y espacio.
+3. `border` es utilidad de *grosor*, no de color: `border/50` no genera nada. El color con
+   alfa se escribe entero — `border-border/50`, `border-warning/30`.
+4. **Semántica de color en tarjetas de KPI (`StatCard`)**: El color (`tone-*`) debe indicar el tipo de dato, de forma consistente en todo el módulo. La convención es:
+   - `indigo`: Conteos de unidades, cantidades y stock.
+   - `sky`: Costos, egresos e impuestos (salidas de dinero esperadas).
+   - `emerald`: Ingresos, valores totales con envío y ganancias.
+   - `rose`: Alertas, métricas críticas o negativos (ej. artículos agotados).
+   Nunca usar dos colores para el mismo tipo de dato. Evitar usar todos los colores disponibles (ej. `amber`, `purple`, `red`) si no aportan un significado distinto; un esquema de 4 colores consolida y ordena la vista.
 
 ---
 
@@ -84,7 +130,26 @@ Dos familias, servidas localmente con `@fontsource-variable` (sin Google Fonts):
 
 Ambas se registran en `@theme inline`; registrar `--font-heading` ahí es justamente lo que hace
 que Tailwind genere la clase `font-heading`. Cifras (precios, stock, contadores) siempre
-`tabular-nums` / `.nums`.
+`tabular-nums` / `.nums`. En `DataTable`, las celdas con `meta.align === "right"` aplican
+automáticamente `tabular-nums` para alinear columnas numéricas. Si se requiere más carácter
+en las tablas, se puede sumar `font-heading` a esa misma regla.
+
+### Formato de cifras — una sola puerta
+
+Todo monto sale de `app/lib/formatters.ts`. **Nunca se formatea a mano en el componente**
+(`toFixed(2)`, `` `C$ ${x}` ``, `toLocaleString` suelto): eso fue lo que produjo tres estilos de
+dinero distintos conviviendo en el panel.
+
+| Función | Para qué |
+|---|---|
+| `formatNumber(n, decimals)` | Cifra pelada con separador de miles. Base de las demás. |
+| `formatCordobas(n, symbol?, decimals?)` | Córdobas. `decimals` es 0 por defecto (storefront, totales) y 2 donde el módulo maneja centavos (caja, facturación, costos de inventario). |
+| `formatUsd(n, max?, min?)` | Dólares (compras a China). |
+| `formatByCurrency(n, code, decimals?)` | Cuando la moneda es dato (Caja y Bancos guarda `"NIO"` / `"USD"` por cuenta). Devuelve símbolo, no el código pegado al número. |
+| `cordobasFromUsd(n)` | Conversión + formato para los `sub` de las StatCard. |
+| `roundTo(n, decimals?)` | Redondeo de **cálculo**, no de presentación. |
+
+Si un caso no encaja, se extiende ese archivo — no se formatea en el call site.
 
 ---
 
@@ -134,6 +199,80 @@ El spinner de carga está centralizado en `ui/spinner.tsx`; para un botón ocupa
 
 ---
 
+## 6b. Formularios
+
+### Un solo estado: react-hook-form + zodResolver
+
+**Ningún formulario del panel maneja su estado con `useState`.** Todos son
+`useForm` + `zodResolver`, y el schema sale de `App/shared/schemas.ts` — el mismo
+contrato que valida el backend. No se escriben reglas nuevas que lo dupliquen.
+
+Cuando el formulario pide menos de lo que el endpoint recibe, el schema se
+**deriva** (`.omit()` / `.extend()`), no se reescribe. Ej.: el diálogo de compra de
+`admin.inventario` es `newPurchaseInputSchema.omit({ code, suggestedPrice })` —
+`code` lo asigna el servidor.
+
+Los `<input>` devuelven **string** y los schemas del backend esperan **number**.
+El envoltorio es `z.preprocess(emptyToNaN, z.coerce.number())`: un campo vacío
+tiene que fallar, no convertirse en `0` (que `z.coerce.number()` aceptaría en
+silencio). El tipo de ENTRADA del formulario (`z.input<typeof schema>`) no es el
+de salida; RHF necesita los dos.
+
+Si una regla de negocio es del front y no del backend (ej. "el precio de oferta
+debe ser menor al de todas las variantes"), va como `.superRefine()` sobre el
+schema del backend con `path: ['campo']`. Así sale como error **del campo** sin
+inventar un contrato paralelo.
+
+### Un solo campo: la familia `Field`
+
+`components/ui/field.tsx` es LA forma de componer un campo. Nada de
+`<div className="space-y-2"><Label/><Input/></div>`:
+
+```tsx
+<Field data-invalid={!!errors.code}>
+  <FieldLabel htmlFor="code" required>Código</FieldLabel>
+  <Input id="code" aria-required aria-invalid={!!errors.code} {...register('code')} />
+  <FieldDescription>Lo asigna el servidor si lo dejás vacío.</FieldDescription>
+  <FieldError errors={[errors.code]} />
+</Field>
+```
+
+- `required` en `FieldLabel` pinta el asterisco (glifo, no solo color — §8) y
+  expone `data-required`. Lo accesible lo aporta el control con `aria-required`.
+- `data-invalid` en `Field` tiñe el grupo; `aria-invalid` en el control dispara el
+  anillo destructivo de Maia.
+- Para switches y checkboxes: `<Field orientation="horizontal">` +
+  `FieldContent` + `FieldLabel` + `FieldDescription`.
+- El ritmo vertical lo da `Field`/`FieldGroup`, no `space-y-*` a mano.
+
+### Errores: en el campo. Toast: el resultado.
+
+| Qué | Dónde |
+|---|---|
+| Validación de un campo (formato, requerido, duplicado, regla cruzada) | `FieldError` — **nunca** un toast |
+| Acción bloqueada por una regla | El control se `disabled` con `title`, no se deja intentar y avisar |
+| Resultado de la operación (guardado, fallo de red, 4xx del backend) | `toast` |
+
+`setError('campo', { message })` es la vía para los errores que solo se conocen al
+enviar (ej. código duplicado contra la lista ya cargada).
+
+### Contenedores
+
+| Tarea | Contenedor |
+|---|---|
+| Formulario del panel (corto o largo) y confirmación | `Dialog` |
+| Panel contextual del **storefront** (carrito, quick-add) y sidebar en móvil | `Sheet` |
+
+El panel usa `Dialog` en exclusiva, incluido el editor de producto. **No se migra
+a `Sheet` a pesar de ser el formulario más largo**: es un banco de trabajo de dos
+columnas (contenido + barra lateral de organización) que necesita ancho, no un
+panel lateral; ya resuelve el largo con cuerpo scrolleable y pie fijo.
+
+`ui/drawer.tsx` (vaul) es una primitiva del registry **sin ningún uso**. No se
+introduce: cualquier caso que la tentaría es `Dialog` o `Sheet` según la tabla.
+
+---
+
 ## 7. Componentes propios del storefront
 
 Las primitivas son de shadcn; estas piezas son **nuestras** y siguen vigentes:
@@ -151,6 +290,17 @@ Las primitivas son de shadcn; estas piezas son **nuestras** y siguen vigentes:
 ## 8. Anti-patrones (rechazar en review)
 
 - ❌ Colores crudos de Tailwind (`text-amber-500`) o hex arbitrarios (`bg-[#25D366]`).
+- ❌ `<input>` / `<select>` crudos en un formulario. Van `Input`, `Textarea`, `Select` o
+  `NativeSelect`. Excepción: inputs de infraestructura sin apariencia propia (file oculto,
+  radio `sr-only`, buscador embebido dentro de un contenedor ya estilizado como `DataTable`).
+- ❌ Copiar en línea las clases de una primitiva (`className="flex h-10 w-full rounded-md
+  border border-input …"`). Se ve parecido pero pierde foco, `disabled` y `aria-invalid`, y
+  queda congelado en el idioma de Tailwind v3 (`ring-offset-background`) que este proyecto ya
+  no usa. **`className="input"` no existe**: es herencia de v1 y renderiza sin estilo alguno.
+- ❌ Formatear dinero a mano en el componente. Todo pasa por `lib/formatters.ts` (§3).
+- ❌ `useState` como estado de un formulario del panel, y `<div><Label/><Input/></div>`
+  en vez de la familia `Field` (§6b).
+- ❌ Sacar un error de validación de campo por `toast` (§6b).
 - ❌ Escribir apariencia en el `.tsx` de una primitiva: va al style.
 - ❌ Importar `lucide-react` o `@phosphor-icons/react`.
 - ❌ Dimensionar un icono de HugeIcons con `h-4 w-4` en vez de `size={16}`.
@@ -183,3 +333,13 @@ Las primitivas son de shadcn; estas piezas son **nuestras** y siguen vigentes:
   lleva nombre propio, nunca el de una primitiva del registry.
 - **`createdAt` real en productos** para "Lo Más Nuevo".
 - **Marcas y logos reales** en `/public/brands`.
+- **`window.confirm()` nativo en 6 sitios**, contra la regla de contenedores de §6b
+  (las confirmaciones van por `Dialog`/`AlertDialog`, que ya existe como primitiva):
+  `admin.catalogo.tsx` (borrar producto y borrar categoría), `admin.salidas.tsx`
+  (marcar devuelta), `admin.inventario.tsx` (retirar de bodega),
+  `TemplatesPanel.tsx` (borrar plantilla) y `ProductEditorDialog.tsx` (aviso de
+  variantes sin lote — este último queda anidado dentro de un `Dialog` abierto, así
+  que necesita decidirse aparte).
+- **`GeneralConfig` en `admin.configuracion.tsx` es una maqueta**: campos con
+  `defaultValue`, sin estado ni endpoint. No cuenta como formulario migrado porque
+  todavía no guarda nada.

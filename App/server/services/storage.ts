@@ -1,4 +1,3 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -25,17 +24,19 @@ const R2_ENDPOINT =
   (process.env.R2_ENDPOINT || '').trim() ||
   (R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : '');
 
-let _client: S3Client | null = null;
+let _client: any = null;
+let _awsSdk: any = null;
 
-export function getClient(): S3Client {
-  if (_client) return _client;
+export async function getClient() {
+  if (_client) return { client: _client, awsSdk: _awsSdk };
   if (!R2_ENDPOINT || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
     throw new Error(
       'Cloudflare R2 no está configurado: faltan R2_ENDPOINT/R2_ACCESS_KEY_ID/' +
       'R2_SECRET_ACCESS_KEY/R2_BUCKET_NAME en el .env.'
     );
   }
-  _client = new S3Client({
+  _awsSdk = await import('@aws-sdk/client-s3');
+  _client = new _awsSdk.S3Client({
     region: 'auto',
     endpoint: R2_ENDPOINT,
     credentials: {
@@ -43,7 +44,7 @@ export function getClient(): S3Client {
       secretAccessKey: R2_SECRET_ACCESS_KEY,
     },
   });
-  return _client;
+  return { client: _client, awsSdk: _awsSdk };
 }
 
 export async function optimizeImageBuffer(buffer: Buffer, { maxDim = 1200, quality = 82 } = {}) {
@@ -75,8 +76,9 @@ export function sanitizePathSegment(value: string | undefined | null) {
 
 export async function uploadFile(buffer: Buffer, folder: string, filename: string, contentType?: string) {
   const key = `${folder}/${filename}`;
-  await getClient().send(
-    new PutObjectCommand({
+  const { client, awsSdk } = await getClient();
+  await client.send(
+    new awsSdk.PutObjectCommand({
       Bucket: R2_BUCKET_NAME,
       Key: key,
       Body: buffer,
@@ -92,8 +94,9 @@ export async function deleteFileByUrl(publicUrl?: string | null) {
   if (!R2_PUBLIC_URL || !publicUrl.startsWith(prefix)) return;
   const key = decodeURI(publicUrl.slice(prefix.length));
   try {
-    await getClient().send(
-      new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key })
+    const { client, awsSdk } = await getClient();
+    await client.send(
+      new awsSdk.DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key })
     );
   } catch (err: any) {
     console.error('Error al borrar de R2:', err.message);
@@ -103,9 +106,10 @@ export async function deleteFileByUrl(publicUrl?: string | null) {
 export async function listFiles(prefix = '') {
   const out: { key: string; size: number; url: string }[] = [];
   let ContinuationToken: string | undefined;
+  const { client, awsSdk } = await getClient();
   do {
-    const res = await getClient().send(
-      new ListObjectsV2Command({ Bucket: R2_BUCKET_NAME, Prefix: prefix, ContinuationToken })
+    const res = await client.send(
+      new awsSdk.ListObjectsV2Command({ Bucket: R2_BUCKET_NAME, Prefix: prefix, ContinuationToken })
     );
     for (const obj of res.Contents || []) {
       if (obj.Key) {

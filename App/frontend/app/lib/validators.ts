@@ -47,11 +47,6 @@ export const purchaseFormSchema = z.object({
     .string()
     .min(1, "Lote requerido")
     .regex(/^LT\d+$/i, "Formato incorrecto (ej. LT1, LT4)"),
-  code: z
-    .string()
-    .trim()
-    .min(1, "Código requerido")
-    .regex(/^IN\d+$/i, "Formato incorrecto (ej. IN1, IN13)"),
   productName: z.string().min(2, "Nombre requerido"),
   // El backend la exige al registrar la compra (newPurchaseInputSchema), así
   // que el formulario tiene que pedirla: sin esto el POST vuelve 400.
@@ -104,7 +99,6 @@ export type MigratedItemFormValues = z.input<typeof migratedItemFormSchema>;
 export const arrivalFormSchema = z.object({
   arrivalDate: z.string().min(1, "Fecha de ingreso requerida"),
   shippingUnit: z.coerce.number().nonnegative("No puede ser negativo"),
-  category: z.string().min(1, "Selecciona una categoría"),
   suggestedPrice: z.coerce.number().nonnegative("No puede ser negativo").optional(),
 });
 export type ArrivalFormInput = z.infer<typeof arrivalFormSchema>;

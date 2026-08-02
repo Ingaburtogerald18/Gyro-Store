@@ -38,6 +38,78 @@ const lossRowSchema = z.object({
 
 export type LossItem = z.infer<typeof lossRowSchema>;
 
+// ── Reportería de ventas (0013_reports_rpc.sql) ──
+// Un schema por RPC. Los `numeric` de Postgres llegan como number por PostgREST
+// (igual que en `kpiSchema`), así que no hace falta coerción.
+
+const trendRowSchema = z.object({
+  bucket_start: z.string(),
+  total_vendido: z.number(),
+  ganancia: z.number(),
+  comision: z.number(),
+  num_ventas: z.number(),
+});
+
+export type SalesTrendPoint = z.infer<typeof trendRowSchema>;
+
+/** Cortes válidos de la serie temporal. La UI lo elige según el largo del rango. */
+export type TrendBucket = 'day' | 'week' | 'month';
+
+const sellerPerfRowSchema = z.object({
+  seller_uid: z.string().uuid().nullable(),
+  seller_email: z.string(),
+  seller_name: z.string(),
+  total_vendido: z.number(),
+  comision: z.number(),
+  num_ventas: z.number(),
+  unidades: z.number(),
+});
+
+export type SellerPerformanceRow = z.infer<typeof sellerPerfRowSchema>;
+
+const topProductRowSchema = z.object({
+  sku: z.string(),
+  unidades: z.number(),
+  ingreso: z.number(),
+});
+
+export type TopProductRow = z.infer<typeof topProductRowSchema>;
+
+// Cada corte es la misma tripleta {key, count, total}: la UI solo traduce la
+// clave a español. Así agregar un corte nuevo no cambia el contrato.
+const breakdownGroupSchema = z.object({
+  key: z.string(),
+  count: z.number(),
+  total: z.number(),
+});
+
+const salesBreakdownSchema = z.object({
+  by_method: z.array(breakdownGroupSchema),
+  by_origin: z.array(breakdownGroupSchema),
+  by_invoiced: z.array(breakdownGroupSchema),
+  by_discount: z.array(breakdownGroupSchema),
+  by_installment: z.array(breakdownGroupSchema),
+});
+
+export type SalesBreakdown = z.infer<typeof salesBreakdownSchema>;
+
+const deliverySummarySchema = z.object({
+  total_delivery: z.number(),
+  num_deliveries: z.number(),
+  /** Parte del total que corresponde a facturas anuladas (va incluida arriba). */
+  total_anulado: z.number(),
+  num_anuladas: z.number(),
+  by_repartidor: z.array(
+    z.object({
+      repartidor: z.string(),
+      total: z.number(),
+      count: z.number(),
+    }),
+  ),
+});
+
+export type DeliverySummary = z.infer<typeof deliverySummarySchema>;
+
 // ============================================================================
 // ── Servicios ──
 // ============================================================================
@@ -129,4 +201,111 @@ export async function getExpensesByPozo(startDate?: string, endDate?: string) {
 
   if (error) throw error;
   return data;
+}
+
+// ============================================================================
+// ── Reportería de ventas ──
+// ============================================================================
+// Todas se apoyan en los RPC de `0013_reports_rpc.sql`: la agregación pasa en
+// Postgres y acá solo se valida la forma de lo que volvió.
+
+/**
+ * Serie temporal de ventas para el gráfico de tendencia.
+ * `sellerUid` recorta a un vendedor (la ruta lo fuerza para los no-admin).
+ */
+export async function getSalesTrend(
+  startDate?: string,
+  endDate?: string,
+  bucket: TrendBucket = 'month',
+  sellerUid?: string,
+): Promise<SalesTrendPoint[]> {
+  const { data, error } = await db.rpc('get_sales_trend', {
+    p_start_date: startDate ?? null,
+    p_end_date: endDate ?? null,
+    p_bucket: bucket,
+    p_seller_uid: sellerUid ?? null,
+  });
+
+  if (error) throw error;
+  return parseDbRows(trendRowSchema, data, 'getSalesTrend');
+}
+
+/**
+ * Ranking del equipo de ventas. Es un reporte COMPARATIVO entre vendedores, así
+ * que no admite recorte por vendedor: o se ve entero (admin) o no se ve.
+ */
+export async function getSellerPerformance(
+  startDate?: string,
+  endDate?: string,
+): Promise<SellerPerformanceRow[]> {
+  const { data, error } = await db.rpc('get_seller_performance', {
+    p_start_date: startDate ?? null,
+    p_end_date: endDate ?? null,
+  });
+
+  if (error) throw error;
+  return parseDbRows(sellerPerfRowSchema, data, 'getSellerPerformance');
+}
+
+/** Productos más vendidos del periodo, ordenados por ingreso. */
+export async function getTopProducts(
+  startDate?: string,
+  endDate?: string,
+  sellerUid?: string,
+  limit = 10,
+): Promise<TopProductRow[]> {
+  const { data, error } = await db.rpc('get_top_products', {
+    p_start_date: startDate ?? null,
+    p_end_date: endDate ?? null,
+    p_seller_uid: sellerUid ?? null,
+    p_limit: limit,
+  });
+
+  if (error) throw error;
+  return parseDbRows(topProductRowSchema, data, 'getTopProducts');
+}
+
+/**
+ * Los cinco cortes del periodo (método de pago, origen, facturación, código de
+ * descuento y cuotas) en un solo viaje: el RPC devuelve un jsonb, no filas.
+ */
+export async function getSalesBreakdown(
+  startDate?: string,
+  endDate?: string,
+  sellerUid?: string,
+): Promise<SalesBreakdown> {
+  const { data, error } = await db.rpc('get_sales_breakdown', {
+    p_start_date: startDate ?? null,
+    p_end_date: endDate ?? null,
+    p_seller_uid: sellerUid ?? null,
+  });
+
+  if (error) throw error;
+
+  // `parseDbRows` espera un array; acá el RPC devuelve un único objeto, así que
+  // se envuelve para reusar el mismo manejo de "la base devolvió algo raro".
+  const parsed = parseDbRows(salesBreakdownSchema, [data], 'getSalesBreakdown');
+  return parsed[0]!;
+}
+
+/**
+ * Delivery pagado en TODAS las facturas del periodo (las anuladas incluidas:
+ * anular el papel no devuelve el envío) y su reparto por repartidor. Solo
+ * admin: es plata de la tienda, no de la venta de nadie en particular.
+ */
+export async function getDeliverySummary(
+  startDate?: string,
+  endDate?: string,
+): Promise<DeliverySummary> {
+  const { data, error } = await db
+    .rpc('get_delivery_summary', {
+      p_start_date: startDate ?? null,
+      p_end_date: endDate ?? null,
+    })
+    .single();
+
+  if (error) throw error;
+
+  const parsed = parseDbRows(deliverySummarySchema, [data], 'getDeliverySummary');
+  return parsed[0]!;
 }

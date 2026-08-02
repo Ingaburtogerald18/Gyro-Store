@@ -2,9 +2,17 @@ import * as React from "react"
 
 import { cn } from "~/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+// forwardRef es la ÚNICA desviación respecto del registry: shadcn ya asume React
+// 19 (ref como prop normal), pero este proyecto está en React 18, donde el jsx
+// runtime intercepta `ref` del spread y jamás llega al <input>. Sin esto,
+// `{...register("x")}` de react-hook-form registra el onChange pero no el nodo:
+// reset() y setValue() dejan de escribir en el DOM. Conservar en cada
+// `shadcn add --overwrite`.
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  function Input({ className, type, ...props }, ref) {
   return (
     <input
+      ref={ref}
       type={type}
       data-slot="input"
       className={cn(
@@ -14,6 +22,6 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       {...props}
     />
   )
-}
+})
 
 export { Input }

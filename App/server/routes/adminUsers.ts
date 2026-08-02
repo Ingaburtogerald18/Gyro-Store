@@ -4,6 +4,8 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
 import { db } from '../supabase';
 import { config, VALID_ROLES, type AppRole } from '../config';
+import { getSellerSummary } from '../services/sellerPayments';
+import { updateProfileSchema } from '../../shared/schemas';
 
 const router = Router();
 
@@ -55,7 +57,17 @@ router.get(
       throw error;
     }
 
-    res.json(data || []);
+    // `isProtected` viaja calculado desde acá y no se deriva en el cliente: el
+    // correo protegido sale de una variable de entorno (config.protectedEmail),
+    // así que hardcodearlo en el frontend lo dejaría desincronizado en cuanto
+    // cambie. Es solo una pista de UI — quien deniega de verdad es el backend.
+    const rows = (data || []).map((u: { email?: string | null }) => ({
+      ...u,
+      isProtected:
+        !!SUPER_ADMIN_EMAIL && (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase(),
+    }));
+
+    res.json(rows);
   })
 );
 // POST /api/admin/users
@@ -255,21 +267,60 @@ router.patch(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const userId = req.params.id as string;
-    const { name } = req.body;
-    
+
     if (!userId) {
       res.status(400).json({ error: 'ID requerido.' });
       return;
     }
 
+    const input = updateProfileSchema.parse(req.body);
+
+    // El string vacío significa "borrar el dato", no "no tocar": se guarda como
+    // NULL para que la columna quede realmente vacía y no con un '' que después
+    // se muestra como si hubiera algo. La cuenta bancaria usa `null` para lo
+    // mismo (es un objeto jsonb, no un string).
+    const blankToNull = (v: string | undefined) => (v === undefined || v === '' ? null : v);
+
     const { data, error } = await db
       .from('profiles')
-      .update({ name })
+      .update({
+        name: input.name,
+        phone: blankToNull(input.phone),
+        personal_email: blankToNull(input.personal_email),
+        bank_account: input.bank_account ?? null,
+      })
       .eq('id', userId)
-      .select();
+      .select('id, email, name, roles, avatar_url, status, deleted_at, created_at, phone, personal_email, bank_account, last_login');
 
     if (error) throw error;
     res.json({ message: 'Perfil actualizado', data });
+  })
+);
+
+// GET /api/admin/users/:id/performance
+router.get(
+  '/:id/performance',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const userId = req.params.id as string;
+    if (!userId) {
+      res.status(400).json({ error: 'ID requerido.' });
+      return;
+    }
+
+    const { data: profile, error } = await db
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (error || !profile?.email) {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+
+    const summary = await getSellerSummary(profile.email);
+    res.json(summary);
   })
 );
 

@@ -2,6 +2,7 @@
 // Es el equivalente al Admin SDK de la v1: IGNORA las RLS (que están en deny-all).
 // Regla dura: este cliente SOLO existe en el backend. Nunca en el frontend.
 import { createClient } from '@supabase/supabase-js';
+import * as jose from 'jose';
 import { config } from './config';
 
 export const db = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
@@ -12,12 +13,28 @@ export const db = createClient(config.supabaseUrl, config.supabaseServiceRoleKey
   },
 });
 
-// Verifica un JWT de Supabase (emitido tras el login con Entra) y devuelve el
-// usuario, o null si es inválido/expirado. Usa la API oficial de Supabase Auth,
-// que valida el token sin importar el esquema de firma del proyecto.
-// [optimización futura] verificar el JWT localmente con SUPABASE_JWT_SECRET para
-// ahorrar el round-trip; por ahora priorizamos que sea correcto y simple.
+const jwtSecret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET || '');
+
+// Verifica un JWT de Supabase (emitido tras el login con Entra).
+// Intenta verificar la firma localmente con jose para evitar el round-trip.
+// Si falla, hace fallback a db.auth.getUser(token).
 export async function getUserFromToken(token: string) {
+  if (jwtSecret.length > 0) {
+    try {
+      const { payload } = await jose.jwtVerify(token, jwtSecret);
+      if (payload.sub && payload.email) {
+        return {
+          id: payload.sub,
+          email: payload.email as string,
+          user_metadata: payload.user_metadata || {},
+          app_metadata: payload.app_metadata || {},
+        };
+      }
+    } catch (err) {
+      // Fallback gracioso
+    }
+  }
+
   const { data, error } = await db.auth.getUser(token);
   if (error || !data?.user) return null;
   return data.user;

@@ -20,6 +20,7 @@ import {
   useCreateAccountMutation,
 } from '~/store/api/cajaApi';
 import { useGetCuadreQuery } from '~/store/api/cuadreApi';
+import { formatByCurrency } from '~/lib/formatters';
 import { format } from 'date-fns';
 import type { AccountMovement } from '@shared/schemas';
 
@@ -121,8 +122,13 @@ export default function AdminCajaRoute() {
       cell: (info: any) => {
         const mov = info.row.original as AccountMovement;
         const acc = accounts.find(a => a.id === mov.account_id);
-        const sign = mov.tipo === 'egreso' ? '-' : '+';
-        return `${sign}${Number(info.getValue()).toFixed(2)} ${acc?.moneda || ''}`;
+        const sign = mov.tipo === 'egreso' ? '−' : '+';
+        return (
+          <span className="nums">
+            {sign}
+            {formatByCurrency(Number(info.getValue()), acc?.moneda)}
+          </span>
+        );
       },
     },
     {
@@ -154,7 +160,7 @@ export default function AdminCajaRoute() {
             <StatCard
               key={acc.id}
               label={acc.nombre}
-              value={`${bal.toFixed(2)} ${acc.moneda}`}
+              value={formatByCurrency(bal, acc.moneda)}
               icon={Wallet01Icon}
               sub={acc.tipo === 'banco' ? 'Cuenta Bancaria' : 'Caja de Efectivo'}
             />

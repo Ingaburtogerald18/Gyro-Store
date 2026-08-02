@@ -1,7 +1,7 @@
 // Inventario Actual: productos recibidos en bodega con todas las columnas
 // calculadas (cantidad = original − vendidos, precios USD y costo real en C$).
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, CheckmarkCircle01Icon, Edit02Icon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, CheckmarkCircle01Icon, Edit02Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -20,17 +20,24 @@ import {
 } from "~/store/api/inventoryV1Api";
 import { useGetAdminCatalogQuery } from "~/store/api/catalogAdminApi";
 import { formatUsd, formatCordobas } from "~/lib/formatters";
-import { CodeCell } from "~/components/ui/cells";
+import { CodeCell, MoneyCell } from "~/components/ui/cells";
 import { useNavigate } from "@remix-run/react";
 import { Spinner } from "~/components/ui/spinner";
+import { useGetConfigQuery } from "~/store/api/configApi";
 
-export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
+export function CurrentInventoryTable({ period = "all", mode = "all" }: { period?: string; mode?: "inStock" | "outOfStock" | "all" }) {
   const navigate = useNavigate();
-  const { data: rows = [], isLoading } = useGetCurrentInventoryQuery(period);
+  const { data: allRows = [], isLoading } = useGetCurrentInventoryQuery(period);
+  const rows = useMemo(() => {
+    if (mode === "inStock") return allRows.filter(r => (r.available || 0) > 0);
+    if (mode === "outOfStock") return allRows.filter(r => (r.available || 0) <= 0);
+    return allRows;
+  }, [allRows, mode]);
   // Las compras se traen sin filtro de periodo: se usan para resolver el lote
   // detrás de una fila al editar, y ese lote puede ser de cualquier mes.
   const { data: purchases = [] } = useGetPurchasesQuery();
   const { data: catalog = [] } = useGetAdminCatalogQuery();
+  const { data: config } = useGetConfigQuery();
   const [revert] = useRevertPurchaseMutation();
 
   const skuToCatalogMap = useMemo(() => {
@@ -64,74 +71,94 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
     }
   }
 
-  const columns = useMemo<ColumnDef<InventoryRow, any>[]>(
+  const allColumns = useMemo<ColumnDef<InventoryRow, any>[]>(
     () => [
-      { accessorKey: "code", header: "Código", sortingFn: "alphanumeric", cell: (c) => <CodeCell value={c.getValue()} /> },
-      { accessorKey: "productName", header: "Nombre" },
+      { accessorKey: "code", header: "Código", sortingFn: "alphanumeric", cell: (c) => <CodeCell value={c.getValue() as string} /> },
       {
-        id: "mappedStatus",
+        accessorKey: "productName",
+        header: "Producto",
+        cell: (c) => <span className="font-medium text-foreground">{c.getValue() as string}</span>
+      },
+      {
+        id: "catalogMatch",
         header: "Catálogo",
-        enableSorting: false,
         cell: ({ row }) => {
-          const catalogId = skuToCatalogMap.get(row.original.code);
-          return catalogId ? (
+          const rowData = row.original;
+          const hasMatch = skuToCatalogMap.has(rowData.code);
+          return (
             <button
-              onClick={() => navigate(`/admin/catalogo?edit=${catalogId}`)}
-              className="inline-flex items-center gap-1 rounded-md bg-whatsapp/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-whatsapp hover:bg-whatsapp/25 transition-colors cursor-pointer"
+              onClick={() => hasMatch && navigate(`/admin/catalogo?sku=${rowData.code}`)}
+              className={`flex items-center gap-1.5 transition-colors ${hasMatch ? "hover:text-primary" : "cursor-default"}`}
             >
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} strokeWidth={2} />
-              Mapeado
-            </button>
-          ) : (
-            <button
-              onClick={() => navigate(`/admin/catalogo?link=new`)}
-              className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning hover:bg-warning/25 transition-colors cursor-pointer"
-            >
-              <HugeiconsIcon icon={Alert02Icon} size={12} strokeWidth={2} />
-              Sin mapear
+              {hasMatch ? (
+                <span className="flex items-center gap-1 text-xs font-medium text-primary-2 bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} strokeWidth={2} />
+                  Enlazado
+                </span>
+              ) : (
+                <span title="Este producto aún no está vinculado al catálogo público" className="flex items-center gap-1 text-xs font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-md border border-warning/20">
+                  <HugeiconsIcon icon={Alert02Icon} size={12} strokeWidth={2} />
+                  Sin mapear
+                </span>
+              )}
             </button>
           );
         }
       },
-      { accessorKey: "quantityOriginal", header: "Comprado", meta: { align: "right" } },
+      {
+        accessorKey: "category",
+        header: "Categoría",
+        cell: (c) => {
+          const val = c.getValue() as string;
+          if (!val) return <span className="text-muted-foreground">—</span>;
+          const cat = config?.categories?.find((cat: any) => cat.id === val);
+          return (
+            <div className="flex items-center gap-1.5 whitespace-nowrap bg-muted px-2 py-0.5 rounded-full w-fit">
+              <span className="text-sm">{cat?.icon}</span>
+              <span className="text-xs font-medium text-foreground">{cat?.name || val}</span>
+            </div>
+          );
+        },
+      },
+      { 
+        accessorKey: "quantityOriginal", 
+        header: "Comprado", 
+        meta: { align: "right" }
+      },
       {
         accessorKey: "quantitySold",
         header: "Vendido",
         meta: { align: "right" },
-        cell: (c) => <span className={c.getValue() > 0 ? "text-warning font-medium" : "text-muted-foreground"}>{c.getValue()}</span>
+        cell: (c) => <span className={(c.getValue() as number) > 0 ? "text-warning font-medium" : "text-muted-foreground"}>{c.getValue() as number}</span>
       },
-
       {
         accessorKey: "available",
         header: "Stock",
         meta: { align: "right" },
-        cell: (c) => <span className={c.getValue() === 0 ? "text-destructive font-bold" : "text-primary-2 font-bold"}>{c.getValue()}</span>
+        cell: (c) => <span className={c.getValue() === 0 ? "text-destructive font-bold" : "text-primary-2 font-bold"}>{c.getValue() as number}</span>
       },
-      // USD a 2 decimales visibles; la precisión completa (4) queda en el tooltip.
-      { accessorKey: "priceUnitUsd", header: "P. Unit. (USD)", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
-      // Envío unitario: 4 decimales visibles (precisión clave para el control de inventario).
-      { accessorKey: "shippingUnitUsd", header: "Envío U. (USD)", meta: { align: "right" }, cell: (c) => formatUsd(c.getValue(), 4, 4) },
-      { accessorKey: "priceUnitFinalUsd", header: "P. Final (USD)", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}>{formatUsd(c.getValue())}</span> },
+      { accessorKey: "priceUnitFinalUsd", header: "Coste ($USD)", meta: { align: "right" }, cell: (c) => <span title={formatUsd(c.getValue(), 4)}><MoneyCell currency="usd" value={c.getValue() as number} /></span> },
+
       {
         accessorKey: "costRealCordobas",
-        header: "Coste",
+        header: "Coste (C$)",
         meta: { align: "right" },
-        cell: (c) => <span className="text-primary-2">{formatCordobas(c.getValue())}</span>,
+        cell: (c) => <MoneyCell tone="pos" value={c.getValue() as number} />
       },
       {
         accessorKey: "costoFijoCordobas",
         header: "Coste c/ Fijos",
         meta: { align: "right" },
-        cell: (c) => <span className="text-warning font-medium">{formatCordobas(c.getValue() || 0)}</span>,
+        cell: (c) => <MoneyCell tone="strong" value={c.getValue() as number} />,
       },
       {
         id: "precioSugerido",
-        header: "Precio sugerido",
+        header: "Precio de venta",
         meta: { align: "right" },
         cell: ({ row }) => {
           const ps = row.original.suggestedPrice;
           if (!ps) return <span className="text-muted-foreground text-xs">—</span>;
-          return <span className="text-primary-2 font-semibold">{formatCordobas(ps)}</span>;
+          return <MoneyCell tone="pos" value={ps} />;
         },
       },
       {
@@ -141,34 +168,43 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
         cell: ({ row }) => {
           const ganancia = row.original.gananciaUnitCordobas;
           if (ganancia == null) return <span className="text-muted-foreground text-xs">—</span>;
-          return <span className="text-primary font-semibold">{formatCordobas(ganancia)}</span>;
+          return <MoneyCell tone="strong" value={ganancia} />;
         },
       },
       {
         id: "actions",
         header: "",
         enableSorting: false,
+        meta: { className: "w-[1%]" },
         cell: ({ row }) => {
           const rowData = row.original;
           const p = purchases.find((x) => x.id === rowData.id);
           return (
-            <div className="flex items-center justify-end gap-1.5">
-              <button
-                onClick={() => setRevertFor(rowData)}
-                className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                Descartar llegada
-              </button>
-              {p && (
-                <RowActionsMenu actions={[{ label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) }]} />
-              )}
+            <div className="flex justify-end">
+              <RowActionsMenu
+                actions={[
+                  ...(p ? [{ label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) }] : []),
+                  { label: "Descartar llegada", icon: <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: !!p, onClick: () => setRevertFor(rowData) }
+                ]}
+              />
             </div>
           );
         },
       },
     ],
-    [purchases, skuToCatalogMap, navigate],
+    [purchases, skuToCatalogMap, navigate, config],
   );
+
+  const columns = useMemo(() => {
+    if (mode === "outOfStock") {
+      const allowed = ["code", "productName", "catalogMatch", "category", "quantitySold", "actions"];
+      return allColumns.filter((c: any) => {
+        const id = c.accessorKey || c.id;
+        return allowed.includes(id);
+      });
+    }
+    return allColumns;
+  }, [allColumns, mode]);
 
   if (isLoading) {
     return <div className="h-64 animate-pulse rounded-card border bg-card shadow-lg" />;
@@ -179,8 +215,8 @@ export function CurrentInventoryTable({ period = "all" }: { period?: string }) {
       <DataTable
         columns={columns}
         data={rows}
-        searchPlaceholder="Buscar en bodega…"
-        emptyText="No hay productos recibidos en bodega todavía."
+        searchPlaceholder={mode === "outOfStock" ? "Buscar en agotados…" : "Buscar en bodega…"}
+        emptyText={mode === "outOfStock" ? "No hay productos agotados." : "No hay productos recibidos en bodega todavía."}
         initialSorting={[{ id: "code", desc: false }]}
       />
 

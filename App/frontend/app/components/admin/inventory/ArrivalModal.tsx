@@ -1,18 +1,18 @@
-import { useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
+import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
+import { DatePicker } from "~/components/ui/date-picker";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
-import { useReportArrivalMutation, type Purchase } from "~/store/api/inventoryV1Api";
+import { useReportArrivalMutation, useSimulateCostMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { formatCordobas } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
-
-const RATE = 37;
 
 export function ArrivalModal({
   purchase,
@@ -23,6 +23,9 @@ export function ArrivalModal({
 }) {
   const { data: config } = useGetConfigQuery();
   const [reportArrival, { isLoading }] = useReportArrivalMutation();
+  const [simulateCost] = useSimulateCostMutation();
+  const [simulatedPrice, setSimulatedPrice] = useState<number | null>(null);
+
   const {
     register,
     control,
@@ -36,33 +39,31 @@ export function ArrivalModal({
   });
 
   const shippingUnit = useWatch({ control, name: "shippingUnit" });
-  
-  const parsedShipping = Number(shippingUnit);
-  const hasShipping = shippingUnit !== undefined && String(shippingUnit) !== "" && !isNaN(parsedShipping);
-
-  const costUnit = purchase?.costUnit || 0;
-  const taxUnit = purchase?.taxUnit || 0;
-  const priceUnitFinal = costUnit + taxUnit + (hasShipping ? parsedShipping : 0);
-  const costRealCordobas = priceUnitFinal * RATE;
-  const costoFijo = costRealCordobas / 0.75;
-  
-  let margin = 0.25;
-  if (costoFijo < 100) margin = 0.65;
-  else if (costoFijo <= 300) margin = 0.45;
-  else if (costoFijo <= 500) margin = 0.40;
-  else if (costoFijo <= 800) margin = 0.35;
-  else if (costoFijo <= 1200) margin = 0.30;
-  
-  const suggestedPriceCalc = parseFloat((costoFijo / (1 - margin)).toFixed(2));
 
   useEffect(() => {
-    if (hasShipping) {
-      // Only auto-fill if the user hasn't manually edited the suggested price yet
-      if (!dirtyFields.suggestedPrice) {
-        setValue("suggestedPrice", suggestedPriceCalc, { shouldValidate: true });
+    const timer = setTimeout(() => {
+      if (purchase && shippingUnit !== undefined && String(shippingUnit) !== "") {
+        const val = Number(shippingUnit);
+        if (val >= 0 && !isNaN(val)) {
+          simulateCost({ id: purchase.id, shippingUnit: val })
+            .unwrap()
+            .then(res => {
+              setSimulatedPrice(res.precioSugerido);
+              if (!dirtyFields.suggestedPrice) {
+                setValue("suggestedPrice", res.precioSugerido, { shouldValidate: true });
+              }
+            })
+            .catch(err => {
+              console.error("Error simulando costo:", err);
+              setSimulatedPrice(null);
+            });
+        }
+      } else {
+        setSimulatedPrice(null);
       }
-    }
-  }, [hasShipping, suggestedPriceCalc, setValue, dirtyFields.suggestedPrice]);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [shippingUnit, purchase, simulateCost, setValue, dirtyFields.suggestedPrice]);
 
   async function onSubmit(data: ArrivalFormInput) {
     if (!purchase) return;
@@ -90,53 +91,49 @@ export function ArrivalModal({
           </div>
         )}
         
-        <div className="grid gap-2">
-          <Label>Fecha de ingreso a Nicaragua</Label>
-          <Input type="date" {...register("arrivalDate")} />
-        </div>
+        <Field data-invalid={!!errors.arrivalDate}>
+          <FieldLabel htmlFor="arrival-date" required>Fecha de ingreso a Nicaragua</FieldLabel>
+          <Controller
+            control={control}
+            name="arrivalDate"
+            render={({ field }) => (
+              <DatePicker
+                id="arrival-date"
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <FieldError errors={[errors.arrivalDate]} />
+        </Field>
 
-        <div className="grid gap-2">
-          <Label>Costo de envío unitario (USD)</Label>
-          <input type="number" step="0.0001" min={0} className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("shippingUnit")} />
-        </div>
+        <Field data-invalid={!!errors.shippingUnit}>
+          <FieldLabel htmlFor="arrival-shipping" required>Costo de envío unitario (USD)</FieldLabel>
+          <Input id="arrival-shipping" type="number" step="0.0001" min={0} aria-required {...register("shippingUnit")} aria-invalid={!!errors.shippingUnit} />
+          <FieldError errors={[errors.shippingUnit]} />
+        </Field>
 
-        <div className="grid gap-2">
-          <Label>Categoría</Label>
-          <select className="input flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" defaultValue="" {...register("category")}>
-            <option value="" disabled>
-              Selecciona una categoría
-            </option>
-            {config?.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.icon} {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
 
-        {hasShipping && (
-          <div className="rounded-lg bg-muted p-3 text-xs space-y-1.5 border border">
-            <div className="flex justify-between text-muted-foreground">
-              <span>Costo Real Unit. (C$)</span>
-              <span className="font-medium text-foreground">{formatCordobas(costRealCordobas)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Coste c/ Fijos (C$)</span>
-              <span className="font-medium text-warning">{formatCordobas(costoFijo)}</span>
-            </div>
-            <div className="flex justify-between font-semibold pt-1 border-t border/50">
-              <span>Precio Sugerido Calculado</span>
-              <span className="text-primary-2">{formatCordobas(suggestedPriceCalc)}</span>
-            </div>
+        {simulatedPrice !== null && (
+          <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+            <p className="text-sm text-foreground">
+              <span className="font-semibold">Precio sugerido calculado:</span>{' '}
+              <span className="nums">{formatCordobas(simulatedPrice, 'C$', 2)}</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Si dejás el campo de abajo vacío, este será el precio que se asigne automáticamente.
+            </p>
           </div>
         )}
 
-        <div className="grid gap-2">
-          <Label>Precio de venta final (C$)</Label>
-          <input type="number" step="0.01" min={0} className="input font-bold text-primary flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...register("suggestedPrice")} />
-        </div>
+        <Field data-invalid={!!errors.suggestedPrice}>
+          <FieldLabel htmlFor="arrival-price">Precio de venta final (C$)</FieldLabel>
+          <Input id="arrival-price" type="number" step="0.01" min={0} className="font-bold" {...register("suggestedPrice")} aria-invalid={!!errors.suggestedPrice} />
+          <FieldDescription>Si lo dejás vacío se guarda el sugerido calculado arriba.</FieldDescription>
+          <FieldError errors={[errors.suggestedPrice]} />
+        </Field>
 
-        <div className="flex justify-end gap-2 border-t border pt-4">
+        <div className="flex justify-end gap-2 border-t pt-4">
           <Button variant="ghost" size="sm" onClick={onClose} type="button">
             Cancelar
           </Button>

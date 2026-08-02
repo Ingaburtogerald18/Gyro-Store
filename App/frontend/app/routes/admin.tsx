@@ -1,5 +1,5 @@
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, PackageOpenIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, PackageOpenIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ import {
 } from '~/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import { Separator } from '~/components/ui/separator';
+import { NotificationsBell } from '~/components/admin/NotificationsBell';
 import {
   Sidebar,
   SidebarContent,
@@ -37,12 +38,13 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
+  SidebarFooter,
   SidebarTrigger,
   useSidebar,
 } from '~/components/ui/sidebar';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
-import { selectIsAdmin } from '~/store/slices/authSlice';
+import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
 import { useGetMeQuery } from '~/store/api/authApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
 import { BrandLoader, ModuleLoader, useAnyQueryPending } from '~/components/ui/module-loader';
@@ -77,6 +79,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: 'Catálogo', to: '/admin/catalogo', icon: Package01Icon, ready: true },
       { name: 'Facturación', to: '/admin/facturacion', icon: File01Icon, ready: true },
+      { name: 'Códigos de descuento', to: '/admin/codigos-descuento', icon: Coupon01Icon, ready: true },
     ],
   },
   {
@@ -94,8 +97,15 @@ const NAV_GROUPS: NavGroup[] = [
  * Sincroniza la foto de perfil de Microsoft Entra.
  * El `provider_token` solo viaja en el SIGNED_IN inmediatamente posterior al
  * redirect de OAuth, así que se intenta también desde getSession.
+ *
+ * SILENCIOSA a propósito: que un usuario no tenga foto en Entra (404) o que R2
+ * no esté configurado (500) son escenarios NORMALES, no errores que el usuario
+ * pueda resolver. Avisar de eso en cada login era ruido puro. Queda en consola
+ * para quien depura.
+ *
+ * @returns `true` si la foto cambió (hay que refrescar el perfil).
  */
-async function syncEntraPhoto(accessToken: string, providerToken: string) {
+async function syncEntraPhoto(accessToken: string, providerToken: string): Promise<boolean> {
   try {
     const res = await fetch('/api/auth/sync-photo', {
       method: 'POST',
@@ -106,18 +116,21 @@ async function syncEntraPhoto(accessToken: string, providerToken: string) {
       body: JSON.stringify({ provider_token: providerToken }),
     });
     const result = await res.json();
-    if (result.avatar_url) {
-      toast.success('Foto de perfil sincronizada. (Recarga la página)');
-    } else if (result.error) {
-      toast.error('Detalle de foto: ' + result.error);
+    if (result.error) {
+      console.warn('[sync-photo]', result.error);
+      return false;
     }
-  } catch {
-    toast.error('Error de conexión al sincronizar foto.');
+    return result.changed === true;
+  } catch (err) {
+    console.warn('[sync-photo] Error de conexión', err);
+    return false;
   }
 }
 
 function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin: boolean; pathname: string }) {
   const { setOpen } = useSidebar();
+  const { data: config } = useGetConfigQuery();
+  const reduceMotion = useReducedMotion();
   
   return (
     <Sidebar 
@@ -125,23 +138,52 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-16 flex items-center justify-center p-0">
-        
-        {/* Expanded View */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none">
-          <div className="flex flex-col items-center text-center leading-tight">
-            <span className="font-bold text-lg tracking-tight whitespace-nowrap">Gyro Store</span>
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap uppercase tracking-wider font-medium">Panel admin</span>
+      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-16 flex items-center justify-start p-4">
+          
+          {/* Expanded View */}
+          <div className="absolute inset-0 flex items-center justify-start px-4 opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none gap-3">
+            {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
+              config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
+                <video 
+                  src={config.images.logoAnimated} 
+                  autoPlay loop muted playsInline 
+                  className="size-10 object-contain rounded-full"
+                />
+              ) : (
+                <img 
+                  src={config?.images?.logoStatic || config?.images?.logoAnimated} 
+                  alt="Gyro Store Logo" 
+                  className="size-10 object-contain"
+                />
+              )
+            ) : (
+              <div className="flex size-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
+                <HugeiconsIcon icon={Store01Icon} size={24} strokeWidth={2} />
+              </div>
+            )}
+            <div className="flex flex-col items-start leading-tight">
+              <span className="font-bold text-lg tracking-tight whitespace-nowrap">Gyro Store</span>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap uppercase tracking-wider font-medium">Panel admin</span>
+            </div>
           </div>
-        </div>
-
-        {/* Collapsed View (Icon) */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
-          <NavLink to="/admin" className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:opacity-90 transition-opacity">
-            <HugeiconsIcon icon={Store01Icon} size={16} strokeWidth={2} />
-          </NavLink>
-        </div>
-      </SidebarHeader>
+  
+          {/* Collapsed View (Icon) */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
+            <NavLink to="/admin" className="flex aspect-square size-10 items-center justify-center rounded-lg hover:opacity-80 transition-opacity overflow-hidden">
+               {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
+                 config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
+                   <video src={config.images.logoAnimated} autoPlay loop muted playsInline className="size-full object-contain rounded-full" />
+                 ) : (
+                   <img src={config?.images?.logoStatic || config?.images?.logoAnimated} alt="Logo" className="size-full object-contain" />
+                 )
+               ) : (
+                 <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:opacity-90 transition-opacity">
+                   <HugeiconsIcon icon={Store01Icon} size={24} strokeWidth={2} />
+                 </div>
+               )}
+            </NavLink>
+          </div>
+        </SidebarHeader>
 
       <SidebarContent>
         {NAV_GROUPS.map((group) => {
@@ -169,19 +211,31 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                           tooltip="Próximamente"
                           className="cursor-not-allowed opacity-40"
                         >
-                          <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
-                          <span>{item.name}</span>
+                          <HugeiconsIcon icon={item.icon} size={22} strokeWidth={2} />
+                          <span className="text-[15px]">{item.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
                   }
 
                   return (
-                    <SidebarMenuItem key={item.name}>
-                      <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
+                    <SidebarMenuItem key={item.name} className="relative">
+                      {isActive && (
+                        <motion.div
+                          layoutId="sidebar-active-pill"
+                          className="absolute inset-0 rounded-lg bg-primary"
+                          transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.15, duration: 0.5 }}
+                        />
+                      )}
+                      <SidebarMenuButton
+                        asChild
+                        isActive={false}
+                        tooltip={item.name}
+                        className={isActive ? "relative z-10 text-primary-foreground font-medium hover:bg-transparent hover:text-primary-foreground" : ""}
+                      >
                         <NavLink to={item.to} end={item.end} prefetch="intent">
-                          <HugeiconsIcon icon={item.icon} size={16} strokeWidth={2} />
-                          <span>{item.name}</span>
+                          <HugeiconsIcon icon={item.icon} size={22} strokeWidth={2} />
+                          <span className="text-[15px]">{item.name}</span>
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -192,6 +246,19 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
           );
         })}
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Ver tienda">
+              <NavLink to="/">
+                <HugeiconsIcon icon={SparklesIcon} size={16} strokeWidth={2} />
+                <span>Ver tienda</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
@@ -204,10 +271,13 @@ export default function AdminLayout() {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
-  const { isLoading: isLoadingMe } = useGetMeQuery(undefined, { skip: !user });
+  const { isLoading: isLoadingMe, refetch: refetchMe } = useGetMeQuery(undefined, { skip: !user });
   const { isLoading: isConfigLoading } = useGetConfigQuery();
 
   const isAdmin = useAppSelector(selectIsAdmin);
+  // La foto sale de /auth/me (profiles.avatar_url), no de user_metadata: con
+  // Entra ese metadata viene vacío.
+  const profilePhoto = useAppSelector(selectUserPhoto);
 
   // ── Overlay de transición entre módulos ──
   // Se muestra al cambiar de ruta y se queda hasta que las queries del módulo
@@ -256,7 +326,13 @@ export default function AdminLayout() {
         data.session.provider_token &&
         data.session.user.app_metadata?.provider === 'azure'
       ) {
-        void syncEntraPhoto(data.session.access_token, data.session.provider_token);
+        // Si la foto cambió, se re-pide /auth/me para que el avatar aparezca
+        // sin recargar. `active` evita el refetch si el layout ya se desmontó.
+        void syncEntraPhoto(data.session.access_token, data.session.provider_token).then(
+          (changed) => {
+            if (changed && active) refetchMe();
+          },
+        );
       }
     });
 
@@ -273,7 +349,9 @@ export default function AdminLayout() {
         session.provider_token &&
         session.user.app_metadata?.provider === 'azure'
       ) {
-        void syncEntraPhoto(session.access_token, session.provider_token);
+        void syncEntraPhoto(session.access_token, session.provider_token).then((changed) => {
+          if (changed && active) refetchMe();
+        });
       }
     });
 
@@ -338,12 +416,7 @@ export default function AdminLayout() {
           </Breadcrumb>
 
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild className="hidden text-muted-foreground sm:flex">
-              <a href="/" target="_blank" rel="noreferrer">
-                <HugeiconsIcon icon={SparklesIcon} size={16} strokeWidth={2} aria-hidden className="mr-2" />
-                Ver tienda
-              </a>
-            </Button>
+            <NotificationsBell />
 
             {user && (
               <DropdownMenu>
@@ -353,7 +426,7 @@ export default function AdminLayout() {
                     className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Avatar>
-                      <AvatarImage src={user.user_metadata?.avatar_url} alt="" />
+                      <AvatarImage src={profilePhoto ?? user.user_metadata?.avatar_url} alt="" />
                       <AvatarFallback className="uppercase">
                         {user.email?.charAt(0) ?? 'U'}
                       </AvatarFallback>

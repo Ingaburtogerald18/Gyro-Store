@@ -11,6 +11,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const publicConfig = getPublicConfig();
     const images = await getImageResources();
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     res.json({ ...publicConfig, images });
   })
 );

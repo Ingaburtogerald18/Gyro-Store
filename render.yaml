@@ -16,6 +16,7 @@ services:
       - { key: SUPABASE_URL, sync: false }
       - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
       - { key: SUPABASE_ANON_KEY, sync: false }
+      - { key: SUPABASE_JWT_SECRET, sync: false }
       - { key: AZURE_TENANT_ID, sync: false }
       - { key: INTERNAL_DOMAIN, sync: false }
       - { key: ADMIN_EMAILS, sync: false }

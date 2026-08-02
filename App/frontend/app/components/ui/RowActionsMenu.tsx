@@ -1,15 +1,18 @@
 // Menú de acciones de fila ("⋯"): un botón discreto que abre un dropdown con acciones
 // etiquetadas. Reemplaza los clusters de iconos / columnas "Acciones" en las tablas.
-// Se renderiza en portal (position:fixed) para que el overflow de la tabla no lo recorte.
-// Convención del proyecto: dejar visible el CTA principal del flujo y mandar aquí las
-// acciones secundarias (editar, eliminar, etc.).
 import { HugeiconsIcon } from "@hugeicons/react";
 import { MoreVerticalIcon } from "@hugeicons/core-free-icons";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
-
 import { cn } from "~/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuGroup,
+} from "~/components/ui/dropdown-menu";
+import React from "react";
 
 export interface RowAction {
   label: string;
@@ -22,6 +25,8 @@ export interface RowAction {
   disabled?: boolean;
   /** Dibuja un separador arriba del ítem (para agrupar). */
   separatorBefore?: boolean;
+  /** Agrupa las acciones bajo un encabezado en el menú. */
+  group?: string;
 }
 
 // Acepta cualquier valor falsy (false, "", 0, null, undefined) para poder incluir
@@ -30,111 +35,80 @@ type MaybeAction = RowAction | false | "" | 0 | null | undefined;
 
 export function RowActionsMenu({ actions, className }: { actions: MaybeAction[]; className?: string }) {
   const items = actions.filter(Boolean) as RowAction[];
-  const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const W = 216;
+  
+  if (items.length === 0) return null;
 
-  function compute() {
-    const el = btnRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const H = Math.max(120, items.length * 40 + 16);
-    let top = r.bottom + 6;
-    if (top + H > window.innerHeight && r.top - H - 6 > 0) top = r.top - H - 6;
-    const left = Math.max(8, Math.min(r.right - W, window.innerWidth - W - 8));
-    setCoords({ top, left });
+  const ungroupedItems = items.filter((a) => !a.group);
+  const groupedItems = items.filter((a) => a.group);
+  
+  // Agrupar por nombre de grupo
+  const groups: Record<string, RowAction[]> = {};
+  for (const item of groupedItems) {
+    if (!groups[item.group!]) groups[item.group!] = [];
+    groups[item.group!].push(item);
   }
 
-  useEffect(() => {
-    if (!open) return;
-    compute();
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (btnRef.current?.contains(t) || menuRef.current?.contains(t)) return;
-      setOpen(false);
-    };
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onEsc);
-    window.addEventListener("scroll", compute, true);
-    window.addEventListener("resize", compute);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onEsc);
-      window.removeEventListener("scroll", compute, true);
-      window.removeEventListener("resize", compute);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          title="Acciones"
+          aria-label="Acciones"
+          className={cn(
+            "rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+            "data-[state=open]:bg-muted data-[state=open]:text-foreground",
+            className,
+          )}
+        >
+          <HugeiconsIcon icon={MoreVerticalIcon} size={16} strokeWidth={2} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {ungroupedItems.map((a, i) => (
+          <RowActionItem key={`ungrouped-${i}`} action={a} />
+        ))}
+        {Object.entries(groups).map(([groupName, groupActions], i) => (
+          <DropdownMenuGroup key={groupName}>
+            {(ungroupedItems.length > 0 || i > 0) && <DropdownMenuSeparator />}
+            <DropdownMenuLabel>{groupName}</DropdownMenuLabel>
+            {groupActions.map((a, j) => (
+              <RowActionItem key={`${groupName}-${j}`} action={a} />
+            ))}
+          </DropdownMenuGroup>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
-  if (items.length === 0) return null;
+function RowActionItem({ action: a }: { action: RowAction }) {
+  const cls = cn(
+    "flex items-center gap-2.5 cursor-pointer",
+    a.danger ? "text-destructive focus:bg-destructive/10 focus:text-destructive" : "text-muted-foreground focus:text-foreground",
+  );
+
+  const content = (
+    <>
+      {a.icon}
+      {a.label}
+    </>
+  );
 
   return (
     <>
-      <button
-        ref={btnRef}
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-        title="Acciones"
-        aria-label="Acciones"
-        className={cn(
-          "rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-          open && "bg-muted text-foreground",
-          className,
-        )}
-      >
-        <HugeiconsIcon icon={MoreVerticalIcon} size={16} strokeWidth={2} />
-      </button>
-
-      {typeof document !== "undefined" &&
-        createPortal(
-          <AnimatePresence>
-            {open && coords && (
-              <motion.div
-                ref={menuRef}
-                initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                transition={{ duration: 0.12 }}
-                style={{ position: "fixed", top: coords.top, left: coords.left, width: W }}
-                className="z-[100] flex flex-col gap-0.5 rounded-card border bg-card p-1 shadow-2xl"
-              >
-                {items.map((a, i) => {
-                  const cls = cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                    a.disabled
-                      ? "cursor-not-allowed opacity-40"
-                      : a.danger
-                        ? "text-destructive hover:bg-destructive/10"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  );
-                  return (
-                    <div key={i}>
-                      {a.separatorBefore && <div className="my-0.5 border-t border/60" />}
-                      {a.href ? (
-                        <a href={a.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className={cls}>
-                          {a.icon}
-                          {a.label}
-                        </a>
-                      ) : (
-                        <button
-                          disabled={a.disabled}
-                          onClick={() => { if (a.disabled) return; setOpen(false); a.onClick?.(); }}
-                          className={cn(cls, "w-full")}
-                        >
-                          {a.icon}
-                          {a.label}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>,
-          document.body,
-        )}
+      {a.separatorBefore && <DropdownMenuSeparator />}
+      {a.href ? (
+        <DropdownMenuItem asChild disabled={a.disabled} className={cls}>
+          <a href={a.href} target="_blank" rel="noreferrer">
+            {content}
+          </a>
+        </DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem disabled={a.disabled} onClick={a.onClick} className={cls}>
+          {content}
+        </DropdownMenuItem>
+      )}
     </>
   );
 }
+

@@ -1,23 +1,31 @@
 // Portal de Ventas (doc 09 ítem 65): cotizador + registro + aprobar/rechazar
 // (admin) + listado scoped por rol (lo scopea el backend, no el frontend).
 //
+// Esta ruta es solo el SHELL: monta el editor y el listado. El armado de la
+// venta vive en `components/admin/sales/` (SaleEditor + SaleLinesTable +
+// QuoteSummary), como en v1.
+//
 // Reciclaje de v1 (admin.ventas.tsx + AdminSales.tsx): se recicla la idea de
 // "un shell, admin y vendedor ven lo mismo, el rol decide qué botones
-// aparecen" y "cotizar antes de registrar". Se reescribe todo lo demás: v1
-// resolvía productos nativos+migrados con foto de recibo y admin-en-nombre-de
-// un vendedor — el backend v2 (MVP Hito 3) solo tiene inventario nativo, sin
-// fotos, y cada vendedor registra su propia venta (ver server/services/
-// sales.ts). Un producto no puede repetirse en dos líneas (mismo límite del
-// backend, evita la lógica de "distribuir reservas" de v1).
+// aparecen". Se reescribe todo lo demás: v1 resolvía productos nativos+migrados
+// con foto de recibo y admin-en-nombre-de un vendedor — el backend v2 (MVP
+// Hito 3) solo tiene inventario nativo, sin fotos, y cada vendedor registra su
+// propia venta (ver server/services/sales.ts). Un producto no puede repetirse
+// en dos líneas (mismo límite del backend, evita la lógica de "distribuir
+// reservas" de v1).
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, CancelCircleIcon, CheckmarkCircle01Icon, Delete02Icon, Link02Icon, Package01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
+import { CancelCircleIcon, CheckmarkCircle01Icon, Link02Icon, ShoppingCart02Icon, Add01Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
+import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
+import React from 'react';
+
+import { AnimatedCheck } from '~/components/ui/animated-icons';
 
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import { Card, CardContent } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
@@ -32,15 +40,13 @@ import { errMsg, formatCordobas } from "~/lib/formatters";
 import {
   useApproveSaleMutation,
   useGetSalesQuery,
-  useGetSellableProductsQuery,
-  useQuoteSaleMutation,
-  useRegisterSaleMutation,
   useRejectSaleMutation,
-  type SaleLineInput,
   type SaleListItem,
 } from '~/store/api/salesApi';
 import { useGetSalidasQuery, useVincularSalidaMutation } from '~/store/api/salidasApi';
 import { Spinner } from "~/components/ui/spinner";
+import { SaleEditor } from '~/components/admin/sales/SaleEditor';
+import { SellerPerformance } from '~/components/admin/sales/SellerPerformance';
 
 export const meta: MetaFunction = () => [{ title: 'Ventas | Gyro Store Admin' }];
 
@@ -61,13 +67,23 @@ const STATUS_TABS = [
 export default function AdminVentas() {
   const isAdmin = useAppSelector(selectIsAdmin);
 
-  const { data: products = [] } = useGetSellableProductsQuery();
-  const [quoteSale, { data: quote, isLoading: quoting }] = useQuoteSaleMutation();
-  const [registerSale, { isLoading: registering }] = useRegisterSaleMutation();
   const [approveSale] = useApproveSaleMutation();
   const [rejectSale, { isLoading: rejecting }] = useRejectSaleMutation();
 
-  const [statusFilter, setStatusFilter] = useState('pending_approval');
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  // El filtro vive en la URL para que la campana de notificaciones pueda
+  // enlazar directo al estado que anuncia ("3 ventas esperan tu aprobación").
+  // Con estado local a secas el enlace llegaba a la pestaña equivocada.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = searchParams.get('status') ?? 'pending_approval';
+
+  function setStatusFilter(next: string) {
+    // `replace` para no llenar el historial con cada cambio de pestaña: volver
+    // atrás debería salir de Ventas, no recorrer los filtros que se probaron.
+    setSearchParams(next === 'pending_approval' ? {} : { status: next }, { replace: true });
+  }
+
   const {
     data: sales = [],
     isLoading: loadingSales,
@@ -76,11 +92,6 @@ export default function AdminVentas() {
     status: statusFilter === 'all' ? undefined : statusFilter,
   });
 
-  const [lines, setLines] = useState<SaleLineInput[]>([]);
-  const [productName, setProductName] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [salePrice, setSalePrice] = useState(0);
-  const [phone, setPhone] = useState('');
   const [rejectFor, setRejectFor] = useState<SaleListItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   // Vincular una salida SIN factura a esta venta (cierra el "pendiente de registrar").
@@ -88,59 +99,12 @@ export default function AdminVentas() {
   const { data: pendingSalidas = [] } = useGetSalidasQuery({ estado: 'pendiente_registro' });
   const [vincularSalida, { isLoading: linking }] = useVincularSalidaMutation();
 
-  // Solo cambia cuando refresca `products`, no en cada tecla del input.
-  const productNames = useMemo(() => products.map((p) => p.productName), [products]);
-
-  function addLine() {
-    if (!productName.trim() || quantity <= 0 || salePrice < 0) {
-      toast.error('Completá producto, cantidad y precio.');
-      return;
-    }
-    if (lines.some((l) => l.productName === productName)) {
-      toast.error('Ese producto ya está en la lista: quitalo y agregalo con la cantidad correcta.');
-      return;
-    }
-    setLines((prev) => [...prev, { productName: productName.trim(), quantity, salePrice }]);
-    setProductName('');
-    setQuantity(1);
-    setSalePrice(0);
-  }
-
-  function removeLine(name: string) {
-    setLines((prev) => prev.filter((l) => l.productName !== name));
-  }
-
-  async function handleQuote() {
-    if (lines.length === 0) {
-      toast.error('Agregá al menos un producto.');
-      return;
-    }
-    try {
-      await quoteSale(lines).unwrap();
-    } catch (err) {
-      toast.error(errMsg(err, 'No se pudo cotizar.'));
-    }
-  }
-
-  async function handleRegister() {
-    if (lines.length === 0) {
-      toast.error('Agregá al menos un producto.');
-      return;
-    }
-    try {
-      await registerSale({ phone: phone.trim() || undefined, items: lines }).unwrap();
-      toast.success('Venta registrada. Pendiente de aprobación.');
-      setLines([]);
-      setPhone('');
-    } catch (err) {
-      toast.error(errMsg(err, 'No se pudo registrar la venta.'));
-    }
-  }
-
   async function handleApprove(id: string) {
     try {
       await approveSale(id).unwrap();
-      toast.success('Venta aprobada.');
+      toast.success('Venta aprobada.', {
+        icon: React.createElement(AnimatedCheck, { size: 18, autoPlay: true }),
+      });
     } catch (err) {
       toast.error(errMsg(err, 'No se pudo aprobar la venta.'));
     }
@@ -229,208 +193,56 @@ export default function AdminVentas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
-  const total = lines.reduce((sum, l) => sum + l.quantity * l.salePrice, 0);
-
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Ventas</h2>
-        <p className="text-muted-foreground">Cotizá, registrá{isAdmin ? ' y aprobá' : ''} tus ventas.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Ventas</h2>
+          <p className="text-muted-foreground">Listado general y registro de ventas.</p>
+        </div>
+        <Button onClick={() => setIsEditorOpen(true)}>
+          <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+          Registrar Venta
+        </Button>
       </div>
 
-      <Tabs defaultValue="quote" className="space-y-6">
-        <TabsList className="bg-card border border">
-          <TabsTrigger value="quote">
-            <HugeiconsIcon icon={ShoppingCart02Icon} size={16} strokeWidth={2} className="mr-2" /> Cotizador / Registro
-          </TabsTrigger>
-          <TabsTrigger value="list">Listado</TabsTrigger>
-        </TabsList>
+      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Registrar Venta</DialogTitle>
+          </DialogHeader>
+          <SaleEditor onDone={() => setIsEditorOpen(false)} />
+        </DialogContent>
+      </Dialog>
 
-        <TabsContent value="quote" className="space-y-6">
-          <Card className="bg-card border shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg text-foreground">Agregar producto</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Elegí un producto vendible (stock disponible), cantidad y precio.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-4">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Producto</Label>
-                <Input
-                  value={productName}
-                  onChange={(e) => {
-                    setProductName(e.target.value);
-                    const match = products.find((p) => p.productName === e.target.value);
-                    if (match) setSalePrice(match.price);
-                  }}
-                  list="sale-product-options"
-                  placeholder="Nombre del producto"
-                />
-                <datalist id="sale-product-options">
-                  {productNames.map((opt) => (
-                    <option key={opt} value={opt} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Cantidad</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Precio (C$)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(Math.max(0, Number(e.target.value) || 0))}
-                />
-              </div>
-              <div className="sm:col-span-4">
-                <Button onClick={addLine} variant="outline">
-                  <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Agregar línea
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      {/* El vendedor no tiene Dashboard en su nav, así que su reportería propia
+          vive acá. Al admin no se le muestra: ya la tiene completa (y de todo
+          el equipo) en /admin. */}
+      {!isAdmin && <SellerPerformance />}
 
-          {lines.length > 0 && (
-            <Card className="bg-card border shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg text-foreground">Líneas de la venta</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="divide-y divide-border rounded-lg border border">
-                  {lines.map((line) => (
-                    <div key={line.productName} className="flex items-center justify-between gap-3 px-3 py-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-foreground">{line.productName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {line.quantity} × {formatCordobas(line.salePrice)}
-                        </p>
-                      </div>
-                      <span className="font-semibold text-foreground tabular-nums">
-                        {formatCordobas(line.quantity * line.salePrice)}
-                      </span>
-                      <Button size="icon-sm" variant="ghost" onClick={() => removeLine(line.productName)}>
-                        <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} className="text-destructive" aria-hidden />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+      <div className="space-y-4">
+        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+          <TabsList className="bg-muted border">
+            {STATUS_TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-                <div className="flex items-center justify-between border-t border pt-3">
-                  <span className="text-sm font-medium text-muted-foreground">Total</span>
-                  <span className="text-xl font-bold text-primary-2 tabular-nums">{formatCordobas(total)}</span>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-                  <div className="space-y-1.5">
-                    <Label>Teléfono del cliente (opcional)</Label>
-                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="8888 8888" />
-                  </div>
-                  <Button variant="outline" onClick={handleQuote} disabled={quoting}>
-        {quoting && <Spinner className="mr-2" />}
-        Cotizar
-      </Button>
-                  <Button onClick={handleRegister} disabled={registering}>
-        {registering && <Spinner className="mr-2" />}
-        Registrar venta
-      </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {quote && (
-            <Card className="bg-card border shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg text-foreground">Cotización</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Comisión y ganancia estimadas — se congelan de verdad recién al aprobar la venta.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {quote.lines.map((line) => (
-                  <div key={line.productName} className="rounded-lg border p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-foreground">{line.productName}</span>
-                      <span className="font-semibold text-foreground">{formatCordobas(line.precioUnit)} c/u</span>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
-                      <span>
-                        Comisión: <span className="font-medium text-primary-2">{formatCordobas(line.comision)}</span> (
-                        {Math.round(line.comisionPercent * 100)}%)
-                      </span>
-                      <span>
-                        Ganancia tienda: <span className="font-medium text-primary-2">{formatCordobas(line.gananciaTienda)}</span>
-                      </span>
-                      {line.wholesale.discountPercent > 0 && (
-                        <span>Mayoreo: −{Math.round(line.wholesale.discountPercent * 100)}%</span>
-                      )}
-                      {line.insufficientStock && (
-                        <span className="font-medium text-destructive">Stock insuficiente (disp. {line.available})</span>
-                      )}
-                    </div>
-                    {line.wholesale.warning && (
-                      <p className="mt-1 text-xs font-medium text-warning">
-                        Mejor hacé una cotización para obtener mejores descuentos.
-                      </p>
-                    )}
-                  </div>
-                ))}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border pt-3 text-sm">
-                  <span className="text-muted-foreground">
-                    Comisión total: <span className="font-semibold text-foreground">{formatCordobas(quote.totalComision)}</span>
-                  </span>
-                  <span className="text-muted-foreground">
-                    Ganancia tienda: <span className="font-semibold text-foreground">{formatCordobas(quote.totalGananciaTienda)}</span>
-                  </span>
-                  <span className="text-lg font-bold text-primary-2">{formatCordobas(quote.total)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {lines.length === 0 && !quote && (
-            <div className="rounded-lg border border-dashed border bg-muted/50 py-12 text-center">
-              <HugeiconsIcon icon={Package01Icon} size={40} strokeWidth={2} className="mx-auto mb-3 text-muted-foreground opacity-50" aria-hidden />
-              <p className="font-medium text-foreground">Todavía no agregaste productos.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Usá el formulario de arriba para armar la venta.</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="list" className="space-y-4">
-          <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-            <TabsList className="bg-muted border border">
-              {STATUS_TABS.map((t) => (
-                <TabsTrigger key={t.value} value={t.value}>
-                  {t.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-
-          <Card className="bg-card border shadow-sm">
-            <CardContent className="pt-6">
-              <QueryState
-                loading={loadingSales}
-                error={salesError}
-                loadingFallback={<div className="h-48 animate-pulse rounded-lg bg-muted" />}
-              >
-                <DataTable columns={columns} data={sales} searchPlaceholder="Buscar por teléfono…" emptyText="No hay ventas en este estado." />
-              </QueryState>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        <Card className="bg-card border shadow-sm">
+          <CardContent className="pt-6">
+            <QueryState
+              loading={loadingSales}
+              error={salesError}
+              loadingFallback={<div className="h-48 animate-pulse rounded-lg bg-muted" />}
+            >
+              <DataTable columns={columns} data={sales} searchPlaceholder="Buscar por teléfono…" emptyText="No hay ventas en este estado." />
+            </QueryState>
+          </CardContent>
+        </Card>
+      </div>
 
       <Dialog open={!!rejectFor} onOpenChange={(open) => !open && setRejectFor(null)}>
         <DialogContent>

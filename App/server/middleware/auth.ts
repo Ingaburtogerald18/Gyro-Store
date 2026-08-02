@@ -2,6 +2,7 @@
 // Portado de la v1 (middleware/auth.js): whitelist por env → tabla `profiles` →
 // array de roles. La autorización REAL vive acá; el frontend solo oculta botones.
 import type { Request, Response, NextFunction } from 'express';
+import * as jose from 'jose';
 import { config, VALID_ROLES, type AppRole } from '../config';
 import { db, getUserFromToken } from '../supabase';
 
@@ -30,14 +31,64 @@ export function primaryRole(roles: AppRole[]): AppRole | null {
   return config.rolePriority.find((r) => roles.includes(r)) || roles[0] || null;
 }
 
+const profileCache = new Map<string, { data: any; cachedAt: number }>();
+
+/**
+ * Descarta el perfil cacheado de un usuario. La caché dura 30 s, que está bien
+ * para lecturas, pero cuando ALGO acaba de escribir en `profiles` (la foto de
+ * `sync-photo`, por ejemplo) el siguiente `/auth/me` devolvería el dato viejo
+ * durante medio minuto. Quien escribe, invalida.
+ */
+export function invalidateProfileCache(uid: string) {
+  profileCache.delete(uid);
+}
+
+// Cada cuánto se refresca `profiles.last_login`. El dato sirve para detectar
+// cuentas inactivas, así que la precisión al minuto no aporta nada: escribir en
+// cada request sería una escritura por llamada a la API.
+const LAST_LOGIN_THROTTLE_MS = 15 * 60_000;
+
+/**
+ * Marca la última conexión del staff. NO se espera (`void`, sin await): es
+ * telemetría, y hacer que cada request pague una escritura a Postgres antes de
+ * responder degradaría la latencia de toda la API por un dato que a nadie le
+ * urge. Si falla, se ignora — no vale romper una sesión válida por esto.
+ *
+ * Muta `profile.last_login` en el objeto CACHEADO para que las llamadas
+ * siguientes vean el valor nuevo y no vuelvan a escribir dentro de la ventana.
+ */
+function touchLastLogin(uid: string, profile: { last_login?: string | null } | null) {
+  if (!profile) return;
+
+  const previous = profile.last_login ? Date.parse(profile.last_login) : 0;
+  if (Number.isFinite(previous) && Date.now() - previous < LAST_LOGIN_THROTTLE_MS) return;
+
+  const nowIso = new Date().toISOString();
+  profile.last_login = nowIso;
+  void db
+    .from('profiles')
+    .update({ last_login: nowIso })
+    .eq('id', uid)
+    .then(({ error }) => {
+      if (error) console.warn('[last_login] No se pudo registrar la última conexión:', error.message);
+    });
+}
+
 // Lee el perfil por id de auth. Si no existe, lo crea (primer login).
 // Tolera que la tabla `profiles` aún no exista (durante el Hito 0): captura y
 // devuelve null, para que la whitelist por env siga funcionando.
 async function fetchProfile(supaUser: any) {
+  const now = Date.now();
+  const cached = profileCache.get(supaUser.id);
+  if (cached && now - cached.cachedAt < 30_000) {
+    touchLastLogin(supaUser.id, cached.data);
+    return cached.data;
+  }
+
   try {
     const { data, error } = await db
       .from('profiles')
-      .select('roles, status, deleted_at, name, avatar_url')
+      .select('roles, status, deleted_at, name, avatar_url, last_login')
       .eq('id', supaUser.id)
       .maybeSingle();
       
@@ -51,6 +102,9 @@ async function fetchProfile(supaUser: any) {
         db.from('profiles').update({ avatar_url: authAvatar }).eq('id', supaUser.id).then();
         data.avatar_url = authAvatar;
       }
+      
+      profileCache.set(supaUser.id, { data, cachedAt: now });
+      touchLastLogin(supaUser.id, data);
       return data;
     }
 
@@ -67,10 +121,12 @@ async function fetchProfile(supaUser: any) {
         name,
         avatar_url
       })
-      .select('roles, status, deleted_at, name, avatar_url')
+      .select('roles, status, deleted_at, name, avatar_url, last_login')
       .single();
 
     if (insertError) return null;
+    profileCache.set(supaUser.id, { data: newProfile, cachedAt: now });
+    touchLastLogin(supaUser.id, newProfile);
     return newProfile;
   } catch {
     return null;
@@ -103,9 +159,27 @@ export async function authenticate(
   const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
   if (!token) return { error: 401, message: 'Falta el token de sesión.' };
 
-  const supaUser = await getUserFromToken(token);
+  // Paralelizar: Decodificar el token localmente para iniciar fetchProfile rápido
+  let decoded: any = null;
+  try {
+    decoded = jose.decodeJwt(token);
+  } catch (e) {}
+
+  const profilePromise = (decoded && decoded.sub)
+    ? fetchProfile({ id: decoded.sub, email: decoded.email, user_metadata: decoded.user_metadata })
+    : Promise.resolve(null);
+
+  const supaUserPromise = getUserFromToken(token);
+
+  const [supaUser, profileResult] = await Promise.all([supaUserPromise, profilePromise]);
+
   if (!supaUser || !supaUser.email) {
     return { error: 401, message: 'Sesión inválida o expirada.' };
+  }
+
+  let profile = profileResult;
+  if (!profile && !decoded) {
+    profile = await fetchProfile(supaUser);
   }
 
   const email = supaUser.email.toLowerCase();
@@ -135,7 +209,6 @@ export async function authenticate(
     };
   }
 
-  const profile = await fetchProfile(supaUser);
   const roles = rolesFromEnvOrProfile(email, profile);
   if (!roles.length) {
     return { error: 403, message: 'Esta cuenta no tiene permisos asignados.' };

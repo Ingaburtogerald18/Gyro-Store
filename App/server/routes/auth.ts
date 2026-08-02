@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { requireAnyRole } from '../middleware/auth.js';
+import { invalidateProfileCache, requireAnyRole } from '../middleware/auth.js';
 import { uploadFile, optimizeImageBuffer, deleteFileByUrl } from '../services/storage.js';
 import { db } from '../supabase.js';
 
@@ -46,16 +46,18 @@ router.post(
       // 4. Calculate hash to prevent duplicates
       const hash = crypto.createHash('sha256').update(optimized.buffer).digest('hex').substring(0, 16);
       
-      // 5. Get current profile to check if photo changed
+      // 5. Get current profile to check if photo changed.
+      // `maybeSingle` y no `single`: si el perfil todavía no existe (primer
+      // login, carrera con el middleware que lo crea) esto no debe lanzar.
       let currentAvatarUrl: string | null = null;
       if (req.user?.uid) {
-        const { data } = await db.from('profiles').select('avatar_url').eq('id', req.user.uid).single();
+        const { data } = await db.from('profiles').select('avatar_url').eq('id', req.user.uid).maybeSingle();
         currentAvatarUrl = data?.avatar_url || null;
       }
 
       // If hash matches the current URL, skip upload
       if (currentAvatarUrl && currentAvatarUrl.includes(hash)) {
-        res.json({ avatar_url: currentAvatarUrl });
+        res.json({ avatar_url: currentAvatarUrl, changed: false });
         return;
       }
 
@@ -73,12 +75,15 @@ router.post(
         await deleteFileByUrl(currentAvatarUrl);
       }
 
-      // 8. Update user profile in database
+      // 8. Update user profile in database.
+      // Se invalida la caché de perfil del middleware: sin esto, `/auth/me`
+      // seguiría devolviendo la foto vieja hasta 30 s después.
       if (req.user?.uid) {
         await db.from('profiles').update({ avatar_url: url }).eq('id', req.user.uid);
+        invalidateProfileCache(req.user.uid);
       }
 
-      res.json({ avatar_url: url });
+      res.json({ avatar_url: url, changed: true });
     } catch (err: any) {
       console.error('[SYNC-PHOTO] Error sync:', err);
       res.status(500).json({ error: 'Error al sincronizar la foto' });

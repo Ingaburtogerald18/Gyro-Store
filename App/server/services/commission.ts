@@ -85,6 +85,9 @@ export interface LineCommissionInput {
 }
 
 export interface LineCommission {
+  // ── Totales de la línea (unitario × cantidad) ──
+  /** Costo real de TODAS las unidades. */
+  costoTotal: number;
   utilidadBruta: number;
   salary: number;
   utilidadNeta: number;
@@ -92,21 +95,86 @@ export interface LineCommission {
   comisionPercent: number;
   gananciaTienda: number;
   pozos: FinancialConfig['pozos'];
+
+  // ── La misma cadena, POR UNIDAD ──
+  // El desglose del panel muestra ambas columnas, y el tramo de comisión sale
+  // del valor unitario: sin exponerlo, el porcentaje parecería salir de la nada.
+  utilidadBrutaUnit: number;
+  salaryUnit: number;
+  utilidadNetaUnit: number;
+  comisionUnit: number;
+  gananciaTiendaUnit: number;
 }
 
-// Doc 11 §4, por línea: Utilidad bruta → Salary (20%) → Utilidad neta →
-// Comisión (tramo por Utilidad neta) → Ganancia tienda. Los pozos se recogen
-// del Costo F/U de las unidades de esta línea (doc 11 §2).
+// Doc 11 §4: Utilidad bruta → Salary (20%) → Utilidad neta → Comisión (tramo
+// por Utilidad neta) → Ganancia tienda. Los pozos se recogen del Costo F/U de
+// las unidades de esta línea (doc 11 §2).
+//
+// ── El tramo se busca por la utilidad neta de UNA UNIDAD ──
+// Antes se buscaba por la utilidad neta de la línea COMPLETA (ya multiplicada),
+// y eso castigaba el volumen: vender 5 unidades juntas empujaba la utilidad a un
+// tramo más alto y le BAJABA el porcentaje al vendedor. Ahora la cadena se
+// calcula por unidad y recién al final se multiplica, así que el porcentaje no
+// depende de cuántas unidades entren en la misma línea.
+//
+// Con cantidad 1 ambos métodos dan idéntico — por eso las planillas históricas
+// de referencia (todas de cantidad 1) siguen cuadrando.
+//
+// ── Redondeo ──
+// La cadena unitaria se calcula SIN redondear y se redondea al presentar. Dos
+// excepciones deliberadas:
+//   · `utilidadNetaUnit` se redondea ANTES de buscar el tramo, para que el
+//     tramo sea reproducible y no dependa de decimales invisibles cuando el
+//     valor cae justo en el borde (200.001 vs 200.00).
+//   · El último término de cada identidad se deriva por RESTA en vez de
+//     redondearse aparte, para que las filas del panel cierren exactamente:
+//         utilidadNeta   === utilidadBruta − salary
+//         gananciaTienda === utilidadNeta  − comision
 export function computeLineCommission(input: LineCommissionInput, config: FinancialConfig): LineCommission {
-  const utilidadBruta = round((input.precioUnit - input.costeFinal) * input.quantity, 2);
-  const salary = round(utilidadBruta * config.salaryPercentage, 2);
+  const { precioUnit, costeFinal, quantity } = input;
+
+  // ── Cadena por unidad (sin redondear hasta el final) ──
+  const utilidadBrutaUnitRaw = precioUnit - costeFinal;
+  const salaryUnitRaw = utilidadBrutaUnitRaw * config.salaryPercentage;
+
+  const utilidadBrutaUnit = round(utilidadBrutaUnitRaw, 2);
+  const salaryUnit = round(salaryUnitRaw, 2);
+  // Se deriva por resta de los ya redondeados: es el número que el panel muestra
+  // Y el que decide el tramo, así que tiene que ser el mismo en los dos lados.
+  const utilidadNetaUnit = round(utilidadBrutaUnit - salaryUnit, 2);
+
+  const comisionPercent = computeCommissionPercent(utilidadNetaUnit, config.commissionScale);
+
+  const comisionUnit = round(utilidadNetaUnit * comisionPercent, 2);
+  const gananciaTiendaUnit = round(utilidadNetaUnit - comisionUnit, 2);
+
+  // ── Totales ──
+  // Se multiplica el valor SIN redondear y se redondea el total: redondear cada
+  // unitario y luego multiplicar acumularía deriva con cantidades altas.
+  const costoTotal = round(costeFinal * quantity, 2);
+  const utilidadBruta = round(utilidadBrutaUnitRaw * quantity, 2);
+  const salary = round(salaryUnitRaw * quantity, 2);
   const utilidadNeta = round(utilidadBruta - salary, 2);
-  const comisionPercent = computeCommissionPercent(utilidadNeta, config.commissionScale);
   const comision = round(utilidadNeta * comisionPercent, 2);
   const gananciaTienda = round(utilidadNeta - comision, 2);
-  const pozos = distributePozos(round(input.costoFU * input.quantity, 2), config.pozos);
 
-  return { utilidadBruta, salary, utilidadNeta, comision, comisionPercent, gananciaTienda, pozos };
+  const pozos = distributePozos(round(input.costoFU * quantity, 2), config.pozos);
+
+  return {
+    costoTotal,
+    utilidadBruta,
+    salary,
+    utilidadNeta,
+    comision,
+    comisionPercent,
+    gananciaTienda,
+    pozos,
+    utilidadBrutaUnit,
+    salaryUnit,
+    utilidadNetaUnit,
+    comisionUnit,
+    gananciaTiendaUnit,
+  };
 }
 
 // ── Snapshot completo de línea (listo para order_items) ──
@@ -135,10 +203,22 @@ export function computeOrderLineSnapshot(
   input: OrderLineSnapshotInput,
   config: FinancialConfig,
 ): OrderLineSnapshot {
+  // El precio que manda es EL DEL FORMULARIO. El mayoreo es una herramienta del
+  // cotizador (doc 11 §5), no automático: hay que pedirlo explícitamente con
+  // `applyWholesale: true`.
+  //
+  // Antes el default era `?? true` y el frontend nunca manda el flag, así que un
+  // pedido de 5 unidades se cotizaba con un 5% de descuento que nadie pidió: el
+  // vendedor escribía C$380 y la cadena financiera corría sobre C$361. El
+  // desglose no cuadraba con el precio tipeado y la comisión salía más baja.
+  //
+  // El `warning` se calcula igual aunque no se aplique el descuento: que la
+  // cantidad califique para mayoreo es información útil por sí sola.
+  const tiered = applyWholesaleDiscount(input.basePrice, input.quantity, config.wholesaleDiscounts);
   const wholesale =
-    input.applyWholesale ?? true
-      ? applyWholesaleDiscount(input.basePrice, input.quantity, config.wholesaleDiscounts)
-      : { price: round(input.basePrice, 2), discountPercent: 0, warning: false };
+    input.applyWholesale === true
+      ? tiered
+      : { price: round(input.basePrice, 2), discountPercent: 0, warning: tiered.warning };
 
   const commission = computeLineCommission(
     {

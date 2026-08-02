@@ -56,8 +56,8 @@ export async function cleanupDeletedUsers() {
  * Se ejecuta al iniciar el servidor y luego cada 24 horas.
  */
 export function startUserCleanupCron() {
-  // Ejecutar inmediatamente
-  cleanupDeletedUsers();
+  // Ejecutar 30 segundos después de iniciar (no bloquear arranque)
+  setTimeout(() => cleanupDeletedUsers(), 30_000);
   
   // Ejecutar cada 24 horas
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;

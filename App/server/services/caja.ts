@@ -130,11 +130,12 @@ export async function getBalances(): Promise<AccountBalance[]> {
   const balances: Record<string, number> = {};
 
   for (const mov of (data || [])) {
-    if (!balances[mov.account_id]) balances[mov.account_id] = 0;
+    if (!mov.account_id) continue;
+    if (balances[mov.account_id] === undefined) balances[mov.account_id] = 0;
     if (mov.tipo === 'ingreso') {
-      balances[mov.account_id] += Number(mov.monto);
+      balances[mov.account_id]! += Number(mov.monto);
     } else {
-      balances[mov.account_id] -= Number(mov.monto);
+      balances[mov.account_id]! -= Number(mov.monto);
     }
   }
 

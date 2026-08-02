@@ -1,15 +1,37 @@
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon, CloudUploadIcon, FloppyDiskIcon, ImageAdd01Icon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, CloudUploadIcon, Delete02Icon, FloppyDiskIcon, ImageAdd01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState, useRef } from 'react';
+import {
+  Controller,
+  useFieldArray,
+  useForm,
+  type Control,
+  type FieldPath,
+} from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import { getSupabaseClient } from '~/lib/supabase.client';
 import { Card, CardContent } from '~/components/ui/card';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '~/components/ui/field';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Button } from '~/components/ui/button';
+import { Spinner } from '~/components/ui/spinner';
 import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
 
-import type { FinancialConfig, ImageResources } from '@shared/schemas';
+import {
+  financialConfigSchema,
+  imageResourcesSchema,
+  type FinancialConfig,
+  type ImageResources,
+} from '@shared/schemas';
 import { BrandLoader } from '~/components/ui/module-loader';
+import { QueryState } from '~/components/ui/QueryState';
 import { useAppDispatch } from '~/store/hooks';
 import { configApi } from '~/store/api/configApi';
 
@@ -37,27 +59,41 @@ function Section({
   );
 }
 
+const EMPTY_IMAGES: ImageResources = {
+  logoStatic: '',
+  logoAnimated: '',
+  favicon: '',
+  posLogo: '',
+};
+
 function ImagesConfig() {
-  const [config, setConfig] = useState<ImageResources>({
-    logoStatic: '',
-    logoAnimated: '',
-    favicon: '',
-    posLogo: ''
-  });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [uploading, setUploading] = useState(false);
   // Track images uploaded in this session to clean them up if discarded
   const uploadedInSession = useRef<Set<string>>(new Set());
   const dispatch = useAppDispatch();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<ImageResources>({
+    resolver: zodResolver(imageResourcesSchema),
+    defaultValues: EMPTY_IMAGES,
+  });
+
+  const config = watch();
 
   useEffect(() => {
     const fetchConfig = async () => {
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      
+
       try {
         const res = await fetch('/api/admin/config/images', {
           headers: {
@@ -66,27 +102,22 @@ function ImagesConfig() {
         });
         if (!res.ok) throw new Error('Error al cargar imágenes');
         const data = await res.json();
-        setConfig({
+        reset({
           logoStatic: data.logoStatic || '',
           logoAnimated: data.logoAnimated || '',
           favicon: data.favicon || '',
           posLogo: data.posLogo || ''
         });
       } catch (err: any) {
-        setError(err.message);
+        toast.error(err.message || 'No se pudieron cargar los recursos.');
       } finally {
         setLoading(false);
       }
     };
     fetchConfig();
-  }, []);
+  }, [reset]);
 
-  const handleSave = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setSaving(true);
-    setError('');
-    setSuccessMsg('');
-
+  const onSubmit = async (values: ImageResources) => {
     try {
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -98,31 +129,27 @@ function ImagesConfig() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(config)
+        body: JSON.stringify(values)
       });
-      
+
       if (!res.ok) throw new Error('Error al guardar imágenes');
       const data = await res.json();
-      setConfig(data);
+      reset(data);
       uploadedInSession.current.clear(); // All saved, nothing to clean up
       dispatch(configApi.util.invalidateTags(['Config']));
-      setSuccessMsg('Recursos guardados correctamente.');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      toast.success('Recursos guardados correctamente.');
     } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
+      toast.error(err.message || 'No se pudieron guardar los recursos.');
     }
   };
 
   const uploadFile = async (file: File, key: keyof ImageResources) => {
     try {
-      setSaving(true);
-      setError('');
-      
+      setUploading(true);
+
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'config'); // Folder in Cloudflare R2
@@ -140,7 +167,7 @@ function ImagesConfig() {
 
       // If replacing an image that was uploaded *in this session* (not yet saved),
       // delete it from R2 to avoid orphans.
-      const prevUrl = config[key];
+      const prevUrl = getValues(key);
       if (prevUrl && uploadedInSession.current.has(prevUrl)) {
         fetch('/api/upload', {
           method: 'DELETE',
@@ -154,11 +181,11 @@ function ImagesConfig() {
       }
 
       uploadedInSession.current.add(data.url);
-      setConfig(prev => ({ ...prev, [key]: data.url }));
+      setValue(key, data.url, { shouldDirty: true });
     } catch (err: any) {
-      setError(err.message || 'Error al subir la imagen');
+      toast.error(err.message || 'Error al subir la imagen');
     } finally {
-      setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -198,16 +225,16 @@ function ImagesConfig() {
                   }).catch(console.error);
                   uploadedInSession.current.delete(url);
                 }
-                setConfig(p => ({ ...p, [key]: '' }));
+                setValue(key, '', { shouldDirty: true });
               }}
-              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-destructive text-white opacity-0 transition-opacity group-hover:opacity-100"
-              title="Eliminar"
+              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              aria-label={`Eliminar ${title}`}
             >
               <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
             </button>
           </div>
         ) : (
-          <label className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border bg-card transition-colors hover:border-primary hover:bg-primary/5">
+          <label className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-card transition-colors hover:border-primary hover:bg-primary/5">
             <HugeiconsIcon icon={CloudUploadIcon} size={32} strokeWidth={2} className="text-muted-foreground" />
             <span className="text-sm font-medium text-muted-foreground">Subir imagen</span>
             <input 
@@ -221,57 +248,92 @@ function ImagesConfig() {
             />
           </label>
         )}
-        <Input 
-          placeholder="O ingresa la URL de la imagen" 
-          value={config[key] || ''} 
-          onChange={e => setConfig(p => ({ ...p, [key]: e.target.value }))}
-        />
+        <Field data-invalid={!!errors[key]}>
+          <FieldLabel htmlFor={`img-url-${key}`} className="sr-only">
+            URL de {title}
+          </FieldLabel>
+          <Input
+            id={`img-url-${key}`}
+            placeholder="O ingresa la URL de la imagen"
+            aria-invalid={!!errors[key]}
+            {...register(key)}
+          />
+          <FieldError errors={[errors[key]]} />
+        </Field>
       </div>
     );
   };
 
-  if (loading) return <div className="flex py-12 justify-center"><BrandLoader text="Cargando recursos..." /></div>;
-
   return (
-    <Section 
-      title="Recursos de Imágenes" 
+    <Section
+      title="Recursos de Imágenes"
       description="Sube los logos y favicons que se utilizarán en la interfaz y en los tickets generados."
     >
-      <div className="space-y-6">
-        {error && <div className="rounded-md bg-destructive/20 p-3 text-sm text-destructive">{error}</div>}
-        {successMsg && <div className="rounded-md bg-primary/20 p-3 text-sm text-primary">{successMsg}</div>}
-        
+      <QueryState
+        loading={loading}
+        loadingFallback={<div className="flex py-12 justify-center"><BrandLoader text="Cargando recursos..." /></div>}
+      >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           {renderUploadBox("Logo estático", "Cabeceras y web. Recomendado: 512x512px (PNG transparente)", "logoStatic")}
           {renderUploadBox("Logo animado", "Animación principal. Recomendado: 512x512px (WebM/GIF)", "logoAnimated")}
           {renderUploadBox("Favicon", "Ícono de la pestaña. Recomendado: 32x32px o 64x64px (PNG/ICO)", "favicon")}
           {renderUploadBox("Logo del ticket", "Impresoras térmicas. Recomendado: 300x300px o similar (Blanco y Negro puro)", "posLogo")}
         </div>
-        
+
         <div className="flex justify-end pt-2">
-          <Button onClick={() => handleSave()} disabled={saving}>
-            <HugeiconsIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
-            {saving ? 'Guardando...' : 'Guardar Imágenes'}
+          <Button type="submit" disabled={isSubmitting || uploading}>
+            {isSubmitting ? (
+              <Spinner className="mr-2" />
+            ) : (
+              <HugeiconsIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
+            )}
+            Guardar Imágenes
           </Button>
         </div>
-      </div>
+      </form>
+      </QueryState>
     </Section>
   );
 }
 
+// Las llaves de `pozos` son fijas (`pozosSchema`): se listan acá para que el
+// formulario tipe cada campo en vez de recorrer el objeto con `any`.
+const POZO_KEYS = [
+  'publicidad',
+  'mantenimiento',
+  'utiles',
+  'garantias',
+  'prestamos',
+  'suscripciones',
+  'servicios',
+] as const;
+
 function FinanzasConfig() {
-  const [config, setConfig] = useState<FinancialConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [loadError, setLoadError] = useState('');
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<FinancialConfig>({
+    resolver: zodResolver(financialConfigSchema) as any,
+  });
+
+  const costoFUScale = useFieldArray({ control, name: 'costoFUScale' });
+  const marginScale = useFieldArray({ control, name: 'marginScale' });
+  const commissionScale = useFieldArray({ control, name: 'commissionScale' });
+  const wholesaleDiscounts = useFieldArray({ control, name: 'wholesaleDiscounts' });
 
   useEffect(() => {
     const fetchConfig = async () => {
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      
+
       try {
         // Obtenemos la configuración financiera actualizada
         const res = await fetch('/api/admin/config/financial', {
@@ -290,35 +352,23 @@ function FinanzasConfig() {
             const text = await res2.text();
             throw new Error(`Error al cargar: ${res2.status} - ${text}`);
           }
-          const data = await res2.json();
-          setConfig(data);
+          reset(await res2.json());
           return;
         }
-        const data = await res.json();
-        setConfig(data);
+        reset(await res.json());
       } catch (err: any) {
-        setError(err.message);
+        setLoadError(err.message);
       } finally {
         setLoading(false);
       }
     };
     fetchConfig();
-  }, []);
+  }, [reset]);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!config) return;
-
-    setSaving(true);
-    setError('');
-    setSuccessMsg('');
-
+  // La suma de los pozos ya la exige `financialConfigSchema.refine` con
+  // `path: ['pozos']`: el error sale en la sección de Pozos, no como excepción.
+  const onSubmit = async (values: FinancialConfig) => {
     try {
-      const sum = Object.values(config.pozos).reduce((a, b) => a + (b || 0), 0);
-      if (Math.abs(sum - 1.0) > 0.001) {
-        throw new Error(`La suma de los pozos debe ser exactamente 1 (actual: ${sum.toFixed(2)})`);
-      }
-
       const supabase = getSupabaseClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No hay sesión');
@@ -329,7 +379,7 @@ function FinanzasConfig() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(config)
+        body: JSON.stringify(values)
       });
 
       if (res.status === 404) {
@@ -339,10 +389,10 @@ function FinanzasConfig() {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`
             },
-            body: JSON.stringify(config)
+            body: JSON.stringify(values)
          });
       }
-      
+
       const data = await res.json();
       if (!res.ok) {
         if (data.issues) {
@@ -350,114 +400,133 @@ function FinanzasConfig() {
         }
         throw new Error(data.error || 'Error al guardar');
       }
-      
-      setConfig(data);
-      setSuccessMsg('Configuración guardada correctamente.');
-      setTimeout(() => setSuccessMsg(''), 3000);
+
+      reset(data);
+      toast.success('Configuración guardada correctamente.');
     } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
+      toast.error(err.message || 'No se pudo guardar la configuración.');
     }
   };
 
-  if (loading) return <div className="flex h-40 items-center justify-center"><BrandLoader text="Cargando configuración..." /></div>;
-  if (!config) return <div className="p-4 text-destructive">{error}</div>;
+  // Mientras no llegue la config no hay formulario que mostrar: la sección
+  // entera se resuelve por QueryState.
+  if (loading || loadError) {
+    return (
+      <QueryState
+        loading={loading}
+        error={!!loadError}
+        errorMessage={loadError || 'No se pudo cargar la configuración financiera.'}
+        loadingFallback={<div className="flex h-40 items-center justify-center"><BrandLoader text="Cargando configuración..." /></div>}
+      >
+        {null}
+      </QueryState>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {error && <div className="rounded-md bg-destructive/20 p-3 text-sm text-destructive">{error}</div>}
-      {successMsg && <div className="rounded-md bg-primary/20 p-3 text-sm text-primary">{successMsg}</div>}
+      <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
 
-      <form onSubmit={handleSave} className="space-y-8">
-        
         <Section title="Configuración General" description="Parámetros base que aplican a todos los módulos.">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Tasa de Cambio (C$ por USD)</Label>
-              <Input 
-                type="number" step="0.01" 
-                value={config.exchangeRate} 
-                onChange={e => setConfig({...config, exchangeRate: parseFloat(e.target.value) || 0})} 
+            <Field data-invalid={!!errors.exchangeRate}>
+              <FieldLabel htmlFor="cfg-exchange-rate" required>Tasa de Cambio (C$ por USD)</FieldLabel>
+              <Input
+                id="cfg-exchange-rate"
+                type="number" step="0.01"
                 className="max-w-xs"
+                aria-required
+                aria-invalid={!!errors.exchangeRate}
+                {...register('exchangeRate', { valueAsNumber: true })}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Fondo de la Empresa (Salary %)</Label>
-              <Input 
-                type="number" step="0.01" 
-                value={config.salaryPercentage} 
-                onChange={e => setConfig({...config, salaryPercentage: parseFloat(e.target.value) || 0})} 
+              <FieldError errors={[errors.exchangeRate]} />
+            </Field>
+            <Field data-invalid={!!errors.salaryPercentage}>
+              <FieldLabel htmlFor="cfg-salary" required>Fondo de la Empresa (Salary %)</FieldLabel>
+              <Input
+                id="cfg-salary"
+                type="number" step="0.01"
                 className="max-w-xs"
+                aria-required
+                aria-invalid={!!errors.salaryPercentage}
+                {...register('salaryPercentage', { valueAsNumber: true })}
               />
-              <p className="text-xs text-muted-foreground">Ejemplo: 0.20 para 20%</p>
-            </div>
+              <FieldDescription>Ejemplo: 0.20 para 20%</FieldDescription>
+              <FieldError errors={[errors.salaryPercentage]} />
+            </Field>
+            <Field data-invalid={!!errors.minMarginMultiplier}>
+              <FieldLabel htmlFor="cfg-min-margin" required>Margen de Precio Mínimo (Múltiplo)</FieldLabel>
+              <Input
+                id="cfg-min-margin"
+                type="number" step="0.01"
+                className="max-w-xs"
+                aria-required
+                aria-invalid={!!errors.minMarginMultiplier}
+                {...register('minMarginMultiplier', { valueAsNumber: true })}
+              />
+              <FieldDescription>Ejemplo: 1.15 significa que no se puede vender a menos del 15% sobre el costo</FieldDescription>
+              <FieldError errors={[errors.minMarginMultiplier]} />
+            </Field>
           </div>
         </Section>
 
         <Section title="Distribución de Pozos" description="Los porcentajes asignados a cada fondo (deben sumar exactamente 1.00).">
           <div className="grid gap-4 md:grid-cols-3">
-            {Object.keys(config.pozos).map(key => (
-              <div key={key} className="space-y-2">
-                <Label className="capitalize">{key}</Label>
-                <Input 
+            {POZO_KEYS.map(key => (
+              <Field key={key} data-invalid={!!errors.pozos?.[key]}>
+                <FieldLabel htmlFor={`cfg-pozo-${key}`} className="capitalize" required>{key}</FieldLabel>
+                <Input
+                  id={`cfg-pozo-${key}`}
                   type="number" step="0.01"
-                  value={(config.pozos as any)[key]}
-                  onChange={e => {
-                    const newPozos = { ...config.pozos, [key]: parseFloat(e.target.value) || 0 };
-                    setConfig({...config, pozos: newPozos as any});
-                  }}
+                  aria-required
+                  aria-invalid={!!errors.pozos?.[key]}
+                  {...register(`pozos.${key}`, { valueAsNumber: true })}
                 />
-              </div>
+                <FieldError errors={[errors.pozos?.[key]]} />
+              </Field>
             ))}
           </div>
+          {/* La regla de "deben sumar 1.00" es del objeto entero, no de un pozo:
+              su error vive en la raíz de `pozos`. */}
+          <FieldError className="mt-3" errors={[errors.pozos]} />
         </Section>
 
         <Section title="Escala de Costo F/U" description="Escala escalonada por costo real (C$).">
           <div className="space-y-2">
-            {config.costoFUScale.map((item, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Costo Máximo (C$)</Label>
-                  <Input 
-                    type="number" 
-                    value={item.maxCost === null ? '' : item.maxCost} 
-                    placeholder="Infinito"
-                    onChange={e => {
-                      const newScale = [...config.costoFUScale];
-                      newScale[i].maxCost = e.target.value ? parseFloat(e.target.value) : null;
-                      setConfig({...config, costoFUScale: newScale});
-                    }}
+            <FieldError errors={[errors.costoFUScale]} />
+            {costoFUScale.fields.map((row, i) => (
+              <div key={row.id} className="flex items-end gap-4">
+                <CeilingField
+                  control={control as any}
+                  name={`costoFUScale.${i}.maxCost`}
+                  id={`cfu-max-${row.id}`}
+                  label="Costo Máximo (C$)"
+                  error={errors.costoFUScale?.[i]?.maxCost}
+                />
+                <Field className="flex-1" data-invalid={!!errors.costoFUScale?.[i]?.amount}>
+                  <FieldLabel htmlFor={`cfu-amount-${row.id}`} className="text-xs" required>Costo F/U (C$)</FieldLabel>
+                  <Input
+                    id={`cfu-amount-${row.id}`}
+                    type="number"
+                    aria-required
+                    aria-invalid={!!errors.costoFUScale?.[i]?.amount}
+                    {...register(`costoFUScale.${i}.amount`, { valueAsNumber: true })}
                   />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Costo F/U (C$)</Label>
-                  <Input 
-                    type="number" 
-                    value={item.amount}
-                    onChange={e => {
-                      const newScale = [...config.costoFUScale];
-                      newScale[i].amount = parseFloat(e.target.value) || 0;
-                      setConfig({...config, costoFUScale: newScale});
-                    }}
-                  />
-                </div>
-                <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
-                  onClick={() => {
-                    const newScale = config.costoFUScale.filter((_, idx) => idx !== i);
-                    setConfig({...config, costoFUScale: newScale});
-                  }}
+                  <FieldError errors={[errors.costoFUScale?.[i]?.amount]} />
+                </Field>
+                <Button
+                  type="button" variant="outline" size="icon"
+                  aria-label="Eliminar tramo"
+                  className="text-destructive"
+                  onClick={() => costoFUScale.remove(i)}
                 >
-                  X
+                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
-            <Button 
+            <Button
               type="button" variant="outline" size="sm" className="mt-4"
-              onClick={() => {
-                setConfig({...config, costoFUScale: [...config.costoFUScale, { maxCost: null, amount: 0 }]});
-              }}
+              onClick={() => costoFUScale.append({ maxCost: null, amount: 0 })}
             >
               Agregar tramo
             </Button>
@@ -466,49 +535,40 @@ function FinanzasConfig() {
 
         <Section title="Escala de Márgenes (PVP)" description="Márgenes de venta sugeridos basados en Coste Final (C$).">
           <div className="space-y-2">
-            {config.marginScale.map((item, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Coste Máximo (C$)</Label>
-                  <Input 
-                    type="number" 
-                    value={item.maxCost === null ? '' : item.maxCost} 
-                    placeholder="Infinito"
-                    onChange={e => {
-                      const newScale = [...config.marginScale];
-                      newScale[i].maxCost = e.target.value ? parseFloat(e.target.value) : null;
-                      setConfig({...config, marginScale: newScale});
-                    }}
-                  />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Margen (ej. 0.43)</Label>
-                  <Input 
+            <FieldError errors={[errors.marginScale]} />
+            {marginScale.fields.map((row, i) => (
+              <div key={row.id} className="flex items-end gap-4">
+                <CeilingField
+                  control={control as any}
+                  name={`marginScale.${i}.maxCost`}
+                  id={`mar-max-${row.id}`}
+                  label="Coste Máximo (C$)"
+                  error={errors.marginScale?.[i]?.maxCost}
+                />
+                <Field className="flex-1" data-invalid={!!errors.marginScale?.[i]?.margin}>
+                  <FieldLabel htmlFor={`mar-margin-${row.id}`} className="text-xs" required>Margen (ej. 0.43)</FieldLabel>
+                  <Input
+                    id={`mar-margin-${row.id}`}
                     type="number" step="0.01"
-                    value={item.margin}
-                    onChange={e => {
-                      const newScale = [...config.marginScale];
-                      newScale[i].margin = parseFloat(e.target.value) || 0;
-                      setConfig({...config, marginScale: newScale});
-                    }}
+                    aria-required
+                    aria-invalid={!!errors.marginScale?.[i]?.margin}
+                    {...register(`marginScale.${i}.margin`, { valueAsNumber: true })}
                   />
-                </div>
-                <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
-                  onClick={() => {
-                    const newScale = config.marginScale.filter((_, idx) => idx !== i);
-                    setConfig({...config, marginScale: newScale});
-                  }}
+                  <FieldError errors={[errors.marginScale?.[i]?.margin]} />
+                </Field>
+                <Button
+                  type="button" variant="outline" size="icon"
+                  aria-label="Eliminar tramo"
+                  className="text-destructive"
+                  onClick={() => marginScale.remove(i)}
                 >
-                  X
+                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
-            <Button 
+            <Button
               type="button" variant="outline" size="sm" className="mt-4"
-              onClick={() => {
-                setConfig({...config, marginScale: [...config.marginScale, { maxCost: null, margin: 0 }]});
-              }}
+              onClick={() => marginScale.append({ maxCost: null, margin: 0 })}
             >
               Agregar tramo
             </Button>
@@ -517,49 +577,40 @@ function FinanzasConfig() {
 
         <Section title="Escala de Comisiones" description="Comisión del vendedor basada en Utilidad Neta (C$).">
           <div className="space-y-2">
-            {config.commissionScale.map((item, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Utilidad Neta Máxima (C$)</Label>
-                  <Input 
-                    type="number" 
-                    value={item.maxProfit === null ? '' : item.maxProfit} 
-                    placeholder="Infinito"
-                    onChange={e => {
-                      const newScale = [...config.commissionScale];
-                      newScale[i].maxProfit = e.target.value ? parseFloat(e.target.value) : null;
-                      setConfig({...config, commissionScale: newScale});
-                    }}
-                  />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Comisión (ej. 0.40)</Label>
-                  <Input 
+            <FieldError errors={[errors.commissionScale]} />
+            {commissionScale.fields.map((row, i) => (
+              <div key={row.id} className="flex items-end gap-4">
+                <CeilingField
+                  control={control as any}
+                  name={`commissionScale.${i}.maxProfit`}
+                  id={`com-max-${row.id}`}
+                  label="Utilidad Neta Máxima (C$)"
+                  error={errors.commissionScale?.[i]?.maxProfit}
+                />
+                <Field className="flex-1" data-invalid={!!errors.commissionScale?.[i]?.margin}>
+                  <FieldLabel htmlFor={`com-margin-${row.id}`} className="text-xs" required>Comisión (ej. 0.40)</FieldLabel>
+                  <Input
+                    id={`com-margin-${row.id}`}
                     type="number" step="0.01"
-                    value={item.margin}
-                    onChange={e => {
-                      const newScale = [...config.commissionScale];
-                      newScale[i].margin = parseFloat(e.target.value) || 0;
-                      setConfig({...config, commissionScale: newScale});
-                    }}
+                    aria-required
+                    aria-invalid={!!errors.commissionScale?.[i]?.margin}
+                    {...register(`commissionScale.${i}.margin`, { valueAsNumber: true })}
                   />
-                </div>
-                <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
-                  onClick={() => {
-                    const newScale = config.commissionScale.filter((_, idx) => idx !== i);
-                    setConfig({...config, commissionScale: newScale});
-                  }}
+                  <FieldError errors={[errors.commissionScale?.[i]?.margin]} />
+                </Field>
+                <Button
+                  type="button" variant="outline" size="icon"
+                  aria-label="Eliminar tramo"
+                  className="text-destructive"
+                  onClick={() => commissionScale.remove(i)}
                 >
-                  X
+                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
-            <Button 
+            <Button
               type="button" variant="outline" size="sm" className="mt-4"
-              onClick={() => {
-                setConfig({...config, commissionScale: [...config.commissionScale, { maxProfit: null, margin: 0 }]});
-              }}
+              onClick={() => commissionScale.append({ maxProfit: null, margin: 0 })}
             >
               Agregar tramo
             </Button>
@@ -568,48 +619,44 @@ function FinanzasConfig() {
 
         <Section title="Descuentos por Mayoreo" description="Descuentos automáticos en el cotizador por volumen.">
           <div className="space-y-2">
-            {config.wholesaleDiscounts.map((item, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Cantidad Mínima</Label>
-                  <Input 
-                    type="number" 
-                    value={item.minQty} 
-                    onChange={e => {
-                      const newScale = [...config.wholesaleDiscounts];
-                      newScale[i].minQty = parseInt(e.target.value, 10) || 0;
-                      setConfig({...config, wholesaleDiscounts: newScale});
-                    }}
+            <FieldError errors={[errors.wholesaleDiscounts]} />
+            {wholesaleDiscounts.fields.map((row, i) => (
+              <div key={row.id} className="flex items-end gap-4">
+                <Field className="flex-1" data-invalid={!!errors.wholesaleDiscounts?.[i]?.minQty}>
+                  <FieldLabel htmlFor={`whs-qty-${row.id}`} className="text-xs" required>Cantidad Mínima</FieldLabel>
+                  <Input
+                    id={`whs-qty-${row.id}`}
+                    type="number"
+                    aria-required
+                    aria-invalid={!!errors.wholesaleDiscounts?.[i]?.minQty}
+                    {...register(`wholesaleDiscounts.${i}.minQty`, { valueAsNumber: true })}
                   />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <Label className="text-xs">Descuento (ej. 0.15 para 15%)</Label>
-                  <Input 
+                  <FieldError errors={[errors.wholesaleDiscounts?.[i]?.minQty]} />
+                </Field>
+                <Field className="flex-1" data-invalid={!!errors.wholesaleDiscounts?.[i]?.discount}>
+                  <FieldLabel htmlFor={`whs-disc-${row.id}`} className="text-xs" required>Descuento (ej. 0.15 para 15%)</FieldLabel>
+                  <Input
+                    id={`whs-disc-${row.id}`}
                     type="number" step="0.001"
-                    value={item.discount}
-                    onChange={e => {
-                      const newScale = [...config.wholesaleDiscounts];
-                      newScale[i].discount = parseFloat(e.target.value) || 0;
-                      setConfig({...config, wholesaleDiscounts: newScale});
-                    }}
+                    aria-required
+                    aria-invalid={!!errors.wholesaleDiscounts?.[i]?.discount}
+                    {...register(`wholesaleDiscounts.${i}.discount`, { valueAsNumber: true })}
                   />
-                </div>
-                <Button 
-                  type="button" variant="outline" size="sm" className="mt-5 text-destructive"
-                  onClick={() => {
-                    const newScale = config.wholesaleDiscounts.filter((_, idx) => idx !== i);
-                    setConfig({...config, wholesaleDiscounts: newScale});
-                  }}
+                  <FieldError errors={[errors.wholesaleDiscounts?.[i]?.discount]} />
+                </Field>
+                <Button
+                  type="button" variant="outline" size="icon"
+                  aria-label="Eliminar tramo"
+                  className="text-destructive"
+                  onClick={() => wholesaleDiscounts.remove(i)}
                 >
-                  X
+                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
-            <Button 
+            <Button
               type="button" variant="outline" size="sm" className="mt-4"
-              onClick={() => {
-                setConfig({...config, wholesaleDiscounts: [...config.wholesaleDiscounts, { minQty: 2, discount: 0 }]});
-              }}
+              onClick={() => wholesaleDiscounts.append({ minQty: 2, discount: 0 })}
             >
               Agregar tramo
             </Button>
@@ -617,12 +664,52 @@ function FinanzasConfig() {
         </Section>
 
         <div className="sticky bottom-4 mt-8 flex justify-end">
-          <Button type="submit" disabled={saving} className="shadow-lg">
-            {saving ? 'Guardando...' : 'Guardar Configuración Financiera'}
+          <Button type="submit" disabled={isSubmitting} className="shadow-lg">
+            {isSubmitting && <Spinner className="mr-2" />}
+            Guardar Configuración Financiera
           </Button>
         </div>
       </form>
     </div>
+  );
+}
+
+// El techo de un tramo admite "sin techo" (null → placeholder «Infinito»), así
+// que no puede ir por `register` con `valueAsNumber` (un campo vacío daría NaN,
+// no null). Es el único campo de las escalas que necesita Controller.
+function CeilingField({
+  control,
+  name,
+  id,
+  label,
+  error,
+}: {
+  control: Control<FinancialConfig>;
+  name: FieldPath<FinancialConfig>;
+  id: string;
+  label: string;
+  error?: { message?: string };
+}) {
+  return (
+    <Field className="flex-1" data-invalid={!!error}>
+      <FieldLabel htmlFor={id} className="text-xs">{label}</FieldLabel>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field }) => (
+          <Input
+            id={id}
+            type="number"
+            placeholder="Infinito"
+            aria-invalid={!!error}
+            value={field.value === null || field.value === undefined ? '' : String(field.value)}
+            onBlur={field.onBlur}
+            onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+          />
+        )}
+      />
+      <FieldError errors={[error]} />
+    </Field>
   );
 }
 

@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler';
 import { getPublishedCatalogItem, listPublishedCatalog } from '../services/catalog';
-import { toCatalogDetail, toCatalogProduct } from '../services/catalogPresenter';
+import { collectMappedCodes, toCatalogDetail, toCatalogProduct } from '../services/catalogPresenter';
+import { getAvailableByCodes } from '../services/inventory';
 
 const router = Router();
 
@@ -13,7 +14,12 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const rows = await listPublishedCatalog();
-    res.json({ items: rows.map(toCatalogProduct) });
+    // Una sola consulta a bodega para TODO el listado: se juntan los códigos de
+    // lote de todos los ítems y se resuelven de golpe, en vez de una consulta
+    // por producto (N+1) mientras se presenta cada fila.
+    const stockByCode = await getAvailableByCodes(rows.flatMap(collectMappedCodes));
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.json({ items: rows.map((row) => toCatalogProduct(row, stockByCode)) });
   })
 );
 
@@ -34,7 +40,9 @@ router.get(
       return;
     }
 
-    res.json(toCatalogDetail(item));
+    const stockByCode = await getAvailableByCodes(collectMappedCodes(item));
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.json(toCatalogDetail(item, stockByCode));
   }),
 );
 

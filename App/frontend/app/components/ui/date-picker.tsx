@@ -2,17 +2,13 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Calendar03Icon } from "@hugeicons/core-free-icons";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import * as React from 'react';
 
 import { Button } from '~/components/ui/button';
 import { Calendar } from '~/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
 import { cn } from '~/lib/utils';
 
-/**
- * Selector de fecha de marca (Calendar + Popover), en reemplazo del <input
- * type="date"> nativo — que se ve distinto en cada navegador y no combina con
- * el tema. El valor viaja como 'yyyy-MM-dd', lo que espera el backend.
- */
 export function DatePicker({
   value,
   onChange,
@@ -29,9 +25,10 @@ export function DatePicker({
   className?: string;
 }) {
   const selected = value ? parseLocalYmd(value) : undefined;
+  const [isOpen, setIsOpen] = React.useState(false);
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           id={id}
@@ -48,11 +45,17 @@ export function DatePicker({
           {selected ? format(selected, "d 'de' MMMM, yyyy", { locale: es }) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      {/* pointer-events-auto permite clics cuando está en el portal del body */}
+      <PopoverContent className="w-auto p-0 pointer-events-auto z-[9999]" align="start">
         <Calendar
           mode="single"
           selected={selected}
-          onSelect={(date) => date && onChange(toYmd(date))}
+          onSelect={(date) => {
+            if (date) {
+              onChange(toYmd(date));
+              setIsOpen(false);
+            }
+          }}
           locale={es}
           autoFocus
         />
