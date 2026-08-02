@@ -18,7 +18,15 @@ import tailwindHref from './tailwind.css?url';
 
 // Sin Google Fonts: Figtree (body) y Geist (headings) se sirven localmente
 // vía @fontsource-variable, importados desde tailwind.css.
-export const links: LinksFunction = () => [{ rel: 'stylesheet', href: tailwindHref }];
+//
+// El `rel="icon"` NO es decorativo: sin un icono declarado, el navegador pide
+// `/favicon.ico` por su cuenta, Remix no tiene esa ruta y cada carga de página
+// escupe un `No route matches URL "/favicon.ico"` con stack en la consola del
+// dev server. Declarándolo, el navegador ya no sondea esa URL.
+export const links: LinksFunction = () => [
+  { rel: 'stylesheet', href: tailwindHref },
+  { rel: 'icon', href: '/gyro-emblem.png', type: 'image/png' },
+];
 
 // Único lugar donde el server pasa config al cliente. Solo llaves PÚBLICAS:
 // la service_role vive exclusivamente en el backend Express.
