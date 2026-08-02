@@ -189,14 +189,15 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
           : info.band === filterTransit;
       });
     }
-    if (globalFilter.trim()) {
-      const q = globalFilter.toLowerCase();
-      r = r.filter((p) => p.code.toLowerCase().includes(q) || p.lot.toLowerCase().includes(q) || p.productName.toLowerCase().includes(q));
-    }
-    return [...r].sort((a, b) => 
+    // La búsqueda por texto NO se hace acá: la resuelve el filtro global de la
+    // tabla (mismo mecanismo que en Inventario), así que este bloque solo aplica
+    // los filtros de los encabezados. Antes había un filtro manual acá que
+    // además era inalcanzable: la caja de búsqueda venía con `hideSearch` y
+    // `setGlobalFilter` no se llamaba desde ningún lado.
+    return [...r].sort((a, b) =>
       String(a.code || "").localeCompare(String(b.code || ""), undefined, { numeric: true })
     );
-  }, [purchases, filterDate, filterLot, filterCode, filterProduct, filterCategory, filterStatus, globalFilter]);
+  }, [purchases, filterDate, filterLot, filterCode, filterProduct, filterCategory, filterStatus, filterTransit]);
 
   async function handleDelete() {
     if (!deleteFor) return;
@@ -241,17 +242,23 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         ),
       },
       {
-        accessorKey: "category",
+        id: "category",
         enableSorting: false,
+        // `accessorFn` con el NOMBRE resuelto y no `accessorKey: "category"`.
+        // El buscador de la tabla filtra sobre el VALOR de la celda, no sobre
+        // lo que se dibuja: con el accessorKey buscaba contra el uuid guardado,
+        // así que tipear "Audífonos" no encontraba nada aunque la columna
+        // mostrara "Audífonos".
+        accessorFn: (row) => categoryLabel(row.category ?? ""),
         header: () => (
           <FilterSelect variant="ghost" value={filterCategory} onChange={setFilterCategory} options={categoryOptions} placeholder="Categoría" />
         ),
         cell: (c) => {
-          const val = c.getValue() as string;
-          if (!val) return <span className="text-muted-foreground">—</span>;
+          const label = c.getValue() as string;
+          if (!label || label === "—") return <span className="text-muted-foreground">—</span>;
           return (
             <div className="flex items-center gap-1.5 whitespace-nowrap bg-muted px-2 py-0.5 rounded-full w-fit">
-              <span className="text-xs font-medium text-foreground">{categoryLabel(val)}</span>
+              <span className="text-xs font-medium text-foreground">{label}</span>
             </div>
           );
         },
@@ -372,7 +379,8 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         data={filteredPurchases}
         searchPlaceholder="Buscar por código, lote, producto…"
         emptyText="Aún no hay compras registradas."
-        hideSearch
+        globalFilterValue={globalFilter}
+        onGlobalFilterChange={setGlobalFilter}
       />
       <PurchaseCommandPalette
         open={paletteOpen}
