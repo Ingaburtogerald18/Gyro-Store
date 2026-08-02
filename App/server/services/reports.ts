@@ -96,6 +96,9 @@ export type SalesBreakdown = z.infer<typeof salesBreakdownSchema>;
 const deliverySummarySchema = z.object({
   total_delivery: z.number(),
   num_deliveries: z.number(),
+  /** Parte del total que corresponde a facturas anuladas (va incluida arriba). */
+  total_anulado: z.number(),
+  num_anuladas: z.number(),
   by_repartidor: z.array(
     z.object({
       repartidor: z.string(),
@@ -286,8 +289,9 @@ export async function getSalesBreakdown(
 }
 
 /**
- * Dinero movido en envíos y su reparto por repartidor. Solo admin: es plata de
- * la tienda, no de la venta de nadie en particular.
+ * Delivery pagado en TODAS las facturas del periodo (las anuladas incluidas:
+ * anular el papel no devuelve el envío) y su reparto por repartidor. Solo
+ * admin: es plata de la tienda, no de la venta de nadie en particular.
  */
 export async function getDeliverySummary(
   startDate?: string,

@@ -252,27 +252,43 @@ $$;
 --
 -- Se agrupa por `delivery_name`, con las facturas sin repartidor asignado bajo
 -- un rótulo propio en vez de desaparecer: son justo las que hay que perseguir.
+--
+-- ── Por qué entran TODAS las facturas, incluidas las anuladas ──
+-- El total es el delivery pagado en todas las facturas del periodo. Anular una
+-- factura no devuelve la plata del envío: si el paquete salió y al repartidor
+-- ya se le pagó, ese gasto ocurrió aunque el papel se haya invalidado después.
+-- Excluirlas subestimaría justo lo que se quiere monitorear. Igual viajan
+-- aparte (`total_anulado` / `num_anuladas`) para que el número sea auditable y
+-- no esconda nada.
+drop function if exists get_delivery_summary(timestamptz, timestamptz);
+
 create or replace function get_delivery_summary(
   p_start_date timestamptz default null,
   p_end_date timestamptz default null
 ) returns table (
   total_delivery numeric,
   num_deliveries bigint,
+  total_anulado numeric,
+  num_anuladas bigint,
   by_repartidor jsonb
 ) language sql security definer as $$
   with base as (
     select
       coalesce(i.delivery_fee, 0) as fee,
+      (i.status = 'void') as anulada,
       coalesce(nullif(btrim(i.delivery_name), ''), 'Sin asignar') as repartidor
     from invoices i
+    -- El único filtro que queda: una factura con envío en 0 no tuvo delivery,
+    -- y contarla inflaría el número de entregas sin sumar un peso.
     where coalesce(i.delivery_fee, 0) > 0
-      and i.status <> 'void'
       and (p_start_date is null or i.created_at >= p_start_date)
       and (p_end_date is null or i.created_at <= p_end_date)
   )
   select
     coalesce((select sum(fee) from base), 0) as total_delivery,
     coalesce((select count(*) from base), 0)::bigint as num_deliveries,
+    coalesce((select sum(fee) from base where anulada), 0) as total_anulado,
+    coalesce((select count(*) from base where anulada), 0)::bigint as num_anuladas,
     coalesce((
       select jsonb_agg(
         jsonb_build_object('repartidor', repartidor, 'total', t, 'count', c)

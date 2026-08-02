@@ -75,8 +75,12 @@ export interface SalesBreakdown {
 }
 
 export interface DeliverySummary {
+  /** Delivery de TODAS las facturas del periodo, anuladas incluidas. */
   total_delivery: number;
   num_deliveries: number;
+  /** Cuánto de `total_delivery` viene de facturas anuladas (ya está sumado). */
+  total_anulado: number;
+  num_anuladas: number;
   by_repartidor: { repartidor: string; total: number; count: number }[];
 }
 
