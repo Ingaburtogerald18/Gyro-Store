@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { PrinterIcon, ViewIcon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
@@ -80,7 +80,7 @@ export function TicketPrintModal({
         <div className="space-y-5">
           {/* Label de vista previa */}
           <div className="flex items-center justify-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <HugeiconsIcon icon={ViewIcon} size={14} />
+            <AnimatedIcon icon={ViewIcon} size={14} />
             Vista previa
           </div>
 
@@ -101,7 +101,7 @@ export function TicketPrintModal({
               Cerrar
             </Button>
             <Button size="sm" onClick={handlePrint} disabled={!ticket}>
-              <HugeiconsIcon icon={PrinterIcon} size={16} className="mr-1.5" /> Imprimir
+              <AnimatedIcon icon={PrinterIcon} size={16} className="mr-1.5" /> Imprimir
             </Button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
@@ -82,7 +82,7 @@ function DialogContent({
               className="absolute top-4 right-4 bg-secondary"
               size="icon-sm"
             >
-              <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
+              <AnimatedIcon icon={Cancel01Icon} gesture="pop" size={16} strokeWidth={2} />
               <span className="sr-only">Close</span>
             </Button>
           </DialogPrimitive.Close>

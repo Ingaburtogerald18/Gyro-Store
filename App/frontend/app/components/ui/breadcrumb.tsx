@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowRight01Icon, MoreHorizontalIcon } from "@hugeicons/core-free-icons";
 import * as React from "react"
 import { Slot } from "radix-ui"
@@ -84,8 +84,10 @@ function BreadcrumbSeparator({
       className={cn("[&>svg]:size-3.5", className)}
       {...props}
     >
+      {/* `none`: el separador se repite una vez por nivel y no es interactivo.
+          Animarlo sería ruido puro. */}
       {children ?? (
-        <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} />
+        <AnimatedIcon icon={ArrowRight01Icon} gesture="none" size={16} strokeWidth={2} />
       )}
     </li>
   )
@@ -106,7 +108,7 @@ function BreadcrumbEllipsis({
       )}
       {...props}
     >
-      <HugeiconsIcon icon={MoreHorizontalIcon} size={16} strokeWidth={2} />
+      <AnimatedIcon icon={MoreHorizontalIcon} size={16} strokeWidth={2} />
       <span className="sr-only">More</span>
     </span>
   )

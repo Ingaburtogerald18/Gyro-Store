@@ -53,6 +53,10 @@ export interface SellableProduct {
   productName: string;
   price: number;
   stock: number;
+  /** Código del primer lote disponible. El que se muestra junto al nombre. */
+  code: string | null;
+  /** Todos los códigos de lote con stock: el buscador matchea contra cualquiera. */
+  codes: string[];
 }
 
 export async function listSellableProducts(): Promise<SellableProduct[]> {
@@ -63,11 +67,17 @@ export async function listSellableProducts(): Promise<SellableProduct[]> {
     const existing = byProduct.get(row.productName);
     if (existing) {
       existing.stock += row.available;
+      // Un mismo producto puede venir de varios lotes, cada uno con su código.
+      // Se acumulan TODOS para que buscar por cualquiera de ellos encuentre el
+      // producto; el que se muestra es el primero (`code`).
+      if (row.code && !existing.codes.includes(row.code)) existing.codes.push(row.code);
     } else {
       byProduct.set(row.productName, {
         productName: row.productName,
         price: row.suggestedPrice ?? 0,
         stock: row.available,
+        code: row.code ?? null,
+        codes: row.code ? [row.code] : [],
       });
     }
   }
@@ -553,6 +563,8 @@ export interface SaleListItem {
   saleOrigin: string;
   sellerUid: string | null;
   sellerEmail: string;
+  /** Nombre registrado en `profiles`. Vacío si la cuenta nunca lo completó. */
+  sellerName: string;
   weekOf: string | null;
   phone: string | null;
   total: number;
@@ -583,12 +595,28 @@ export async function listSales(filters: { sellerEmail?: string; status?: string
     created_at: string;
   }[];
 
+  // El nombre del vendedor se resuelve con una SEGUNDA query y no con un embed
+  // de PostgREST (`profiles!seller_uid(name)`): el embed depende de que
+  // PostgREST tenga la FK en su caché de esquema, y cuando no la tiene falla con
+  // PGRST200 y se lleva puesto el listado ENTERO. Acá el nombre es un dato
+  // secundario — si no se puede resolver, la venta igual tiene que listarse.
+  const uids = [...new Set(rows.map((r) => r.seller_uid).filter((id): id is string => !!id))];
+  const namesByUid = new Map<string, string>();
+
+  if (uids.length > 0) {
+    const { data: profiles } = await db.from('profiles').select('id, name').in('id', uids);
+    for (const p of (profiles ?? []) as { id: string; name: string | null }[]) {
+      if (p.name?.trim()) namesByUid.set(p.id, p.name.trim());
+    }
+  }
+
   return rows.map((row) => ({
     id: row.id,
     status: row.status,
     saleOrigin: row.sale_origin,
     sellerUid: row.seller_uid,
     sellerEmail: row.seller_email,
+    sellerName: (row.seller_uid && namesByUid.get(row.seller_uid)) || '',
     weekOf: row.week_of,
     phone: row.phone,
     total: row.total ?? 0,

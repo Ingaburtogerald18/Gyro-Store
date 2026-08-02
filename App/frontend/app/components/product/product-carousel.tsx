@@ -1,7 +1,7 @@
 // Carrusel horizontal de productos. Fila con scroll-snap nativo (suave, sin
 // reflow) + flechas que se deshabilitan en los extremos y degradado de borde
 // para insinuar continuidad. Portado de la versión que corre hoy en la tienda.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowLeft01Icon, ArrowRight01Icon, ImageNotFound01Icon } from "@hugeicons/core-free-icons";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from '@remix-run/react';
@@ -82,7 +82,7 @@ export function ProductCarousel({
                   !showcase && 'bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
                 )}
               >
-                <HugeiconsIcon icon={Icon} size={16} strokeWidth={2} aria-hidden className="sm:size-5" />
+                <AnimatedIcon icon={Icon} size={16} strokeWidth={2} aria-hidden className="sm:size-5" />
               </Button>
             );
           })}
@@ -166,7 +166,7 @@ function ShowcaseCard({ product, index }: { product: CatalogProduct; index: numb
             />
           ) : (
             <div className="grid h-full place-items-center text-muted-foreground">
-              <HugeiconsIcon icon={ImageNotFound01Icon} size={32} strokeWidth={2} aria-hidden />
+              <AnimatedIcon icon={ImageNotFound01Icon} size={32} strokeWidth={2} aria-hidden />
             </div>
           )}
         </div>

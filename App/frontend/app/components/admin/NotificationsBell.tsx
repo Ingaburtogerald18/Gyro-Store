@@ -12,7 +12,7 @@
 // (`logistics_shipments`, `contacts`, `follow_ups`) pero ni servicio ni rutas, y
 // `routes/orders.ts` solo CREA pedidos públicos, no los lista. Se arranca con
 // ventas, que es lo que sí tiene datos, y se amplía cuando esos módulos entren.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import {
   CheckmarkCircle02Icon,
   Cancel01Icon,
@@ -207,7 +207,7 @@ export function NotificationsBell() {
           {isEmpty ? (
             <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
               <span className="grid size-11 place-items-center rounded-full bg-primary/10 text-primary">
-                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={22} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={CheckmarkCircle02Icon} size={22} strokeWidth={2} aria-hidden />
               </span>
               <p className="text-sm font-medium text-foreground">Todo al día</p>
               <p className="text-xs text-muted-foreground">No hay nada que requiera tu atención.</p>
@@ -242,7 +242,7 @@ export function NotificationsBell() {
                           navigate(`/admin/ventas?status=${group.state}`);
                         }}
                         icon={
-                          <HugeiconsIcon
+                          <AnimatedIcon
                             icon={meta.icon}
                             size={16}
                             strokeWidth={2}

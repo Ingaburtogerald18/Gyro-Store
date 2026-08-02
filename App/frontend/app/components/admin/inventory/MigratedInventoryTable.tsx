@@ -1,6 +1,6 @@
 // Tabla del inventario migrado (histórico). Cada fila lleva el badge "Migrado".
 // Solo lectura + borrar; su lógica de venta se definirá después.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, Cancel01Icon, Delete02Icon, Edit02Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -119,7 +119,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           
           <div className="flex items-center gap-2 rounded-pill border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:w-80">
-            <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground" />
+            <AnimatedIcon icon={Search01Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground" />
             <input
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
@@ -139,14 +139,14 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
                   onClick={() => setEditFor(selectedItem)}
                   className="h-8 bg-muted text-xs hover:text-primary"
                 >
-                  <HugeiconsIcon icon={Edit02Icon} size={14} strokeWidth={2} className="mr-2" /> Editar
+                  <AnimatedIcon icon={Edit02Icon} size={14} strokeWidth={2} className="mr-2" /> Editar
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={() => setDeleteFor(selectedItem)}
                   className="h-8 bg-muted text-xs text-destructive hover:bg-destructive/15 hover:text-destructive"
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} className="mr-2" /> Eliminar
+                  <AnimatedIcon icon={Delete02Icon} size={14} strokeWidth={2} className="mr-2" /> Eliminar
                 </Button>
                 <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
                 <button
@@ -154,7 +154,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
                   className="p-1.5 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
                   title="Cancelar selección"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
+                  <AnimatedIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
                 </button>
               </div>
             ) : (
@@ -171,7 +171,7 @@ export function MigratedInventoryTable({ onOpenForm, period = "all" }: { onOpenF
                 />
                 {onOpenForm && (
                   <Button onClick={onOpenForm} className="flex items-center gap-1.5 whitespace-nowrap">
-                    <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} />
+                    <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} />
                     <span className="hidden sm:inline">Registrar ítem</span>
                   </Button>
                 )}

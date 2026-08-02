@@ -1,7 +1,7 @@
 // Formulario de carga MANUAL de inventario migrado (histórico del Excel viejo).
 // Vive en su propia colección: no toca el inventario actual. Cada ítem guardado
 // queda marcado con la bandera origin:'migrated'.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { CheckmarkCircle01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useForm, Controller, type DefaultValues } from "react-hook-form";
@@ -101,7 +101,7 @@ export function MigratedInventoryForm({ item, onDone }: { item?: MigratedItem | 
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-primary">
-          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={32} strokeWidth={2} />
+          <AnimatedIcon icon={CheckmarkCircle01Icon} size={32} strokeWidth={2} />
         </div>
         <div>
           <h2 className="text-xl font-bold">¡Ítem registrado con éxito!</h2>

@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Cancel01Icon, CloudUploadIcon, Delete02Icon, FloppyDiskIcon, ImageAdd01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState, useRef } from 'react';
 import {
@@ -230,12 +230,12 @@ function ImagesConfig() {
               className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
               aria-label={`Eliminar ${title}`}
             >
-              <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
+              <AnimatedIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
             </button>
           </div>
         ) : (
           <label className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-card transition-colors hover:border-primary hover:bg-primary/5">
-            <HugeiconsIcon icon={CloudUploadIcon} size={32} strokeWidth={2} className="text-muted-foreground" />
+            <AnimatedIcon icon={CloudUploadIcon} size={32} strokeWidth={2} className="text-muted-foreground" />
             <span className="text-sm font-medium text-muted-foreground">Subir imagen</span>
             <input 
               type="file" 
@@ -286,7 +286,7 @@ function ImagesConfig() {
             {isSubmitting ? (
               <Spinner className="mr-2" />
             ) : (
-              <HugeiconsIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
+              <AnimatedIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
             )}
             Guardar Imágenes
           </Button>
@@ -520,7 +520,7 @@ function FinanzasConfig() {
                   className="text-destructive"
                   onClick={() => costoFUScale.remove(i)}
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                  <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
@@ -562,7 +562,7 @@ function FinanzasConfig() {
                   className="text-destructive"
                   onClick={() => marginScale.remove(i)}
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                  <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
@@ -604,7 +604,7 @@ function FinanzasConfig() {
                   className="text-destructive"
                   onClick={() => commissionScale.remove(i)}
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                  <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
@@ -650,7 +650,7 @@ function FinanzasConfig() {
                   className="text-destructive"
                   onClick={() => wholesaleDiscounts.remove(i)}
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                  <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
@@ -742,7 +742,7 @@ function GeneralConfig() {
           </div>
           <div className="flex justify-end pt-4">
             <Button className="shadow-sm">
-              <HugeiconsIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
+              <AnimatedIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
               Guardar General
             </Button>
           </div>

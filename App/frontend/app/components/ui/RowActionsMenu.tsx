@@ -1,6 +1,6 @@
 // Menú de acciones de fila ("⋯"): un botón discreto que abre un dropdown con acciones
 // etiquetadas. Reemplaza los clusters de iconos / columnas "Acciones" en las tablas.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { MoreVerticalIcon } from "@hugeicons/core-free-icons";
 import { cn } from "~/lib/utils";
 import {
@@ -60,7 +60,9 @@ export function RowActionsMenu({ actions, className }: { actions: MaybeAction[];
             className,
           )}
         >
-          <HugeiconsIcon icon={MoreVerticalIcon} size={16} strokeWidth={2} />
+          {/* `pop`: aparece una vez por FILA. Redibujar tres puntos no se lee,
+              y con 25 filas el gesto barato es el correcto. */}
+          <AnimatedIcon icon={MoreVerticalIcon} gesture="pop" size={16} strokeWidth={2} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

@@ -1,6 +1,6 @@
 // Dropdown de filtro estilizado (reemplazo del <select> nativo).
 // Soporta un "punto" indicador por opción (p. ej. vendedores con ventas pendientes).
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowDown01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -94,7 +94,12 @@ export function FilterSelect({
             )}
           </span>
         </span>
-        <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={2} className={cn( "shrink-0 transition-transform duration-200", variant === "ghost" ? "h-3.5 w-3.5 text-muted-foreground" : "h-4 w-4 text-muted-foreground", open && "rotate-180", )} />
+        {/* `none`: este chevron ya rota por CSS con `open && rotate-180`. Un
+            gesto de framer-motion escribiría `transform` inline sobre el mismo
+            <svg> y ganaría cualquiera de los dos según el frame — el chevron
+            quedaría apuntando mal. La rotación por estado gana: comunica si el
+            panel está abierto, que es información, no adorno. */}
+        <AnimatedIcon icon={ArrowDown01Icon} gesture="none" size={16} strokeWidth={2} className={cn( "shrink-0 transition-transform duration-200", variant === "ghost" ? "h-3.5 w-3.5 text-muted-foreground" : "h-4 w-4 text-muted-foreground", open && "rotate-180", )} />
       </button>
 
       <AnimatePresence>
@@ -124,7 +129,7 @@ export function FilterSelect({
                   {/* Reservar el ancho del punto siempre, para que los nombres queden alineados */}
                   {o.dot ? <Dot /> : <span className="h-1.5 w-1.5 shrink-0" />}
                   <span className="flex-1 truncate">{o.label}</span>
-                  {isSel && <HugeiconsIcon icon={Tick01Icon} size={14} strokeWidth={2} className="shrink-0 text-primary-2" />}
+                  {isSel && <AnimatedIcon icon={Tick01Icon} size={14} strokeWidth={2} className="shrink-0 text-primary-2" />}
                 </button>
               );
             })}

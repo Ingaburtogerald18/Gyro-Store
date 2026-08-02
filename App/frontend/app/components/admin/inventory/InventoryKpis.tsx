@@ -5,7 +5,6 @@
 //   emerald = ingresos y ganancia (totales finales)
 //   rose    = alertas (agotados)
 
-import { HugeiconsIcon } from "@hugeicons/react";
 import { CargoShipIcon, DollarSquareIcon, Invoice01Icon, PackageDeliveredIcon, PackageIcon, PackageRemoveIcon, TruckIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { StatCard } from "~/components/ui/stat-card";

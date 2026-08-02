@@ -9,7 +9,7 @@
 //   · el molde (plantilla) es COMPARTIDO, así que este editor no lo modifica;
 //   · las variantes se vinculan a LOTES de bodega (`purchases.code`), no a un
 //     SKU compartido — en v2 cada lote tiene su propio código único.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Tick01Icon } from '@hugeicons/core-free-icons';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -626,7 +626,7 @@ function OptionToggle({
           checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-input/60',
         )}
       >
-        {checked && <HugeiconsIcon icon={Tick01Icon} size={12} strokeWidth={2.5} />}
+        {checked && <AnimatedIcon icon={Tick01Icon} size={12} strokeWidth={2.5} />}
       </span>
       <span className="font-medium">{label}</span>
     </button>

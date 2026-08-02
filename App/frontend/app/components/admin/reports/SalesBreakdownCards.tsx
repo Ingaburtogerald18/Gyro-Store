@@ -2,7 +2,7 @@
 // {key, count, total}: acá solo se traduce la clave y se dibuja la proporción,
 // para que agregar un corte nuevo en el RPC no obligue a tocar este archivo más
 // que para ponerle nombre en español.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { CreditCardIcon, Invoice01Icon, Store01Icon, Tag01Icon, Calendar03Icon } from '@hugeicons/core-free-icons';
 import type { IconSvgElement } from '@hugeicons/react';
 
@@ -90,9 +90,9 @@ export function SalesBreakdownCards({ range }: { range: PeriodRange }) {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {SECTIONS.map((s) => (
             <SpotlightCard key={s.key} variant="default" className="p-5">
-              <div className="mb-4 flex items-start justify-between gap-2 border-b border pb-3">
+              <div className="mb-4 flex items-start justify-between gap-2 border-b pb-3">
                 <div className="flex items-center gap-2">
-                  <HugeiconsIcon icon={s.icon} size={18} strokeWidth={2} className="text-primary" />
+                  <AnimatedIcon icon={s.icon} size={18} strokeWidth={2} className="text-primary" />
                   <h4 className="text-sm font-semibold text-foreground">{s.title}</h4>
                 </div>
               </div>

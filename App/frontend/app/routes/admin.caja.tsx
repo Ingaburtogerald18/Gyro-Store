@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, ArrowDownRight01Icon, ArrowUpRight01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
@@ -110,7 +110,7 @@ export default function AdminCajaRoute() {
         const t = info.getValue();
         return (
           <span className={`inline-flex items-center gap-1 ${t === 'ingreso' ? 'text-success' : 'text-destructive'}`}>
-            {t === 'ingreso' ? <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} strokeWidth={2} /> : <HugeiconsIcon icon={ArrowDownRight01Icon} size={16} strokeWidth={2} />}
+            {t === 'ingreso' ? <AnimatedIcon icon={ArrowUpRight01Icon} size={16} strokeWidth={2} /> : <AnimatedIcon icon={ArrowDownRight01Icon} size={16} strokeWidth={2} />}
             {t.toUpperCase()}
           </span>
         );
@@ -148,7 +148,7 @@ export default function AdminCajaRoute() {
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setIsAccOpen(true)}>Nueva Cuenta</Button>
           <Button onClick={() => setIsMovOpen(true)} className="shadow-sm">
-            <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" /> Registrar Movimiento
+            <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" /> Registrar Movimiento
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Add01Icon, Alert02Icon, Delete01Icon, UserIcon, Coupon01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -158,7 +158,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
       <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+            <AnimatedIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
             <h3 className="text-sm font-semibold text-foreground">Datos del cliente</h3>
           </div>
           <Switch
@@ -245,14 +245,14 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
               </div>
               {lines.length > 1 && (
                 <Button variant="ghost" size="icon" className="shrink-0 text-destructive" onClick={() => removeLine(line.uid)}>
-                  <HugeiconsIcon icon={Delete01Icon} size={18} />
+                  <AnimatedIcon icon={Delete01Icon} size={18} />
                 </Button>
               )}
             </div>
           ))}
         </div>
         <Button variant="outline" size="sm" onClick={addLine} className="mt-2">
-          <HugeiconsIcon icon={Add01Icon} size={16} className="mr-1.5" /> Agregar línea
+          <AnimatedIcon icon={Add01Icon} size={16} className="mr-1.5" /> Agregar línea
         </Button>
       </div>
 
@@ -279,7 +279,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={Coupon01Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+              <AnimatedIcon icon={Coupon01Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
               <h3 className="text-sm font-semibold text-foreground">Descuento</h3>
             </div>
             <Switch
@@ -304,7 +304,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
           {appliedCode ? (
             <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 px-3 py-2">
               <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-                <HugeiconsIcon icon={Coupon01Icon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={Coupon01Icon} size={16} strokeWidth={2} aria-hidden />
                 {appliedCode.code}
                 <span className="font-normal text-muted-foreground">
                   ({appliedCode.type === 'percent' ? `${appliedCode.value}%` : formatCordobas(appliedCode.value)})
@@ -316,7 +316,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
                 className="grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-foreground"
                 title="Quitar código"
               >
-                <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={Cancel01Icon} size={14} strokeWidth={2} aria-hidden />
               </button>
             </div>
           ) : (
@@ -420,7 +420,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
         </Button>
         {disabledReason && (
           <p className="flex items-center gap-1.5 text-xs text-warning">
-            <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
+            <AnimatedIcon icon={Alert02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
             {disabledReason}
           </p>
         )}

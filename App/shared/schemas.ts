@@ -808,60 +808,8 @@ export const publicContactInputSchema = z.object({
 export type PublicContactInput = z.infer<typeof publicContactInputSchema>;
 
 // ============================================================================
-// ── SCHEMAS DEL DOMINIO: OPERACIÓN DIARIA (SALIDAS, CAJA, CUADRE) ──
+// ── SCHEMAS DEL DOMINIO: OPERACIÓN DIARIA (CAJA, CUADRE) ──
 // ============================================================================
-
-export const salidaDestinoSchema = z.enum(['mostrador', 'delivery']);
-export const salidaEstadoSchema = z.enum(['facturada', 'pendiente_registro', 'registrada', 'devuelta']);
-export const liquidacionEstadoSchema = z.enum(['no_aplica', 'pendiente', 'depositado', 'efectivo_recibido', 'recordar']);
-
-export const salidaSchema = z.object({
-  id: z.string().uuid(),
-  articulo: z.string(),
-  destino: salidaDestinoSchema,
-  invoice_id: z.string().uuid().nullable(),
-  order_id: z.string().uuid().nullable(),
-  estado: salidaEstadoSchema,
-  repartidor: z.string().nullable(),
-  monto_esperado: z.number().nullable(),
-  liquidacion: liquidacionEstadoSchema,
-  liquidado_at: z.string().nullable(),
-  comprobante_url: z.string().nullable(),
-  cuenta_deposito_id: z.string().uuid().nullable(),
-  nota: z.string().nullable(),
-  salio_at: z.string(),
-  registrado_por: z.string().uuid().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
-export type Salida = z.infer<typeof salidaSchema>;
-
-export const registerSalidaInputSchema = z.object({
-  articulo: z.string().min(1, 'Debe especificar el artículo'),
-  destino: salidaDestinoSchema,
-  invoice_id: z.string().uuid().optional().nullable(),
-  repartidor: z.string().optional().nullable(),
-  monto_esperado: z.coerce.number().optional().nullable(),
-  nota: z.string().optional().nullable(),
-});
-export type RegisterSalidaInput = z.infer<typeof registerSalidaInputSchema>;
-
-export const liquidarSalidaInputSchema = z.object({
-  liquidacion: liquidacionEstadoSchema.exclude(['no_aplica']),
-  monto_esperado: z.coerce.number().optional(),
-  cuenta_deposito_id: z.string().uuid().optional().nullable(),
-  comprobante_url: z.string().optional().nullable(),
-  nota: z.string().optional().nullable(),
-}).refine(data => {
-  if (data.liquidacion === 'depositado') {
-    return !!data.cuenta_deposito_id;
-  }
-  return true;
-}, {
-  message: 'Si la liquidación es por depósito, se requiere seleccionar la cuenta.',
-  path: ['cuenta_deposito_id'],
-});
-export type LiquidarSalidaInput = z.infer<typeof liquidarSalidaInputSchema>;
 
 export const cuentaTipoSchema = z.enum(['banco', 'efectivo']);
 export const movimientoTipoSchema = z.enum(['ingreso', 'egreso']);
@@ -883,7 +831,6 @@ export const accountMovementSchema = z.object({
   monto: z.number(),
   categoria: z.string(),
   descripcion: z.string().nullable(),
-  salida_id: z.string().uuid().nullable(),
   comprobante_url: z.string().nullable(),
   ocurrio_at: z.string(),
   registrado_por: z.string().uuid().nullable(),

@@ -4,7 +4,7 @@
 // Lo que NO se porta, por decisiones ya tomadas en v2 (ver la cabecera de
 // server/services/sales.ts): foto de recibo, admin registrando a nombre de otro
 // vendedor, fecha de venta manual, inventario migrado (modos M1/M2) y cuotas.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Alert02Icon, CheckmarkCircle01Icon, PackageIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -99,10 +99,15 @@ export function SaleEditor({
       const existing = byName.get(item.productName);
       if (existing) existing.stock += item.quantity || 0;
       else
+        // Sin código: este producto ya no está en el catálogo vendible (se
+        // agotó o se borró el lote), así que se reconstruye desde la línea
+        // guardada y no hay lote del cual sacarlo.
         byName.set(item.productName, {
           productName: item.productName,
           price: item.salePrice,
           stock: item.quantity || 0,
+          code: null,
+          codes: [],
         });
     }
     return Array.from(byName.values());
@@ -328,7 +333,7 @@ export function SaleEditor({
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+              <AnimatedIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
               <h3 className="text-sm font-semibold text-foreground">Datos del cliente</h3>
             </div>
             <Switch
@@ -370,7 +375,7 @@ export function SaleEditor({
           <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={Alert02Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+                <AnimatedIcon icon={Alert02Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
                 <h3 className="text-sm font-semibold text-foreground">Factura (Ticket)</h3>
               </div>
               {isGlobalAdmin && (
@@ -418,7 +423,7 @@ export function SaleEditor({
           <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+                <AnimatedIcon icon={UserIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
                 <h3 className="text-sm font-semibold text-foreground">Asignar vendedor</h3>
               </div>
               <div className="flex items-center gap-2">
@@ -467,7 +472,7 @@ export function SaleEditor({
 
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={PackageIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+            <AnimatedIcon icon={PackageIcon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
             <h3 className="text-sm font-semibold text-foreground">Productos</h3>
             <span className="nums ml-auto rounded-pill bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {lines.length}
@@ -523,7 +528,7 @@ export function SaleEditor({
             {busy ? (
               <Spinner className="mr-2" />
             ) : (
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
+              <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
             )}
             {isEdit ? 'Guardar cambios' : 'Registrar venta'} ·{' '}
             <span className="nums ml-1">{formatCordobas(displayTotal)}</span>
@@ -531,7 +536,7 @@ export function SaleEditor({
 
           {disabledReason && (
             <p className="flex items-start gap-1.5 text-xs text-warning">
-              <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={2} className="mt-px shrink-0" aria-hidden />
+              <AnimatedIcon icon={Alert02Icon} size={14} strokeWidth={2} className="mt-px shrink-0" aria-hidden />
               {disabledReason}
             </p>
           )}

@@ -4,7 +4,7 @@
 // por línea de venta, así que un año puede ser decenas de miles de filas. Con
 // la query normal se traerían al montar el Dashboard aunque nadie vaya a
 // exportar; así solo viajan cuando el usuario pica el botón.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Download04Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -66,7 +66,7 @@ export function ExportSalesCsvButton({ range }: { range: PeriodRange }) {
       {busy ? (
         <Spinner className="mr-2" />
       ) : (
-        <HugeiconsIcon icon={Download04Icon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
+        <AnimatedIcon icon={Download04Icon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
       )}
       Exportar CSV
     </Button>

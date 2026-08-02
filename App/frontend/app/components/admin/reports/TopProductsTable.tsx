@@ -1,7 +1,7 @@
 // Top de productos del periodo. Sirve al admin (todo el negocio) y al vendedor
 // (lo suyo): el backend fuerza el `sellerUid` cuando quien pregunta no es admin,
 // así que la misma tabla es segura en los dos lugares.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Tag01Icon } from '@hugeicons/core-free-icons';
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -53,9 +53,9 @@ export function TopProductsTable({
 
   return (
     <SpotlightCard variant="default" className="p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border pb-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b pb-4">
         <div className="flex items-center gap-2">
-          <HugeiconsIcon icon={Tag01Icon} size={20} strokeWidth={2} className="text-primary" />
+          <AnimatedIcon icon={Tag01Icon} size={20} strokeWidth={2} className="text-primary" />
           <h3 className="font-semibold text-foreground">{title}</h3>
         </div>
         {/* El orden es por ingreso, no por unidades: veinte accesorios baratos

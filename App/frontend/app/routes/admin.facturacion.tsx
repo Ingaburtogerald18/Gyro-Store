@@ -1,8 +1,11 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { File01Icon, Invoice01Icon, PrinterIcon, PlusSignIcon, Time02Icon } from "@hugeicons/core-free-icons";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
+import { Copy01Icon, File01Icon, Invoice01Icon, PrinterIcon, PlusSignIcon, Tick01Icon, Time02Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
+import { toast } from 'sonner';
+
+import { cn } from '~/lib/utils';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
@@ -16,6 +19,53 @@ import { InvoiceEditor } from "~/components/admin/invoices/InvoiceEditor";
 
 export const meta: MetaFunction = () => [{ title: 'Facturación | Gyro Store Admin' }];
 
+/**
+ * Número de factura con botón para copiarlo.
+ *
+ * Es el dato que el vendedor tipea después en Ventas para vincular la venta, y
+ * transcribir `GS-PR-137` a mano es justo donde se cuela el error.
+ *
+ * `stopPropagation` porque la celda vive en una fila que puede ser clickeable:
+ * copiar no debería además abrir el detalle.
+ */
+function InvoiceCodeCell({ code, bold }: { code: string; bold?: boolean }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      toast.success(`${code} copiado.`);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // `navigator.clipboard` no existe fuera de HTTPS/localhost.
+      toast.error('El navegador no permitió copiar. Seleccionalo a mano.');
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={cn('font-mono', bold && 'font-medium')}>{code}</span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        title="Copiar número de factura"
+        aria-label={`Copiar ${code}`}
+        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      >
+        <AnimatedIcon
+          icon={copied ? Tick01Icon : Copy01Icon}
+          gesture="pop"
+          size={14}
+          strokeWidth={2}
+          className={cn(copied && 'text-success')}
+        />
+      </button>
+    </span>
+  );
+}
+
 export default function AdminFacturacion() {
   const { data: unlinkedInvoices = [], isLoading: loadingUnlinked, isError: unlinkedError } = useGetInvoicesQuery({ status: 'unlinked' });
   const { data: linkedInvoices = [], isLoading: loadingLinked, isError: linkedError } = useGetInvoicesQuery({ status: 'linked' });
@@ -25,13 +75,36 @@ export default function AdminFacturacion() {
 
   const unlinkedColumns = useMemo<ColumnDef<Invoice, unknown>[]>(
     () => [
-      { accessorKey: 'invoiceCode', header: 'Código', cell: ({ row }) => <span className="font-mono font-medium">{row.original.invoiceCode}</span> },
+      { accessorKey: 'invoiceCode', header: 'Número de Factura', cell: ({ row }) => <InvoiceCodeCell code={row.original.invoiceCode} bold /> },
       { accessorKey: 'customerName', header: 'Cliente', cell: ({ row }) => row.original.customerName || '—' },
       { accessorKey: 'method', header: 'Método', cell: ({ row }) => <span className="capitalize">{row.original.method ?? '—'}</span> },
+      // Subtotal · Delivery · Total: el modelo ya trae los tres, y con una sola
+      // columna "Total" no se podía saber cuánto de esa cifra era envío.
+      // `meta.align` en vez de un <div className="text-right"> dentro del
+      // header: DataTable envuelve el header en un flex propio y el div no se
+      // estiraba, así que el título quedaba a la izquierda y la cifra a la derecha.
+      {
+        accessorKey: 'subtotal',
+        header: 'Subtotal',
+        meta: { align: 'right' },
+        cell: ({ row }) => formatCordobas(row.original.subtotal ?? 0),
+      },
+      {
+        accessorKey: 'deliveryFee',
+        header: 'Delivery',
+        meta: { align: 'right' },
+        cell: ({ row }) =>
+          row.original.deliveryFee > 0 ? (
+            formatCordobas(row.original.deliveryFee)
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
       {
         accessorKey: 'total',
-        header: () => <div className="text-right">Total</div>,
-        cell: ({ row }) => <div className="text-right font-semibold">{formatCordobas(row.original.total)}</div>,
+        header: 'Total',
+        meta: { align: 'right' },
+        cell: ({ row }) => <span className="font-semibold">{formatCordobas(row.original.total)}</span>,
       },
       {
         accessorKey: 'createdAt',
@@ -48,7 +121,7 @@ export default function AdminFacturacion() {
           const isOld = diffMinutes > 60;
           return (
             <div className={`flex items-center gap-1.5 ${isOld ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-              <HugeiconsIcon icon={Time02Icon} size={14} />
+              <AnimatedIcon icon={Time02Icon} size={14} />
               {display}
             </div>
           );
@@ -60,7 +133,7 @@ export default function AdminFacturacion() {
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setPrintInvoiceId(row.original.id)}>
-              <HugeiconsIcon icon={PrinterIcon} size={16} strokeWidth={2} aria-hidden />
+              <AnimatedIcon icon={PrinterIcon} size={16} strokeWidth={2} aria-hidden />
             </Button>
           </div>
         ),
@@ -71,13 +144,36 @@ export default function AdminFacturacion() {
 
   const linkedColumns = useMemo<ColumnDef<Invoice, unknown>[]>(
     () => [
-      { accessorKey: 'invoiceCode', header: 'Código', cell: ({ row }) => <span className="font-mono">{row.original.invoiceCode}</span> },
+      { accessorKey: 'invoiceCode', header: 'Número de Factura', cell: ({ row }) => <InvoiceCodeCell code={row.original.invoiceCode} /> },
       { accessorKey: 'customerName', header: 'Cliente', cell: ({ row }) => row.original.customerName || '—' },
       { accessorKey: 'method', header: 'Método', cell: ({ row }) => <span className="capitalize">{row.original.method ?? '—'}</span> },
+      // Subtotal · Delivery · Total: el modelo ya trae los tres, y con una sola
+      // columna "Total" no se podía saber cuánto de esa cifra era envío.
+      // `meta.align` en vez de un <div className="text-right"> dentro del
+      // header: DataTable envuelve el header en un flex propio y el div no se
+      // estiraba, así que el título quedaba a la izquierda y la cifra a la derecha.
+      {
+        accessorKey: 'subtotal',
+        header: 'Subtotal',
+        meta: { align: 'right' },
+        cell: ({ row }) => formatCordobas(row.original.subtotal ?? 0),
+      },
+      {
+        accessorKey: 'deliveryFee',
+        header: 'Delivery',
+        meta: { align: 'right' },
+        cell: ({ row }) =>
+          row.original.deliveryFee > 0 ? (
+            formatCordobas(row.original.deliveryFee)
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
       {
         accessorKey: 'total',
-        header: () => <div className="text-right">Total</div>,
-        cell: ({ row }) => <div className="text-right font-semibold">{formatCordobas(row.original.total)}</div>,
+        header: 'Total',
+        meta: { align: 'right' },
+        cell: ({ row }) => <span className="font-semibold">{formatCordobas(row.original.total)}</span>,
       },
       {
         accessorKey: 'createdAt',
@@ -90,7 +186,7 @@ export default function AdminFacturacion() {
         cell: ({ row }) => (
           <div className="flex justify-end">
             <Button variant="ghost" size="sm" onClick={() => setPrintInvoiceId(row.original.id)}>
-              <HugeiconsIcon icon={PrinterIcon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Imprimir
+              <AnimatedIcon icon={PrinterIcon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Imprimir
             </Button>
           </div>
         ),
@@ -107,7 +203,7 @@ export default function AdminFacturacion() {
           <p className="text-muted-foreground">Genera facturas (ticket) y luego liganlas al registrar la venta.</p>
         </div>
         <Button onClick={() => setIsCreating(true)} size="lg" className="shrink-0 shadow-sm">
-          <HugeiconsIcon icon={PlusSignIcon} size={18} strokeWidth={2.5} className="mr-1.5" />
+          <AnimatedIcon icon={PlusSignIcon} size={18} strokeWidth={2.5} className="mr-1.5" />
           Nueva Factura
         </Button>
       </div>
@@ -115,7 +211,7 @@ export default function AdminFacturacion() {
       <Card className="bg-card border shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg text-foreground flex items-center gap-2">
-            <HugeiconsIcon icon={Invoice01Icon} size={20} className="text-amber-500" />
+            <AnimatedIcon icon={Invoice01Icon} size={20} className="text-amber-500" />
             Facturas pendientes de vincular
           </CardTitle>
           <CardDescription className="text-muted-foreground">
@@ -130,7 +226,7 @@ export default function AdminFacturacion() {
             loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-muted" />}
             emptyFallback={
               <div className="rounded-lg border border-dashed bg-muted/50 py-10 text-center">
-                <HugeiconsIcon icon={File01Icon} size={36} strokeWidth={2} className="mx-auto mb-3 text-muted-foreground opacity-50" aria-hidden />
+                <AnimatedIcon icon={File01Icon} size={36} strokeWidth={2} className="mx-auto mb-3 text-muted-foreground opacity-50" aria-hidden />
                 <p className="font-medium text-foreground">Todas las facturas emitidas están registradas como venta.</p>
               </div>
             }

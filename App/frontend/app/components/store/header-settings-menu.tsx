@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowRight01Icon, CustomerSupportIcon, DashboardSquare01Icon, Edit02Icon, Logout03Icon, Moon02Icon, SquareLock02Icon, Sun01Icon, TruckIcon, User02Icon } from "@hugeicons/core-free-icons";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "@remix-run/react";
@@ -24,7 +24,7 @@ function ThemeSwitch({ isDark, onToggle }: { isDark: boolean; onToggle: () => vo
     <div className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 hover:bg-primary/50 transition-colors cursor-pointer" onClick={onToggle}>
       <span className="flex items-center gap-3 text-sm font-medium text-foreground cursor-pointer">
         <span className={cn(CHIP, "bg-primary text-primary")}>
-          {isDark ? <HugeiconsIcon icon={Moon02Icon} size={16} strokeWidth={2} /> : <HugeiconsIcon icon={Sun01Icon} size={16} strokeWidth={2} />}
+          {isDark ? <AnimatedIcon icon={Moon02Icon} size={16} strokeWidth={2} /> : <AnimatedIcon icon={Sun01Icon} size={16} strokeWidth={2} />}
         </span>
         Apariencia
       </span>
@@ -45,9 +45,9 @@ function ThemeSwitch({ isDark, onToggle }: { isDark: boolean; onToggle: () => vo
           className="absolute left-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-white shadow"
         >
           {isDark ? (
-            <HugeiconsIcon icon={Moon02Icon} size={12} strokeWidth={2} className="text-primary" />
+            <AnimatedIcon icon={Moon02Icon} size={12} strokeWidth={2} className="text-primary" />
           ) : (
-            <HugeiconsIcon icon={Sun01Icon} size={12} strokeWidth={2} className="text-warning" />
+            <AnimatedIcon icon={Sun01Icon} size={12} strokeWidth={2} className="text-warning" />
           )}
         </motion.span>
       </button>
@@ -120,7 +120,7 @@ export function HeaderSettingsMenu() {
             {initial}
           </span>
         ) : (
-          <HugeiconsIcon icon={User02Icon} size={20} strokeWidth={2} />
+          <AnimatedIcon icon={User02Icon} size={20} strokeWidth={2} />
         )}
       </button>
 
@@ -151,13 +151,13 @@ export function HeaderSettingsMenu() {
                     role="menuitem"
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
-                      <HugeiconsIcon icon={TruckIcon} size={20} strokeWidth={2} />
+                      <AnimatedIcon icon={TruckIcon} size={20} strokeWidth={2} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-foreground">Rastrear mi pedido</span>
                       <span className="block text-xs text-muted-foreground">Consulta el estado de tu envío</span>
                     </span>
-                    <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                    <AnimatedIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </button>
 
                   <button
@@ -166,7 +166,7 @@ export function HeaderSettingsMenu() {
                     role="menuitem"
                   >
                     <span className={cn(CHIP, "bg-primary text-muted-foreground group-hover:text-foreground")}>
-                      <HugeiconsIcon icon={CustomerSupportIcon} size={16} strokeWidth={2} />
+                      <AnimatedIcon icon={CustomerSupportIcon} size={16} strokeWidth={2} />
                     </span>
                     Ayuda y FAQs
                   </button>
@@ -182,7 +182,7 @@ export function HeaderSettingsMenu() {
                     role="menuitem"
                   >
                     <span className={cn(CHIP, "bg-primary/15 text-primary")}>
-                      <HugeiconsIcon icon={SquareLock02Icon} size={16} strokeWidth={2} />
+                      <AnimatedIcon icon={SquareLock02Icon} size={16} strokeWidth={2} />
                     </span>
                     Acceso Colaboradores
                   </Link>
@@ -211,7 +211,7 @@ export function HeaderSettingsMenu() {
                     role="menuitem"
                   >
                     <span className={cn(CHIP, "bg-primary/15 text-primary")}>
-                      <HugeiconsIcon icon={DashboardSquare01Icon} size={16} strokeWidth={2} />
+                      <AnimatedIcon icon={DashboardSquare01Icon} size={16} strokeWidth={2} />
                     </span>
                     Centro de Administración
                   </Link>
@@ -231,7 +231,7 @@ export function HeaderSettingsMenu() {
                           editMode ? "bg-primary/15 text-primary" : "bg-primary text-muted-foreground group-hover:text-foreground",
                         )}
                       >
-                        <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />
+                        <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} />
                       </span>
                       Modo Edición {editMode && "(Activo)"}
                     </button>
@@ -247,7 +247,7 @@ export function HeaderSettingsMenu() {
                     role="menuitem"
                   >
                     <span className={cn(CHIP, "bg-destructive/15 text-destructive")}>
-                      <HugeiconsIcon icon={Logout03Icon} size={16} strokeWidth={2} />
+                      <AnimatedIcon icon={Logout03Icon} size={16} strokeWidth={2} />
                     </span>
                     Cerrar Sesión
                   </button>

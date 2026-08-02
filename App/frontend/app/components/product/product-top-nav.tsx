@@ -5,7 +5,7 @@
 // El V1 traía además un botón de favorito; acá no va: no existe sistema de
 // favoritos en el V2 (ni slice ni backend) y un control muerto es peor que
 // ninguno. Cuando exista, este es su lugar.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { ArrowLeft01Icon, Share01Icon, ShoppingCart02Icon } from '@hugeicons/core-free-icons';
 import { Link } from '@remix-run/react';
 import { toast } from 'sonner';
@@ -45,7 +45,7 @@ export function ProductTopNav({ productName }: { productName: string }) {
       <div className="mx-auto flex h-12 max-w-7xl items-center justify-between">
         <Button variant="ghost" size="sm" asChild className="-ml-2 text-muted-foreground">
           <Link to="/#catalogo" prefetch="intent">
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden />
+            <AnimatedIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden />
             <span className="hidden md:inline">Volver al catálogo</span>
             <span className="md:hidden">Volver</span>
           </Link>
@@ -59,7 +59,7 @@ export function ProductTopNav({ productName }: { productName: string }) {
             aria-label={`Compartir ${productName}`}
             className="h-11 w-11"
           >
-            <HugeiconsIcon icon={Share01Icon} size={18} strokeWidth={2} aria-hidden />
+            <AnimatedIcon icon={Share01Icon} size={18} strokeWidth={2} aria-hidden />
           </Button>
           <Button
             variant="ghost"
@@ -68,7 +68,7 @@ export function ProductTopNav({ productName }: { productName: string }) {
             aria-label={cartCount > 0 ? `Abrir carrito (${cartCount})` : 'Abrir carrito'}
             className="relative h-11 w-11"
           >
-            <HugeiconsIcon icon={ShoppingCart02Icon} size={18} strokeWidth={2} aria-hidden />
+            <AnimatedIcon icon={ShoppingCart02Icon} size={18} strokeWidth={2} aria-hidden />
             {cartCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground tabular-nums">
                 {cartCount}

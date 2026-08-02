@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Search01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -82,7 +82,7 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
           >
             {/* Search input */}
             <div className="flex items-center gap-3 border-b border/60 px-4 py-3.5">
-              <HugeiconsIcon icon={Search01Icon} size={20} strokeWidth={2} className="shrink-0 text-muted-foreground" />
+              <AnimatedIcon icon={Search01Icon} size={20} strokeWidth={2} className="shrink-0 text-muted-foreground" />
               <input
                 ref={inputRef}
                 value={query}

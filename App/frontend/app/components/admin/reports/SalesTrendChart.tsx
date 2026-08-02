@@ -2,7 +2,7 @@
 // líneas los márgenes (comisión y, si quien mira es admin, ganancia de tienda):
 // mezclarlos en barras agrupadas vuelve ilegible cualquier rango largo, porque
 // tres barras por bucket × 30 buckets no entran en el ancho de una tarjeta.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { ChartLineData01Icon } from '@hugeicons/core-free-icons';
 import { useMemo } from 'react';
 import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts';
@@ -66,9 +66,11 @@ export function SalesTrendChart({
 
   return (
     <SpotlightCard variant="default" className="p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border pb-4">
+      {/* `border-b` solo. `border` a secas pone 1px en los CUATRO lados, así que
+          `border-b border` dibujaba una caja completa en vez de un subrayado. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b pb-4">
         <div className="flex items-center gap-2">
-          <HugeiconsIcon icon={ChartLineData01Icon} size={20} strokeWidth={2} className="text-primary" />
+          <AnimatedIcon icon={ChartLineData01Icon} size={20} strokeWidth={2} className="text-primary" />
           <h3 className="font-semibold text-foreground">{title}</h3>
         </div>
         <span className="text-xs text-muted-foreground">{BUCKET_LABEL[bucket]}</span>

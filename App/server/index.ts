@@ -25,7 +25,6 @@ import ordersRouter from './routes/orders';
 import reportsRouter from './routes/reports';
 import contactRouter from './routes/contact';
 import authRouter from './routes/auth';
-import salidasRouter from './routes/salidas';
 import cajaRouter from './routes/caja';
 import cuadreRouter from './routes/cuadre';
 import { apiLimiter, publicOrderLimiter, contactLimiter } from './middleware/rateLimiter';
@@ -84,7 +83,6 @@ app.use('/api/discount-codes', discountCodesRouter);
 app.use('/api/installments', installmentsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/combos', combosRouter);
-app.use('/api/salidas', salidasRouter);
 app.use('/api/caja', cajaRouter);
 app.use('/api/cuadre', cuadreRouter);
 

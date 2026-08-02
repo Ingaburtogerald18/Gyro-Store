@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "@remix-run/react";
 import { motion, useReducedMotion } from "framer-motion";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { PackageIcon, ArchiveIcon, Calendar02Icon, File01Icon, PackageRemoveIcon } from "@hugeicons/core-free-icons";
 import type { MetaFunction } from "@remix-run/node";
 
@@ -96,7 +96,7 @@ export default function AdminInventario() {
             value={period}
             onChange={(p) => updateParams({ period: p })}
             options={monthOptions}
-            icon={<HugeiconsIcon icon={Calendar02Icon} size={14} />}
+            icon={<AnimatedIcon icon={Calendar02Icon} size={14} />}
           />
         </div>
       </div>
@@ -126,7 +126,7 @@ export default function AdminInventario() {
                 />
               )}
               <span className="relative z-10 flex items-center gap-2">
-                <HugeiconsIcon icon={t.icon} size={16} strokeWidth={2} />
+                <AnimatedIcon icon={t.icon} size={16} strokeWidth={2} />
                 {t.label}
               </span>
             </button>
@@ -165,7 +165,7 @@ export default function AdminInventario() {
                     />
                   )}
                   <span className="relative z-10 flex items-center gap-2">
-                    <HugeiconsIcon icon={t.icon} size={16} strokeWidth={2} />
+                    <AnimatedIcon icon={t.icon} size={16} strokeWidth={2} />
                     {t.label}
                   </span>
                 </button>

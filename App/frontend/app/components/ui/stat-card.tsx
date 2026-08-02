@@ -1,7 +1,9 @@
 import { useRef } from "react";
+import { NavLink } from "@remix-run/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "~/lib/utils";
-import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import type { IconSvgElement } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { CountUp } from "./CountUp";
 
 export type SpotlightCardVariant = "default" | "interactive" | "highlight";
@@ -109,15 +111,37 @@ const COLOR_MAP: Record<StatCardColor, { card: string; icon: string; label: stri
 };
 
 export function StatCard({
-  icon: Icon, label, value, sub, hint, accent = false, color, countTo, format, delay = 0,
+  icon: Icon, label, value, sub, hint, accent = false, color, countTo, format, delay = 0, onClick, href,
 }: {
   icon?: IconSvgElement; label: string; value?: string | number; sub?: string; hint?: string; accent?: boolean; color?: StatCardColor; countTo?: number; format?: (n: number) => string; delay?: number;
+  /** Abre el drilldown de este KPI. Excluyente con `href`. */
+  onClick?: () => void;
+  /** Navega a una vista filtrada. Excluyente con `onClick`. */
+  href?: string;
 }) {
   const reduce = useReducedMotion();
   const chosenColor = color || (accent ? "indigo" : "neutral");
   const theme = COLOR_MAP[chosenColor];
+  const interactive = Boolean(onClick || href);
 
-  return (
+  const inner = (
+    <SpotlightCard variant="highlight" className="p-4 shadow-none bg-transparent border-none">
+      <div className="flex items-center gap-2">
+        {/* `view` y no `hover`: una StatCard no es un control, nadie le pasa
+            el mouse por encima. El trazo se dibuja cuando la tarjeta entra en
+            pantalla, en la misma entrada que ya hacen el `delay` de arriba y
+            el CountUp del valor. */}
+        {Icon && <AnimatedIcon icon={Icon} trigger="view" size={16} strokeWidth={2} className={theme.icon} />}
+        <span className={`stat-card-label text-xs uppercase tracking-wide font-medium ${theme.label}`}>{label}</span>
+      </div>
+      <p className={`stat-card-value nums mt-2 font-heading text-2xl font-bold ${theme.value}`}>
+        {countTo !== undefined ? <CountUp value={countTo} format={format} /> : value}
+      </p>
+      {sub && <p className="nums mt-0.5 text-sm font-medium text-muted-foreground">{sub}</p>}
+    </SpotlightCard>
+  );
+
+  const shell = (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -125,18 +149,42 @@ export function StatCard({
       transition={{ type: "spring", stiffness: 320, damping: 26, delay }}
       data-tone={chosenColor}
       title={hint}
-      className={`stat-card-container rounded-card border transition-colors duration-300 ${theme.card}`}
+      className={cn(
+        "stat-card-container rounded-card border transition-colors duration-300",
+        theme.card,
+        // El realce solo aparece si la tarjeta HACE algo. Una tarjeta que se
+        // ilumina y no responde al click es peor que una que no se ilumina.
+        interactive && "cursor-pointer hover:border-primary/40 hover:shadow-lg",
+      )}
     >
-      <SpotlightCard variant="highlight" className="p-4 shadow-none bg-transparent border-none">
-        <div className="flex items-center gap-2">
-          {Icon && <HugeiconsIcon icon={Icon} size={16} strokeWidth={2} className={theme.icon} />}
-          <span className={`stat-card-label text-xs uppercase tracking-wide font-medium ${theme.label}`}>{label}</span>
-        </div>
-        <p className={`stat-card-value nums mt-2 font-heading text-2xl font-bold ${theme.value}`}>
-          {countTo !== undefined ? <CountUp value={countTo} format={format} /> : value}
-        </p>
-        {sub && <p className="nums mt-0.5 text-sm font-medium text-muted-foreground">{sub}</p>}
-      </SpotlightCard>
+      {inner}
     </motion.div>
   );
+
+  // El `href` va en un <a> real y el `onClick` en un <button>: hacen falta el
+  // rol, el foco por teclado y el Enter/Espacio que un <div onClick> no da.
+  // Envolver por fuera (y no poner el handler en el motion.div) mantiene intacta
+  // la animación de entrada y el spotlight.
+  if (href) {
+    return (
+      <NavLink to={href} className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+        {shell}
+      </NavLink>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`Ver detalle de ${label}`}
+        className="block w-full text-left rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      >
+        {shell}
+      </button>
+    );
+  }
+
+  return shell;
 }

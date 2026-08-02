@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -28,7 +28,12 @@ const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
+// 3.5rem (56px) y no las 3rem del registry: `SidebarGroup` mete `p-2`, así que
+// con 48px el botón colapsado se quedaba en 32px justos y su caja interna en
+// 16px — el icono no podía pasar de ahí sin que `overflow-hidden` lo recortara.
+// Con 56px quedan 40px para el botón y 24px de contenido, que es el tamaño de
+// icono del menú desplegado. Mismo icono en los dos estados.
+const SIDEBAR_WIDTH_ICON = "3.5rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextProps = {
@@ -270,7 +275,7 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <HugeiconsIcon icon={SidebarLeftIcon} size={16} strokeWidth={2} />
+      <AnimatedIcon icon={SidebarLeftIcon} gesture="pop" size={16} strokeWidth={2} />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

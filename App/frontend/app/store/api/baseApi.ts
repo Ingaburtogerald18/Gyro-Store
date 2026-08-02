@@ -41,7 +41,6 @@ export const baseApi = createApi({
     'Installment',
     'Categories',
     'Templates',
-    'Salidas',
     'Accounts',
     'Movements',
     'Cuadre',

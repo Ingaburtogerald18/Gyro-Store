@@ -7,7 +7,7 @@
 // col-span-2 ni grid-auto-flow:dense.
 import { useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { PackageSearchIcon } from '@hugeicons/core-free-icons';
 
 import type { CatalogProduct } from '@shared/schemas';
@@ -128,7 +128,7 @@ function EmptyState({ text }: { text: string }) {
       <span
         className="relative grid h-16 w-16 place-items-center rounded-2xl bg-primary/8 text-primary-2 ring-1 ring-primary/15 ring-inset"
         aria-hidden >
-        <HugeiconsIcon icon={PackageSearchIcon} size={28} strokeWidth={2} className="relative" />
+        <AnimatedIcon icon={PackageSearchIcon} size={28} strokeWidth={2} className="relative" />
       </span>
       <p className="max-w-xs text-sm text-balance text-muted-foreground">{text}</p>
     </div>

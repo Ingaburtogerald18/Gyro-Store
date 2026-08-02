@@ -1,5 +1,5 @@
 import * as React from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
+import { AnimatedIcon } from "~/components/ui/animated-icons"
 import { CheckmarkBadge01Icon } from "@hugeicons/core-free-icons"
 
 import { cn } from "~/lib/utils"
@@ -13,8 +13,8 @@ import {
 } from "~/components/ui/command"
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from "~/components/ui/popover"
 
 interface ComboboxProps {
@@ -32,6 +32,12 @@ interface ComboboxProps {
    * Sin esto la lista solo muestra el texto de la opción, como antes.
    */
   renderOptionMeta?: (option: string) => React.ReactNode;
+  /**
+   * Texto ADICIONAL contra el que buscar, además del propio nombre de la opción
+   * (códigos de lote, SKU…). Sirve para que tipear `GS-047` encuentre el
+   * producto aunque su nombre no contenga esa cadena.
+   */
+  getSearchText?: (option: string) => string;
 }
 
 export function Combobox({
@@ -44,24 +50,39 @@ export function Combobox({
   "aria-invalid": ariaInvalid,
   disabled,
   renderOptionMeta,
+  getSearchText,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
-  // Filtrado manual para las sugerencias
+  // Filtrado manual: matchea contra el nombre de la opción Y contra el texto
+  // extra que provea el consumidor (códigos de lote, SKU…).
   const visibleOptions = React.useMemo(() => {
     if (!value.trim()) return options.slice(0, 40)
     const lower = value.toLowerCase()
-    return options.filter((o) => o.toLowerCase().includes(lower)).slice(0, 40)
-  }, [options, value])
+    return options
+      .filter((o) => {
+        if (o.toLowerCase().includes(lower)) return true
+        const extra = getSearchText?.(o)
+        return extra ? extra.toLowerCase().includes(lower) : false
+      })
+      .slice(0, 40)
+  }, [options, value, getSearchText])
 
   const exactMatch = options.some((o) => o.toLowerCase() === value.trim().toLowerCase())
   const showOptions = visibleOptions.length > 0 && !exactMatch && open;
 
   return (
+    // `PopoverAnchor` y NO `PopoverTrigger`.
+    //
+    // El trigger de Radix se apropia del foco y del teclado del elemento que
+    // envuelve: dentro de un Dialog (que además monta su propio focus trap) eso
+    // hacía que el input perdiera el cursor apenas se abría la lista y no se
+    // pudiera seguir escribiendo. El anchor solo aporta la posición: el input
+    // queda como un input común y la apertura la maneja este componente.
     <Popover open={showOptions} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverAnchor asChild>
         <div className="relative">
-          <Input 
+          <Input
             id={id}
             value={value}
             onChange={(e) => {
@@ -77,7 +98,7 @@ export function Combobox({
             className="w-full"
           />
         </div>
-      </PopoverTrigger>
+      </PopoverAnchor>
       <PopoverContent 
         className="w-[var(--radix-popover-trigger-width)] p-0" 
         align="start" 
@@ -100,7 +121,7 @@ export function Combobox({
                   <span className="truncate flex-1">{option}</span>
                   {renderOptionMeta?.(option)}
                   {value === option && (
-                    <HugeiconsIcon icon={CheckmarkBadge01Icon} size={16} className="shrink-0 text-primary" />
+                    <AnimatedIcon icon={CheckmarkBadge01Icon} size={16} className="shrink-0 text-primary" />
                   )}
                 </CommandItem>
               ))}

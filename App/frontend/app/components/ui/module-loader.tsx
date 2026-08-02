@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Store01Icon } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
@@ -113,7 +113,9 @@ export function BrandLoader({ text = 'Cargando…' }: { text?: string }) {
               transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
               className="text-primary"
             >
-              <HugeiconsIcon icon={Store01Icon} size={32} strokeWidth={2} aria-hidden />
+              {/* Pantalla de carga: no hay nada que hoverear, y el trazo
+                  dibujándose es justo el feedback que se busca. */}
+              <AnimatedIcon icon={Store01Icon} trigger="mount" size={32} strokeWidth={2} aria-hidden />
             </motion.span>
           )}
         </div>

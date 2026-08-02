@@ -1,6 +1,6 @@
 // Tabla de compras (registro China) con badges de estado y acciones según estado:
 // En tránsito → Reportar llegada / Eliminar; Pendiente → Aprobar recepción.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, Delete02Icon, Edit02Icon, ShippingTruck01Icon, Store01Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -204,9 +204,9 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
               <div className="flex justify-end">
                 <RowActionsMenu
                   actions={[
-                    { group: "Movimiento", label: "Reportar ingreso", icon: <HugeiconsIcon icon={ShippingTruck01Icon} size={16} strokeWidth={2} />, onClick: () => setArrivalFor(p) },
-                    { group: "Gestión", label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
-                    { label: "Eliminar", icon: <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
+                    { group: "Movimiento", label: "Reportar ingreso", icon: <AnimatedIcon icon={ShippingTruck01Icon} size={16} strokeWidth={2} />, onClick: () => setArrivalFor(p) },
+                    { group: "Gestión", label: "Editar", icon: <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
+                    { label: "Eliminar", icon: <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
                   ]}
                 />
               </div>
@@ -216,13 +216,13 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
             return (
               <div className="flex items-center justify-end gap-1.5">
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-2.5 py-1.5 text-xs font-semibold text-primary-2">
-                  <HugeiconsIcon icon={Store01Icon} size={14} strokeWidth={2} />
+                  <AnimatedIcon icon={Store01Icon} size={14} strokeWidth={2} />
                   Bodega
                 </span>
                 <RowActionsMenu
                   actions={[
-                    { label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
-                    { label: "Eliminar", icon: <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
+                    { label: "Editar", icon: <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) },
+                    { label: "Eliminar", icon: <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: true, onClick: () => setDeleteFor(p) },
                   ]}
                 />
               </div>
@@ -254,7 +254,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
             </div>
             {onOpenForm && (
               <Button onClick={onOpenForm} className="flex items-center gap-1.5 whitespace-nowrap">
-                <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} />
+                <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} />
                 <span className="hidden sm:inline">Registrar compra</span>
               </Button>
             )}

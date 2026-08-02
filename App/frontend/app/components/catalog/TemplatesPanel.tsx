@@ -4,7 +4,7 @@
 // No tiene precio, imágenes ni stock: eso vive en cada producto que la usa. Un
 // molde lo comparten varios productos, así que editarle los ejes cambia las
 // combinaciones de todos — por eso el borrado se bloquea si está en uso.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import {
   Add01Icon,
   Cancel01Icon,
@@ -85,7 +85,7 @@ export function TemplatesPanel({ categories }: { categories: Category[] }) {
             setIsOpen(true);
           }}
         >
-          <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+          <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
           Nueva plantilla
         </Button>
       </div>
@@ -99,7 +99,7 @@ export function TemplatesPanel({ categories }: { categories: Category[] }) {
       ) : templates.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <HugeiconsIcon
+            <AnimatedIcon
               icon={DashboardSquare01Icon}
               size={48}
               strokeWidth={2}
@@ -135,7 +135,7 @@ export function TemplatesPanel({ categories }: { categories: Category[] }) {
                         setIsOpen(true);
                       }}
                     >
-                      <HugeiconsIcon icon={Edit02Icon} size={15} strokeWidth={2} />
+                      <AnimatedIcon icon={Edit02Icon} size={15} strokeWidth={2} />
                     </Button>
                     <Button
                       variant="ghost"
@@ -144,7 +144,7 @@ export function TemplatesPanel({ categories }: { categories: Category[] }) {
                       className="hover:bg-destructive/20 hover:text-destructive"
                       onClick={() => handleDelete(template)}
                     >
-                      <HugeiconsIcon icon={Delete02Icon} size={15} strokeWidth={2} />
+                      <AnimatedIcon icon={Delete02Icon} size={15} strokeWidth={2} />
                     </Button>
                   </div>
                 </div>
@@ -344,7 +344,7 @@ function TemplateEditorDialog({
                   axes.append({ key: `eje_${Date.now()}`, label: '', options: [''], isColor: false })
                 }
               >
-                <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} className="mr-1" />
+                <AnimatedIcon icon={Add01Icon} size={14} strokeWidth={2} className="mr-1" />
                 Eje
               </Button>
             </div>
@@ -382,7 +382,7 @@ function TemplateEditorDialog({
                       className="hover:bg-destructive/20 hover:text-destructive"
                       onClick={() => axes.remove(axisIndex)}
                     >
-                      <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                      <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                     </Button>
                   </div>
 
@@ -424,7 +424,7 @@ function TemplateEditorDialog({
                 size="sm"
                 onClick={() => specs.append({ label: '', value: '' })}
               >
-                <HugeiconsIcon icon={Add01Icon} size={14} strokeWidth={2} className="mr-1" />
+                <AnimatedIcon icon={Add01Icon} size={14} strokeWidth={2} className="mr-1" />
                 Spec
               </Button>
             </div>
@@ -453,7 +453,7 @@ function TemplateEditorDialog({
                   className="hover:bg-destructive/20 hover:text-destructive"
                   onClick={() => specs.remove(index)}
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                  <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                 </Button>
               </div>
             ))}
@@ -540,7 +540,7 @@ function AxisOptionsField({
                     aria-label="Quitar opción"
                     onClick={() => field.onChange(options.filter((_, i) => i !== optionIndex))}
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                    <AnimatedIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
                   </Button>
                 </div>
               ))}
@@ -551,7 +551,7 @@ function AxisOptionsField({
                 className="text-xs"
                 onClick={() => field.onChange([...options, ''])}
               >
-                <HugeiconsIcon icon={Add01Icon} size={12} strokeWidth={2} className="mr-1" />
+                <AnimatedIcon icon={Add01Icon} size={12} strokeWidth={2} className="mr-1" />
                 Añadir
               </Button>
             </div>

@@ -4,7 +4,7 @@
 // Sobre <Dialog> de shadcn/ui + react-hook-form. La validación usa el MISMO
 // schema Zod que valida el backend (shared/schemas.ts): una sola fuente de
 // verdad, sin reglas duplicadas que se desincronicen.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Location01Icon, Store01Icon, TruckIcon, Coupon01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -229,7 +229,7 @@ export function CheckoutDialog({
                     className="sr-only"
                     {...register('deliveryMethod')}
                   />
-                  <HugeiconsIcon icon={Icon} size={16} strokeWidth={2} aria-hidden />
+                  <AnimatedIcon icon={Icon} size={16} strokeWidth={2} aria-hidden />
                   {label}
                 </label>
               ))}
@@ -254,7 +254,7 @@ export function CheckoutDialog({
                 disabled={geoLoading}
                 className="w-full justify-center gap-2"
               >
-                <HugeiconsIcon icon={Location01Icon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={Location01Icon} size={16} strokeWidth={2} aria-hidden />
                 {locationUrl
                   ? 'Ubicación agregada — tocá para actualizar'
                   : geoLoading
@@ -280,7 +280,7 @@ export function CheckoutDialog({
             {appliedCode ? (
               <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/10 px-3 py-2">
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-                  <HugeiconsIcon icon={Coupon01Icon} size={16} strokeWidth={2} aria-hidden />
+                  <AnimatedIcon icon={Coupon01Icon} size={16} strokeWidth={2} aria-hidden />
                   {appliedCode.code}
                   <span className="font-normal text-muted-foreground">
                     ({appliedCode.type === 'percent' ? `${appliedCode.value}%` : formatCordobas(appliedCode.value, config?.currency)})
@@ -292,7 +292,7 @@ export function CheckoutDialog({
                   className="grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-foreground"
                   title="Quitar código"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} aria-hidden />
+                  <AnimatedIcon icon={Cancel01Icon} size={14} strokeWidth={2} aria-hidden />
                 </button>
               </div>
             ) : (

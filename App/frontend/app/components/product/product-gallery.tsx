@@ -4,7 +4,7 @@
 // Zoom (patrón del V1): click/Enter en la foto grande abre un lightbox con la
 // imagen a tamaño completo, sobre la primitiva Dialog (Escape y click afuera
 // cierran gratis, con foco gestionado por Radix).
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ImageNotFound01Icon, ZoomInAreaIcon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 
@@ -38,12 +38,12 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
             aria-hidden
             className="absolute right-3 bottom-3 grid h-9 w-9 place-items-center rounded-full bg-background/70 text-foreground opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
           >
-            <HugeiconsIcon icon={ZoomInAreaIcon} size={18} strokeWidth={2} />
+            <AnimatedIcon icon={ZoomInAreaIcon} size={18} strokeWidth={2} />
           </span>
         </button>
       ) : (
         <div className="product-stage relative grid aspect-square w-full place-items-center overflow-hidden rounded-2xl bg-muted text-muted-foreground">
-          <HugeiconsIcon icon={ImageNotFound01Icon} size={40} strokeWidth={2} aria-hidden />
+          <AnimatedIcon icon={ImageNotFound01Icon} size={40} strokeWidth={2} aria-hidden />
         </div>
       )}
 

@@ -1,6 +1,6 @@
 // Inventario Actual: productos recibidos en bodega con todas las columnas
 // calculadas (cantidad = original − vendidos, precios USD y costo real en C$).
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Alert02Icon, CheckmarkCircle01Icon, Edit02Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -92,12 +92,12 @@ export function CurrentInventoryTable({ period = "all", mode = "all" }: { period
             >
               {hasMatch ? (
                 <span className="flex items-center gap-1 text-xs font-medium text-primary-2 bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} strokeWidth={2} />
+                  <AnimatedIcon icon={CheckmarkCircle01Icon} size={12} strokeWidth={2} />
                   Enlazado
                 </span>
               ) : (
                 <span title="Este producto aún no está vinculado al catálogo público" className="flex items-center gap-1 text-xs font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-md border border-warning/20">
-                  <HugeiconsIcon icon={Alert02Icon} size={12} strokeWidth={2} />
+                  <AnimatedIcon icon={Alert02Icon} size={12} strokeWidth={2} />
                   Sin mapear
                 </span>
               )}
@@ -183,8 +183,8 @@ export function CurrentInventoryTable({ period = "all", mode = "all" }: { period
             <div className="flex justify-end">
               <RowActionsMenu
                 actions={[
-                  ...(p ? [{ label: "Editar", icon: <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) }] : []),
-                  { label: "Descartar llegada", icon: <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: !!p, onClick: () => setRevertFor(rowData) }
+                  ...(p ? [{ label: "Editar", icon: <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} />, onClick: () => setEditFor(p) }] : []),
+                  { label: "Descartar llegada", icon: <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />, danger: true, separatorBefore: !!p, onClick: () => setRevertFor(rowData) }
                 ]}
               />
             </div>

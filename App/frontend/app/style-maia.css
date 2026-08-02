@@ -1671,23 +1671,25 @@
   }
 }
 
-/* MARK: Iconos animados en hover — rollout system-wide.
-   Anima el <svg> de HugeIcons dentro de los controles interactivos al hacer
-   hover. Centralizado (no en los ~296 call-sites) y sin alcanzar los <svg> de
-   recharts (no viven dentro de estas primitivas). Guardado por
-   prefers-reduced-motion (DESIGN.md §8). Los iconos itshover conservan su
-   animación propia: su transform inline de framer-motion tiene prioridad. */
-@media (prefers-reduced-motion: no-preference) {
-  .style-maia
-    :is(.cn-button, .cn-dropdown-menu-item, .cn-select-trigger,
-        .cn-sidebar-menu-button, .cn-tabs-trigger, .cn-command-item,
-        .cn-toggle) svg {
-    transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .style-maia
-    :is(.cn-button, .cn-dropdown-menu-item, .cn-select-trigger,
-        .cn-sidebar-menu-button, .cn-tabs-trigger, .cn-command-item,
-        .cn-toggle):hover svg {
-    transform: scale(1.16);
-  }
-}
+/* MARK: Iconos animados en hover — ELIMINADO, lo hace `AnimatedIcon`.
+   ============================================================================
+   Acá vivía un `transform: scale(1.16)` sobre cualquier <svg> dentro de siete
+   controles (.cn-button, .cn-dropdown-menu-item, .cn-select-trigger,
+   .cn-sidebar-menu-button, .cn-tabs-trigger, .cn-command-item, .cn-toggle).
+
+   Se quitó por dos razones:
+
+   1. COMPETENCIA. `AnimatedIcon` escribe `transform` INLINE vía framer-motion
+      sobre el mismo <svg>. Con las dos reglas vivas, cuál gana depende del
+      frame: el icono se queda a mitad de escala, o el gesto `pop` arranca desde
+      1.16 en vez de 1. Un solo mecanismo por propiedad.
+
+   2. ALCANCE. Solo cubría iconos DENTRO de esos siete controles. Los del admin
+      que más se ven — encabezados de card, KPIs, celdas de tabla, estados
+      vacíos — quedaban fuera, que era justo la queja de origen ("el centro de
+      admin se ve estático"). `AnimatedIcon` los cubre todos, y además elige el
+      gesto según el contexto en vez de escalar todo por igual.
+
+   El guardado por `prefers-reduced-motion` no se perdió: vive dentro del
+   componente, vía `useReducedMotion()` (DESIGN.md §8).
+   ============================================================================ */

@@ -6,7 +6,7 @@
 // delivery — y eso no depende de este archivo: el backend recorta esos campos
 // antes de mandarlos y fuerza el `sellerUid` al del token (ver
 // server/routes/reports.ts). Acá simplemente no se piden.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { DollarSquareIcon, PercentIcon, ShoppingCart02Icon, Analytics01Icon } from '@hugeicons/core-free-icons';
 import { useMemo, useState } from 'react';
 
@@ -35,7 +35,7 @@ export function SellerPerformance() {
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <HugeiconsIcon icon={Analytics01Icon} size={20} strokeWidth={2} className="text-primary" />
+          <AnimatedIcon icon={Analytics01Icon} size={20} strokeWidth={2} className="text-primary" />
           <h3 className="text-lg font-bold text-foreground">Mi desempeño</h3>
         </div>
         <PeriodPicker

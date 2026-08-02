@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Calendar03Icon } from "@hugeicons/core-free-icons";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -41,7 +41,7 @@ export function DatePicker({
             className
           )}
         >
-          <HugeiconsIcon icon={Calendar03Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground" aria-hidden />
+          <AnimatedIcon icon={Calendar03Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground" aria-hidden />
           {selected ? format(selected, "d 'de' MMMM, yyyy", { locale: es }) : placeholder}
         </Button>
       </PopoverTrigger>

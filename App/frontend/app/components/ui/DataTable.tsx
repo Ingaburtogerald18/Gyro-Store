@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowDown02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp02Icon, InboxIcon, Search01Icon, Tick01Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Skeleton } from "~/components/ui/skeleton";
 // Tabla de datos genérica sobre TanStack Table v8: ordenable, con búsqueda
@@ -110,7 +110,7 @@ export function DataTable<T>({
     <div className="space-y-3">
       {!hideSearch && (
         <div className="flex items-center gap-2 rounded-pill border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15 sm:max-w-xs">
-          <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
+          <AnimatedIcon icon={Search01Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
           <input
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
@@ -146,7 +146,7 @@ export function DataTable<T>({
                             : "border bg-card hover:bg-muted"
                         }`}
                       >
-                        {allSelected && <HugeiconsIcon icon={Tick01Icon} size={14} strokeWidth={2} />}
+                        {allSelected && <AnimatedIcon icon={Tick01Icon} size={14} strokeWidth={2} />}
                       </div>
                     )}
                   </th>
@@ -176,11 +176,11 @@ export function DataTable<T>({
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {sorted === "asc" ? (
-                            <HugeiconsIcon icon={ArrowUp02Icon} size={12} strokeWidth={2} className="shrink-0 text-primary-2" />
+                            <AnimatedIcon icon={ArrowUp02Icon} gesture="nudge-y" size={12} strokeWidth={2} className="shrink-0 text-primary-2" />
                           ) : sorted === "desc" ? (
-                            <HugeiconsIcon icon={ArrowDown02Icon} size={12} strokeWidth={2} className="shrink-0 text-primary-2" />
+                            <AnimatedIcon icon={ArrowDown02Icon} gesture="nudge-y" size={12} strokeWidth={2} className="shrink-0 text-primary-2" />
                           ) : (
-                            <HugeiconsIcon icon={UnfoldMoreIcon} size={12} strokeWidth={2} className="shrink-0 opacity-0 transition-opacity group-hover/sort:opacity-50" />
+                            <AnimatedIcon icon={UnfoldMoreIcon} gesture="nudge-y" size={12} strokeWidth={2} className="shrink-0 opacity-0 transition-opacity group-hover/sort:opacity-50" />
                           )}
                         </button>
                       ) : (
@@ -210,7 +210,7 @@ export function DataTable<T>({
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
-                        <HugeiconsIcon icon={InboxIcon} size={16} strokeWidth={2} />
+                        <AnimatedIcon icon={InboxIcon} trigger="view" size={16} strokeWidth={2} />
                       </EmptyMedia>
                       <EmptyTitle>{emptyText}</EmptyTitle>
                     </EmptyHeader>
@@ -260,7 +260,7 @@ export function DataTable<T>({
                               : "border bg-card"
                           }`}
                         >
-                          {isSelected && <HugeiconsIcon icon={Tick01Icon} size={14} strokeWidth={2} />}
+                          {isSelected && <AnimatedIcon icon={Tick01Icon} size={14} strokeWidth={2} />}
                         </div>
                       </td>
                     )}
@@ -384,7 +384,7 @@ function TablePagination<T>({ table }: { table: TableInstance<T> }) {
           aria-label="Página anterior"
           className="grid h-11 w-11 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
         >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} />
+          <AnimatedIcon icon={ArrowLeft01Icon} gesture="nudge-x" size={16} strokeWidth={2} />
         </button>
         <span className="nums px-2 text-muted-foreground">
           Página <span className="font-semibold text-foreground">{pageIndex + 1}</span> de{" "}
@@ -397,7 +397,7 @@ function TablePagination<T>({ table }: { table: TableInstance<T> }) {
           aria-label="Página siguiente"
           className="grid h-11 w-11 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-40"
         >
-          <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} />
+          <AnimatedIcon icon={ArrowRight01Icon} gesture="nudge-x" size={16} strokeWidth={2} />
         </button>
       </div>
     </nav>

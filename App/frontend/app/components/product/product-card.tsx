@@ -3,7 +3,7 @@
 // stage 4:3 y el CTA anclado al fondo para que toda la fila alinee parejo.
 // Con >1 combinación de variantes, el CTA abre el QuickAddSheet para elegir
 // antes de agregar; con una sola va directo al carrito.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ImageNotFound01Icon, Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import { Link } from '@remix-run/react';
@@ -153,7 +153,7 @@ export function ProductCard({
         />
       ) : (
         <div className="grid h-full place-items-center text-muted-foreground">
-          <HugeiconsIcon icon={ImageNotFound01Icon} size={32} strokeWidth={2} aria-hidden />
+          <AnimatedIcon icon={ImageNotFound01Icon} size={32} strokeWidth={2} aria-hidden />
         </div>
       )}
 
@@ -206,7 +206,7 @@ export function ProductCard({
         disabled={soldOut}
         className="h-9 flex-1 text-xs sm:h-11 sm:text-sm"
       >
-        <HugeiconsIcon icon={ShoppingCart02Icon} size={14} strokeWidth={2} aria-hidden />
+        <AnimatedIcon icon={ShoppingCart02Icon} size={14} strokeWidth={2} aria-hidden />
         {soldOut ? 'Agotado' : 'Agregar'}
       </Button>
       {/* Nunca se deshabilita, ni agotado: "avísame" sigue siendo un lead. */}
@@ -222,7 +222,7 @@ export function ProductCard({
         title={soldOut ? 'Avísame por WhatsApp' : 'Pedir por WhatsApp'}
         className="h-9 w-9 rounded-lg sm:h-11 sm:w-11"
       >
-        <HugeiconsIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
+        <AnimatedIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
       </Button>
     </div>
   );

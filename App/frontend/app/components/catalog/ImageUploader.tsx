@@ -6,7 +6,7 @@
 //
 // Sube contra `POST /api/upload`, que optimiza a WebP y nombra por hash del
 // contenido: re-subir la misma foto devuelve la misma URL en vez de duplicarla.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Cancel01Icon, CloudUploadIcon, StarIcon } from '@hugeicons/core-free-icons';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -118,7 +118,7 @@ export function ImageUploader({
           )}
           aria-hidden
         >
-          <HugeiconsIcon icon={CloudUploadIcon} size={20} strokeWidth={2} />
+          <AnimatedIcon icon={CloudUploadIcon} size={20} strokeWidth={2} />
         </span>
 
         {uploading > 0 ? (
@@ -204,7 +204,7 @@ export function ImageUploader({
                     title="Hacer portada"
                     onClick={() => makeCover(url)}
                   >
-                    <HugeiconsIcon icon={StarIcon} size={12} strokeWidth={2} />
+                    <AnimatedIcon icon={StarIcon} size={12} strokeWidth={2} />
                   </Button>
                 )}
                 <Button
@@ -215,7 +215,7 @@ export function ImageUploader({
                   title="Quitar"
                   onClick={() => onChange(images.filter((i) => i !== url))}
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                  <AnimatedIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
                 </Button>
               </div>
             </li>

@@ -12,7 +12,7 @@
 // combo como una unidad (nombre, precio, imagen si hay una string válida,
 // cantidad de artículos). El carrito YA sabe manejar combos (cartSlice.ts,
 // `comboId`) — no hizo falta tocar nada ahí.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowLeft01Icon, Message01Icon, PackageAddIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
 import { Link, useLoaderData } from '@remix-run/react';
@@ -122,7 +122,7 @@ export default function ComboDetail() {
       <main className="mx-auto max-w-7xl px-4 py-6">
         <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
           <Link to="/#catalogo" prefetch="intent">
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden /> Volver al catálogo
+            <AnimatedIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden /> Volver al catálogo
           </Link>
         </Button>
 
@@ -132,7 +132,7 @@ export default function ComboDetail() {
               <img src={image} alt={name} className="h-full w-full object-contain p-8" />
             ) : (
               <div className="grid h-full place-items-center text-muted-foreground">
-                <HugeiconsIcon icon={SparklesIcon} size={40} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={SparklesIcon} size={40} strokeWidth={2} aria-hidden />
               </div>
             )}
           </div>
@@ -140,7 +140,7 @@ export default function ComboDetail() {
           <div className="flex flex-col gap-5">
             <div className="space-y-3">
               <Badge variant="promo" className="inline-flex items-center gap-1.5">
-                <HugeiconsIcon icon={SparklesIcon} size={14} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={SparklesIcon} size={14} strokeWidth={2} aria-hidden />
                 Combo
               </Badge>
 
@@ -161,7 +161,7 @@ export default function ComboDetail() {
 
             <div className="mt-auto flex flex-col gap-2 sm:flex-row">
               <Button onClick={handleAddToCart} className="h-12 flex-1 text-sm">
-                <HugeiconsIcon icon={PackageAddIcon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={PackageAddIcon} size={16} strokeWidth={2} aria-hidden />
                 Agregar al carrito
               </Button>
               <Button
@@ -169,7 +169,7 @@ export default function ComboDetail() {
                 onClick={handleWhatsApp}
                 className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
               >
-                <HugeiconsIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden />
                 Pedir por WhatsApp
               </Button>
             </div>

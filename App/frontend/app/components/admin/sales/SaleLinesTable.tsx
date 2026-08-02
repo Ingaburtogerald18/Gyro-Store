@@ -6,7 +6,7 @@
 // `getPricingConfig`). Acá la identidad es el NOMBRE del producto — es lo que
 // acepta `SaleLineInput` del backend v2 — y el descuento de mayoreo lo resuelve
 // el servidor en cada cotización, así que no se recalcula de este lado.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Add01Icon, Alert02Icon, Delete02Icon, PackageIcon } from '@hugeicons/core-free-icons';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
@@ -107,19 +107,31 @@ export function SaleLinesTable({
                       });
                     }}
                     options={productNames}
-                    placeholder="Buscar producto…"
+                    placeholder="Buscar por nombre o código…"
                     disabled={disabled}
                     aria-invalid={overStock || isDuplicate}
+                    // Un producto puede venir de varios lotes: se busca contra
+                    // TODOS sus códigos, no solo el primero.
+                    getSearchText={(option) =>
+                      products.find((p) => p.productName === option)?.codes.join(' ') ?? ''
+                    }
                     renderOptionMeta={(option) => {
                       const stock = stockByName.get(option) ?? 0;
+                      const code = products.find((p) => p.productName === option)?.code;
                       return (
-                        <span
-                          className={cn(
-                            'nums shrink-0 text-xs',
-                            stock <= 0 ? 'font-semibold text-destructive' : 'text-muted-foreground',
-                          )}
-                        >
-                          {stock} en stock
+                        <span className="flex shrink-0 items-center gap-2 text-xs">
+                          {/* Se muestra el código para poder confirmar que el
+                              resultado es el que se tipeó cuando la búsqueda fue
+                              por código y no por nombre. */}
+                          {code && <span className="font-mono text-muted-foreground">{code}</span>}
+                          <span
+                            className={cn(
+                              'nums',
+                              stock <= 0 ? 'font-semibold text-destructive' : 'text-muted-foreground',
+                            )}
+                          >
+                            {stock} en stock
+                          </span>
                         </span>
                       );
                     }}
@@ -135,7 +147,7 @@ export function SaleLinesTable({
                         : 'bg-primary/10 text-primary-2',
                     )}
                   >
-                    <HugeiconsIcon icon={PackageIcon} size={12} strokeWidth={2} aria-hidden />
+                    <AnimatedIcon icon={PackageIcon} size={12} strokeWidth={2} aria-hidden />
                     {product.stock} en stock
                   </span>
                 )}
@@ -149,7 +161,7 @@ export function SaleLinesTable({
                   aria-label={`Quitar línea ${i + 1}`}
                   className="shrink-0 hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} aria-hidden />
+                  <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} aria-hidden />
                 </Button>
               </div>
 
@@ -210,14 +222,14 @@ export function SaleLinesTable({
 
               {overStock && product && (
                 <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
-                  <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
+                  <AnimatedIcon icon={Alert02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
                   Solo hay {product.stock} uds disponibles.
                 </p>
               )}
 
               {isDuplicate && (
                 <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
-                  <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
+                  <AnimatedIcon icon={Alert02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
                   Este producto está en otra línea: juntá las unidades en una sola.
                 </p>
               )}
@@ -234,7 +246,7 @@ export function SaleLinesTable({
           disabled={disabled}
           className="w-full border-dashed sm:w-auto"
         >
-          <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden />
+          <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden />
           Agregar producto
         </Button>
       )}

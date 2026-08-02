@@ -13,8 +13,8 @@
 // propia venta (ver server/services/sales.ts). Un producto no puede repetirse
 // en dos líneas (mismo límite del backend, evita la lógica de "distribuir
 // reservas" de v1).
-import { HugeiconsIcon } from "@hugeicons/react";
-import { CancelCircleIcon, CheckmarkCircle01Icon, Link02Icon, ShoppingCart02Icon, Add01Icon } from "@hugeicons/core-free-icons";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
+import { CancelCircleIcon, CheckmarkCircle01Icon, ShoppingCart02Icon, Add01Icon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
 import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
@@ -43,7 +43,6 @@ import {
   useRejectSaleMutation,
   type SaleListItem,
 } from '~/store/api/salesApi';
-import { useGetSalidasQuery, useVincularSalidaMutation } from '~/store/api/salidasApi';
 import { Spinner } from "~/components/ui/spinner";
 import { SaleEditor } from '~/components/admin/sales/SaleEditor';
 import { SellerPerformance } from '~/components/admin/sales/SellerPerformance';
@@ -94,10 +93,6 @@ export default function AdminVentas() {
 
   const [rejectFor, setRejectFor] = useState<SaleListItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  // Vincular una salida SIN factura a esta venta (cierra el "pendiente de registrar").
-  const [linkFor, setLinkFor] = useState<SaleListItem | null>(null);
-  const { data: pendingSalidas = [] } = useGetSalidasQuery({ estado: 'pendiente_registro' });
-  const [vincularSalida, { isLoading: linking }] = useVincularSalidaMutation();
 
   async function handleApprove(id: string) {
     try {
@@ -125,16 +120,6 @@ export default function AdminVentas() {
     }
   }
 
-  async function handleLink(salidaId: string) {
-    if (!linkFor) return;
-    try {
-      await vincularSalida({ id: salidaId, orderId: linkFor.id }).unwrap();
-      toast.success('Salida vinculada a la venta.');
-      setLinkFor(null);
-    } catch (err) {
-      toast.error(errMsg(err, 'No se pudo vincular la salida.'));
-    }
-  }
 
   const columns = useMemo<ColumnDef<SaleListItem, unknown>[]>(() => {
     const actionsColumn: ColumnDef<SaleListItem, unknown> = {
@@ -143,23 +128,14 @@ export default function AdminVentas() {
       cell: ({ row }) =>
         row.original.status === 'pending_approval' ? (
           <div className="flex justify-end gap-1.5">
-            {/* Vincular salida: disponible para todos (el vendedor cierra la suya). */}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setLinkFor(row.original)}
-              title="Vincular una salida sin factura"
-            >
-              <HugeiconsIcon icon={Link02Icon} size={16} strokeWidth={2} aria-hidden />
-            </Button>
             {/* Aprobar / rechazar solo admin. */}
             {isAdmin && (
               <>
                 <Button size="sm" variant="ghost" onClick={() => handleApprove(row.original.id)}>
-                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="text-success" aria-hidden />
+                  <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="text-success" aria-hidden />
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setRejectFor(row.original)}>
-                  <HugeiconsIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="text-destructive" aria-hidden />
+                  <AnimatedIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="text-destructive" aria-hidden />
                 </Button>
               </>
             )}
@@ -173,12 +149,30 @@ export default function AdminVentas() {
         header: 'Fecha',
         cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString('es-NI'),
       },
-      { accessorKey: 'sellerEmail', header: 'Vendedor' },
+      {
+        id: 'vendedor',
+        header: 'Vendedor',
+        // `accessorFn` y no `accessorKey`: el filtro global de la tabla busca
+        // sobre el VALOR de la celda, así que el nombre tiene que ser el valor
+        // para que "buscar por vendedor" funcione. El correo queda de respaldo
+        // para las cuentas que nunca completaron el perfil.
+        accessorFn: (row) => row.sellerName || row.sellerEmail,
+        cell: ({ row }) => (
+          <span className="font-medium text-foreground">
+            {row.original.sellerName || row.original.sellerEmail}
+          </span>
+        ),
+      },
       { accessorKey: 'phone', header: 'Teléfono', cell: ({ row }) => row.original.phone ?? '—' },
       {
         accessorKey: 'total',
-        header: () => <div className="text-right">Total</div>,
-        cell: ({ row }) => <div className="text-right font-semibold">{formatCordobas(row.original.total)}</div>,
+        header: 'Total',
+        // `meta.align` en vez de un <div className="text-right"> dentro del
+        // header: DataTable envuelve el header en un flex propio, así que el div
+        // no se estiraba y el título quedaba a la izquierda mientras la cifra se
+        // iba a la derecha. Con `meta` alinea los dos.
+        meta: { align: 'right' },
+        cell: ({ row }) => <span className="font-semibold">{formatCordobas(row.original.total)}</span>,
       },
       {
         accessorKey: 'status',
@@ -201,7 +195,7 @@ export default function AdminVentas() {
           <p className="text-muted-foreground">Listado general y registro de ventas.</p>
         </div>
         <Button onClick={() => setIsEditorOpen(true)}>
-          <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+          <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
           Registrar Venta
         </Button>
       </div>
@@ -238,7 +232,7 @@ export default function AdminVentas() {
               error={salesError}
               loadingFallback={<div className="h-48 animate-pulse rounded-lg bg-muted" />}
             >
-              <DataTable columns={columns} data={sales} searchPlaceholder="Buscar por teléfono…" emptyText="No hay ventas en este estado." />
+              <DataTable columns={columns} data={sales} searchPlaceholder="Buscar por vendedor…" emptyText="No hay ventas en este estado." />
             </QueryState>
           </CardContent>
         </Card>
@@ -265,42 +259,6 @@ export default function AdminVentas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!linkFor} onOpenChange={(open) => !open && setLinkFor(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Vincular salida sin factura</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Elegí la salida que corresponde a esta venta. Solo aparecen las que salieron
-            sin factura y siguen pendientes de registrar.
-          </p>
-          <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
-            {pendingSalidas.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No hay salidas pendientes de registrar.
-              </p>
-            ) : (
-              pendingSalidas.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => handleLink(s.id)}
-                  disabled={linking}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent disabled:opacity-50"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium text-foreground">{s.articulo}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {s.destino === 'delivery' ? 'Delivery' : 'Mostrador'} ·{' '}
-                      {new Date(s.salio_at).toLocaleDateString('es-NI')}
-                    </span>
-                  </span>
-                  <HugeiconsIcon icon={Link02Icon} size={16} strokeWidth={2} className="shrink-0 text-muted-foreground" aria-hidden />
-                </button>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

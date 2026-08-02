@@ -110,6 +110,34 @@ const deliverySummarySchema = z.object({
 
 export type DeliverySummary = z.infer<typeof deliverySummarySchema>;
 
+// ── Drilldown (0015_sales_ledger_rpc.sql) ──
+// Las FILAS detrás de cada KPI, para poder auditar de dónde salió el número
+// sin salir de la pantalla.
+
+const salesLedgerRowSchema = z.object({
+  order_id: z.string().uuid(),
+  created_at: z.string(),
+  /** `contacts.name`, o el teléfono si nadie cargó el contacto. */
+  cliente: z.string().nullable(),
+  /** El código impreso (`GS-PR-12`). Null si la venta no se facturó. */
+  invoice_number: z.string().nullable(),
+  total_vendido: z.number(),
+  coste: z.number(),
+  comision: z.number(),
+  ganancia: z.number(),
+});
+
+export type SalesLedgerRow = z.infer<typeof salesLedgerRowSchema>;
+
+const deliveryInvoiceRowSchema = z.object({
+  invoice_number: z.string().nullable(),
+  delivery_fee: z.number(),
+  delivery_name: z.string().nullable(),
+  created_at: z.string(),
+});
+
+export type DeliveryInvoiceRow = z.infer<typeof deliveryInvoiceRowSchema>;
+
 // ============================================================================
 // ── Servicios ──
 // ============================================================================
@@ -293,6 +321,45 @@ export async function getSalesBreakdown(
  * anular el papel no devuelve el envío) y su reparto por repartidor. Solo
  * admin: es plata de la tienda, no de la venta de nadie en particular.
  */
+/**
+ * Una fila por venta aprobada/pagada, con vendido, coste, comisión y ganancia
+ * en la MISMA fila.
+ *
+ * Los pop-ups de Total Vendido, Coste y Ganancia miran este mismo dataset y
+ * solo cambian qué columna imprimen: tres RPCs separados serían tres viajes y
+ * tres escaneos de `orders` para listar lo mismo.
+ *
+ * SENSIBLE: incluye la estructura de costos. Solo admin (ver routes/reports.ts).
+ */
+export async function getSalesLedger(
+  startDate?: string,
+  endDate?: string,
+  sellerUid?: string,
+): Promise<SalesLedgerRow[]> {
+  const { data, error } = await db.rpc('get_sales_ledger', {
+    p_start_date: startDate ?? null,
+    p_end_date: endDate ?? null,
+    p_seller_uid: sellerUid ?? null,
+  });
+
+  if (error) throw error;
+  return parseDbRows(salesLedgerRowSchema, data, 'getSalesLedger');
+}
+
+/** Facturas con envío del periodo, una por fila (pop-up del banner). */
+export async function getDeliveryInvoices(
+  startDate?: string,
+  endDate?: string,
+): Promise<DeliveryInvoiceRow[]> {
+  const { data, error } = await db.rpc('get_delivery_invoices', {
+    p_start_date: startDate ?? null,
+    p_end_date: endDate ?? null,
+  });
+
+  if (error) throw error;
+  return parseDbRows(deliveryInvoiceRowSchema, data, 'getDeliveryInvoices');
+}
+
 export async function getDeliverySummary(
   startDate?: string,
   endDate?: string,

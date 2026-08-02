@@ -52,9 +52,12 @@ export async function toggleAccountStatus(id: string, activo: boolean): Promise<
 
 // ── MOVEMENTS ──
 
+// `salida_id` ya no existe: la columna se cayó con el módulo Salidas
+// (0014_drop_salidas.sql). Dejarla en el SELECT hace fallar la query entera con
+// 42703, no solo ese campo.
 const MOVEMENT_COLUMNS = `
   id, account_id, tipo, monto, categoria, descripcion,
-  salida_id, comprobante_url, ocurrio_at, registrado_por, created_at
+  comprobante_url, ocurrio_at, registrado_por, created_at
 `;
 
 function parseMovementRow(row: any): AccountMovement {
@@ -65,7 +68,6 @@ function parseMovementRow(row: any): AccountMovement {
     monto: row.monto,
     categoria: row.categoria,
     descripcion: row.descripcion,
-    salida_id: row.salida_id,
     comprobante_url: row.comprobante_url,
     ocurrio_at: row.ocurrio_at,
     registrado_por: row.registrado_por,

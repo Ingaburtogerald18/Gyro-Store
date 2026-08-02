@@ -17,6 +17,10 @@ export interface SellableProduct {
   productName: string;
   price: number;
   stock: number;
+  /** Código del primer lote disponible. Se muestra junto al nombre. */
+  code: string | null;
+  /** Todos los códigos con stock: el buscador matchea contra cualquiera. */
+  codes: string[];
 }
 
 // Los campos financieros son OPCIONALES porque el backend los recorta por rol:
@@ -102,6 +106,8 @@ export interface SaleListItem {
   saleOrigin: string;
   sellerUid: string | null;
   sellerEmail: string;
+  /** Nombre registrado en `profiles`. Vacío si nunca se completó el perfil. */
+  sellerName: string;
   weekOf: string | null;
   customerName: string | null;
   phone: string | null;

@@ -7,7 +7,7 @@
 // costo según el rol, así que acá NO se decide quién ve qué — simplemente, si
 // un campo viene `undefined`, esa fila no se renderiza. Un vendedor nunca ve
 // costo real, utilidad ni ganancia de tienda porque no le llegan.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Alert02Icon, ArrowDown01Icon, Invoice01Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 
@@ -28,7 +28,7 @@ export function QuoteSummary({
   return (
     <section className="rounded-card border bg-card p-4 shadow-sm">
       <header className="mb-3 flex items-center gap-2">
-        <HugeiconsIcon icon={Invoice01Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
+        <AnimatedIcon icon={Invoice01Icon} size={16} strokeWidth={2} className="text-primary-2" aria-hidden />
         <h3 className="font-semibold text-foreground">Resumen</h3>
         {loading && <Spinner className="ml-auto" aria-label="Cotizando…" />}
       </header>
@@ -39,7 +39,7 @@ export function QuoteSummary({
         </p>
       ) : !result ? (
         <div className="flex flex-col items-center gap-2 py-8 text-center">
-          <HugeiconsIcon icon={Wallet01Icon} size={32} strokeWidth={2} className="text-muted-foreground opacity-40" aria-hidden />
+          <AnimatedIcon icon={Wallet01Icon} size={32} strokeWidth={2} className="text-muted-foreground opacity-40" aria-hidden />
           <p className="text-sm text-muted-foreground">
             Agregá producto, cantidad y precio para ver la estimación.
           </p>
@@ -117,7 +117,7 @@ function LineBreakdown({ line }: { line: QuoteLine }) {
             {line.quantity} × {formatCordobas(line.precioUnit)} = {formatCordobas(importe)}
           </span>
         </span>
-        <HugeiconsIcon
+        <AnimatedIcon
           icon={ArrowDown01Icon}
           size={14}
           strokeWidth={2}
@@ -134,13 +134,13 @@ function LineBreakdown({ line }: { line: QuoteLine }) {
           {/* Avisos que bloquean el registro */}
           {line.insufficientStock && (
             <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
-              <HugeiconsIcon icon={Alert02Icon} size={13} strokeWidth={2} className="shrink-0" aria-hidden />
+              <AnimatedIcon icon={Alert02Icon} size={13} strokeWidth={2} className="shrink-0" aria-hidden />
               Stock insuficiente — disponible: {line.available}.
             </p>
           )}
           {line.belowMinMargin && (
             <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
-              <HugeiconsIcon icon={Alert02Icon} size={13} strokeWidth={2} className="shrink-0" aria-hidden />
+              <AnimatedIcon icon={Alert02Icon} size={13} strokeWidth={2} className="shrink-0" aria-hidden />
               El precio queda por debajo del margen mínimo.
             </p>
           )}

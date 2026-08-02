@@ -3,8 +3,7 @@ import type { AccountBalance } from '../../../../server/services/caja';
 import type { FinancialKPIs } from '../../../../server/services/reports';
 
 export interface CuadreDashboard {
-  salidasPendientes: number;
-  deliveriesPorLiquidar: number;
+  ventasPendientes: number;
   saldosCuentas: AccountBalance[];
   kpisHoy: FinancialKPIs;
 }

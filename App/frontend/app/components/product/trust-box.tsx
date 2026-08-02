@@ -2,7 +2,7 @@
 // compra. Contenido fijo — es copy de confianza de la tienda, no dato del
 // producto. Va debajo de la galería en desktop y tras el bloque de compra en
 // móvil (lo decide el orden en producto.$id.tsx).
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import {
   DeliveryTruck01Icon,
   HeadsetIcon,
@@ -39,7 +39,7 @@ export function TrustBox() {
     <ul className="grid grid-cols-2 gap-2" aria-label="Garantías de compra">
       {ITEMS.map((item) => (
         <li key={item.title} className="rounded-xl border p-4">
-          <HugeiconsIcon
+          <AnimatedIcon
             icon={item.icon}
             size={20}
             strokeWidth={2}

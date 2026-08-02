@@ -9,7 +9,7 @@
 //
 // PENDIENTE del Hito 2: los controles de edición en vivo (mover, editar y
 // borrar slides) llegan con el modo edición del admin.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowLeft01Icon, ArrowRight01Icon, ArrowRight02Icon, Message01Icon, PauseIcon, PlayIcon } from "@hugeicons/core-free-icons";
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from '@remix-run/react';
@@ -143,7 +143,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                       className="group/cta w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
                       <span className="truncate">{activeSlide.buttonText || 'Ver catálogo'}</span>
-                      <HugeiconsIcon icon={ArrowRight02Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1" />
+                      <AnimatedIcon icon={ArrowRight02Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1" />
                     </Button>
 
                     <Button
@@ -151,7 +151,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                       onClick={() => window.open(whatsappOrderUrl, '_blank', 'noopener,noreferrer')}
                       className="group/wa w-full justify-center rounded-xl py-2 text-[12px] sm:w-auto sm:px-6 sm:py-2.5 sm:text-sm"
                     >
-                      <HugeiconsIcon icon={Message01Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/wa:scale-110" />
+                      <AnimatedIcon icon={Message01Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0 transition-transform duration-300 group-hover/wa:scale-110" />
                       <span className="truncate">WhatsApp</span>
                     </Button>
                   </div>
@@ -175,9 +175,9 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
               className="h-11 w-11 rounded-full bg-white/5 md:h-7 md:w-7"
             >
               {playing ? (
-                <HugeiconsIcon icon={PauseIcon} size={14} strokeWidth={2} aria-hidden className="fill-current" />
+                <AnimatedIcon icon={PauseIcon} size={14} strokeWidth={2} aria-hidden className="fill-current" />
               ) : (
-                <HugeiconsIcon icon={PlayIcon} size={14} strokeWidth={2} aria-hidden className="ml-0.5 fill-current" />
+                <AnimatedIcon icon={PlayIcon} size={14} strokeWidth={2} aria-hidden className="ml-0.5 fill-current" />
               )}
             </Button>
 
@@ -195,7 +195,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                 aria-label="Diapositiva anterior"
                 className="h-11 w-11 rounded-full md:h-7 md:w-7"
               >
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} aria-hidden />
               </Button>
 
               <div className="mx-1 flex items-center gap-1">
@@ -247,7 +247,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                 aria-label="Siguiente diapositiva"
                 className="h-11 w-11 rounded-full md:h-7 md:w-7"
               >
-                <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} aria-hidden />
               </Button>
             </div>
           </div>

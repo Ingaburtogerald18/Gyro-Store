@@ -8,7 +8,7 @@
 //
 // Las facturas ANULADAS también cuentan: anular el papel no devuelve la plata
 // del envío que ya salió. Se muestran aparte para que el total sea auditable.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { TruckIcon } from '@hugeicons/core-free-icons';
 
 import { SpotlightCard } from '~/components/ui/stat-card';
@@ -27,8 +27,8 @@ export function DeliveryCard({ range }: { range: PeriodRange }) {
 
   return (
     <SpotlightCard variant="highlight" className="p-5">
-      <div className="mb-4 flex items-center gap-2 border-b border pb-4">
-        <HugeiconsIcon icon={TruckIcon} size={20} strokeWidth={2} className="text-primary" />
+      <div className="mb-4 flex items-center gap-2 border-b pb-4">
+        <AnimatedIcon icon={TruckIcon} size={20} strokeWidth={2} className="text-primary" />
         <h3 className="font-semibold text-foreground">Delivery</h3>
       </div>
 

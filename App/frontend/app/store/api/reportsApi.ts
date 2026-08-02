@@ -74,6 +74,27 @@ export interface SalesBreakdown {
   by_installment: BreakdownGroup[];
 }
 
+/** Una fila por venta: alimenta los pop-ups de Vendido, Coste y Ganancia. */
+export interface SalesLedgerRow {
+  order_id: string;
+  created_at: string;
+  /** Nombre del contacto, o el teléfono si nadie lo cargó. */
+  cliente: string | null;
+  /** Código impreso (`GS-PR-12`). Null si la venta no se facturó. */
+  invoice_number: string | null;
+  total_vendido: number;
+  coste: number;
+  comision: number;
+  ganancia: number;
+}
+
+export interface DeliveryInvoiceRow {
+  invoice_number: string | null;
+  delivery_fee: number;
+  delivery_name: string | null;
+  created_at: string;
+}
+
 export interface DeliverySummary {
   /** Delivery de TODAS las facturas del periodo, anuladas incluidas. */
   total_delivery: number;
@@ -121,6 +142,14 @@ export const reportsApi = baseApi.injectEndpoints({
       query: (params) => ({ url: 'reports/delivery', params: params ?? undefined }),
       providesTags: ['Invoice'],
     }),
+    getSalesLedger: build.query<SalesLedgerRow[], KpiParams | void>({
+      query: (params) => ({ url: 'reports/sales-ledger', params: params ?? undefined }),
+      providesTags: ['Sale', 'Invoice'],
+    }),
+    getDeliveryInvoices: build.query<DeliveryInvoiceRow[], KpiParams | void>({
+      query: (params) => ({ url: 'reports/delivery-invoices', params: params ?? undefined }),
+      providesTags: ['Invoice'],
+    }),
   }),
 });
 
@@ -135,4 +164,6 @@ export const {
   useGetTopProductsQuery,
   useGetSalesBreakdownQuery,
   useGetDeliverySummaryQuery,
+  useGetSalesLedgerQuery,
+  useGetDeliveryInvoicesQuery,
 } = reportsApi;

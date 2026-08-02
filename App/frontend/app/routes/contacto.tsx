@@ -4,7 +4,7 @@
 // correo; v2 captura el lead directo en el CRM (POST /api/contact →
 // services/crm.ts), así que ahora el teléfono es obligatorio (es la llave de
 // `contacts.phone`) en vez de opcional.
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Location01Icon } from "@hugeicons/core-free-icons";
 import type { MetaFunction } from '@remix-run/node';
 import { useForm } from 'react-hook-form';
@@ -91,7 +91,7 @@ export default function Contacto() {
                 rel="noreferrer"
                 className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               >
-                <HugeiconsIcon icon={Location01Icon} size={16} strokeWidth={2} aria-hidden /> Managua, Nicaragua
+                <AnimatedIcon icon={Location01Icon} size={16} strokeWidth={2} aria-hidden /> Managua, Nicaragua
               </a>
             </div>
           </div>

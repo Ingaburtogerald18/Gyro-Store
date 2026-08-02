@@ -8,7 +8,7 @@
 //
 // Se vincula a varios lotes porque un lote se agota y entra otro del mismo
 // artículo: mientras alguno tenga unidades, la variante se sigue vendiendo.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Add01Icon, Alert02Icon, Cancel01Icon, PackageIcon, Search01Icon } from '@hugeicons/core-free-icons';
 import { useMemo, useState } from 'react';
 
@@ -229,7 +229,7 @@ function VariantRow({
               key={code}
               className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-2.5 py-1.5"
             >
-              <HugeiconsIcon icon={PackageIcon} size={14} strokeWidth={2} className="shrink-0 text-primary" />
+              <AnimatedIcon icon={PackageIcon} size={14} strokeWidth={2} className="shrink-0 text-primary" />
               <span className="min-w-0 flex-1 truncate text-xs">
                 <span className="font-bold text-primary">[{code}]</span>{' '}
                 <span className="text-foreground">{lot?.productName ?? 'Lote no encontrado en bodega'}</span>
@@ -244,7 +244,7 @@ function VariantRow({
                 aria-label={`Quitar lote ${code}`}
                 onClick={() => onUpdate(codes.filter((c) => c !== code), price)}
               >
-                <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                <AnimatedIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
               </Button>
             </div>
           );
@@ -314,7 +314,7 @@ function LotPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs">
-          <HugeiconsIcon icon={hasLots ? Add01Icon : Search01Icon} size={14} strokeWidth={2} />
+          <AnimatedIcon icon={hasLots ? Add01Icon : Search01Icon} size={14} strokeWidth={2} />
           {hasLots ? 'Vincular otro lote' : 'Vincular lote de bodega'}
         </Button>
       </PopoverTrigger>
@@ -324,7 +324,7 @@ function LotPicker({
           <CommandList>
             <CommandEmpty>
               <span className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
-                <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={2} />
+                <AnimatedIcon icon={Alert02Icon} size={14} strokeWidth={2} />
                 No hay lotes con stock sin vincular.
               </span>
             </CommandEmpty>
@@ -341,7 +341,7 @@ function LotPicker({
                   }}
                   className="gap-2"
                 >
-                  <HugeiconsIcon
+                  <AnimatedIcon
                     icon={PackageIcon}
                     size={14}
                     strokeWidth={2}

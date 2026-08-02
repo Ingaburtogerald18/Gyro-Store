@@ -1,6 +1,6 @@
 // Códigos de descuento (Centro de Administración).
 // Incluye historial completo de canjes y KPIs.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { 
   Add01Icon, 
   Coupon01Icon, 
@@ -116,7 +116,7 @@ export default function AdminDiscountCodes() {
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogTrigger asChild>
             <Button>
-              <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2.5} className="mr-1.5" aria-hidden />
+              <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2.5} className="mr-1.5" aria-hidden />
               Generar Código
             </Button>
           </DialogTrigger>
@@ -241,7 +241,7 @@ export default function AdminDiscountCodes() {
             </div>
           ) : filteredData.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center text-muted-foreground">
-              <HugeiconsIcon icon={Coupon01Icon} size={32} className="mb-2 opacity-50" />
+              <AnimatedIcon icon={Coupon01Icon} size={32} className="mb-2 opacity-50" />
               <p className="text-sm">No se encontraron códigos.</p>
             </div>
           ) : (
@@ -272,7 +272,7 @@ export default function AdminDiscountCodes() {
                           )}
                         >
                           {d.code}
-                          <HugeiconsIcon icon={Copy01Icon} size={12} className="text-muted-foreground" aria-hidden />
+                          <AnimatedIcon icon={Copy01Icon} size={12} className="text-muted-foreground" aria-hidden />
                         </button>
                         <span className={cn(
                           "rounded-full px-2 py-0.5 text-xs font-semibold",
@@ -300,7 +300,7 @@ export default function AdminDiscountCodes() {
                             "mt-0.5 rounded-full p-1.5",
                             d.redeemedSource === 'checkout' ? "bg-tone-indigo/10 text-tone-indigo" : "bg-tone-amber/10 text-tone-amber"
                           )}>
-                            <HugeiconsIcon 
+                            <AnimatedIcon 
                               icon={d.redeemedSource === 'checkout' ? ShoppingCart01Icon : Invoice01Icon} 
                               size={14} 
                             />
@@ -346,7 +346,7 @@ export default function AdminDiscountCodes() {
                             d.active ? "text-muted-foreground hover:bg-tone-red/10 hover:text-tone-red" : "text-tone-emerald hover:bg-tone-emerald/10"
                           )}
                         >
-                          <HugeiconsIcon icon={PowerServiceIcon} size={16} strokeWidth={2} aria-hidden />
+                          <AnimatedIcon icon={PowerServiceIcon} size={16} strokeWidth={2} aria-hidden />
                         </button>
                       )}
                     </div>

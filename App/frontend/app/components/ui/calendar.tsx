@@ -1,6 +1,6 @@
 "use client"
 
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import * as React from "react"
 import {
@@ -149,18 +149,18 @@ function Calendar({
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={2} className={cn("size-4", className)} {...props} />
+              <AnimatedIcon icon={ArrowLeft01Icon} gesture="nudge-x" size={16} strokeWidth={2} className={cn("size-4", className)} {...props} />
             )
           }
 
           if (orientation === "right") {
             return (
-              <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} className={cn("size-4", className)} {...props} />
+              <AnimatedIcon icon={ArrowRight01Icon} gesture="nudge-x" size={16} strokeWidth={2} className={cn("size-4", className)} {...props} />
             )
           }
 
           return (
-            <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={2} className={cn("size-4", className)} {...props} />
+            <AnimatedIcon icon={ArrowDown01Icon} gesture="nudge-y" size={16} strokeWidth={2} className={cn("size-4", className)} {...props} />
           )
         },
         DayButton: ({ ...props }) => (

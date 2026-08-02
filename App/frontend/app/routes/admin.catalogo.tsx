@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, DashboardSquare01Icon, Delete02Icon, Edit02Icon, Package01Icon, Search01Icon, SquareIcon, Tag01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
@@ -141,10 +141,10 @@ export default function AdminCatalogo() {
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList className="bg-card border">
-            <TabsTrigger value="catalog" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={Package01Icon} size={16} strokeWidth={2} className="mr-2" /> Artículos</TabsTrigger>
-            <TabsTrigger value="categories" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={Tag01Icon} size={16} strokeWidth={2} className="mr-2" /> Categorías</TabsTrigger>
-            <TabsTrigger value="templates" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={DashboardSquare01Icon} size={16} strokeWidth={2} className="mr-2" /> Templates</TabsTrigger>
-            <TabsTrigger value="combos" className="data-[state=active]:bg-muted"><HugeiconsIcon icon={SquareIcon} size={16} strokeWidth={2} className="mr-2" /> Combos</TabsTrigger>
+            <TabsTrigger value="catalog" className="data-[state=active]:bg-muted"><AnimatedIcon icon={Package01Icon} size={16} strokeWidth={2} className="mr-2" /> Artículos</TabsTrigger>
+            <TabsTrigger value="categories" className="data-[state=active]:bg-muted"><AnimatedIcon icon={Tag01Icon} size={16} strokeWidth={2} className="mr-2" /> Categorías</TabsTrigger>
+            <TabsTrigger value="templates" className="data-[state=active]:bg-muted"><AnimatedIcon icon={DashboardSquare01Icon} size={16} strokeWidth={2} className="mr-2" /> Templates</TabsTrigger>
+            <TabsTrigger value="combos" className="data-[state=active]:bg-muted"><AnimatedIcon icon={SquareIcon} size={16} strokeWidth={2} className="mr-2" /> Combos</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -153,7 +153,7 @@ export default function AdminCatalogo() {
         <TabsContent value="catalog" className="space-y-4 outline-none">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="relative flex-1 max-w-sm w-full">
-              <HugeiconsIcon icon={Search01Icon} size={16} strokeWidth={2} className="absolute left-2.5 top-2.5 text-muted-foreground" />
+              <AnimatedIcon icon={Search01Icon} size={16} strokeWidth={2} className="absolute left-2.5 top-2.5 text-muted-foreground" />
               <Input 
                 placeholder="Buscar productos..." 
                 className="pl-9 bg-card border focus-visible:ring-ring text-foreground w-full"
@@ -161,7 +161,7 @@ export default function AdminCatalogo() {
             </div>
 
             <Button onClick={handleOpenCreate} className="font-bold h-10">
-              <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+              <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
               Nuevo Producto
             </Button>
       </div>
@@ -182,11 +182,11 @@ export default function AdminCatalogo() {
         emptyFallback={
           <Card className="border-dashed bg-card">
             <CardContent className="flex flex-col items-center justify-center py-16">
-              <HugeiconsIcon icon={Tag01Icon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
+              <AnimatedIcon icon={Tag01Icon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground">Catálogo vacío</h3>
               <p className="text-muted-foreground text-sm mt-1 mb-4 text-center max-w-sm">No hay productos registrados. Comienza agregando tu primer artículo.</p>
               <Button onClick={handleOpenCreate}>
-                <HugeiconsIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
+                <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} className="mr-2" />
                 Agregar producto
               </Button>
             </CardContent>
@@ -260,7 +260,7 @@ export default function AdminCatalogo() {
                           size="icon" 
                           onClick={() => { setEditingCategoryId(c.id); setCategoryFormData({ name: c.name, slug: c.slug }); }}
                         >
-                          <HugeiconsIcon icon={Edit02Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
+                          <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} className="text-muted-foreground" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -268,7 +268,7 @@ export default function AdminCatalogo() {
                           className="hover:bg-destructive/20 hover:text-destructive"
                           onClick={() => handleDeleteCategory(c.id)}
                         >
-                          <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                          <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
                         </Button>
                       </div>
                     </div>
@@ -286,7 +286,7 @@ export default function AdminCatalogo() {
       <TabsContent value="combos" className="outline-none">
         <Card className="bg-card border border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <HugeiconsIcon icon={SquareIcon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
+            <AnimatedIcon icon={SquareIcon} size={48} strokeWidth={2} className="text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium text-foreground">Combos (Próximamente)</h3>
             <p className="text-muted-foreground text-sm mt-1 text-center max-w-sm">Administra ofertas y agrupaciones de productos.</p>
           </CardContent>

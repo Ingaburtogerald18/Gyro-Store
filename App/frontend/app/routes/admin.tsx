@@ -1,5 +1,6 @@
-import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, PackageOpenIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import type { IconSvgElement } from "@hugeicons/react";
+import { AnimatedIcon, type IconGesture } from "~/components/ui/animated-icons";
+import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
 import { toast } from 'sonner';
@@ -31,7 +32,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
@@ -42,6 +42,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '~/components/ui/sidebar';
+import { cn } from '~/lib/utils';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
@@ -55,6 +56,12 @@ interface NavItem {
   icon: IconSvgElement;
   end?: boolean;
   ready?: boolean;
+  /**
+   * Gesto del icono al hacer click. Cada módulo tiene el suyo para que el nav
+   * no se sienta una lista de doce cosas iguales: el gesto ayuda a reconocer
+   * dónde estás picando sin leer la etiqueta.
+   */
+  gesture?: IconGesture;
 }
 
 interface NavGroup {
@@ -66,29 +73,31 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operación',
     items: [
-      { name: 'Dashboard', to: '/admin', icon: DashboardSquare01Icon, end: true, ready: true },
-      { name: 'Salidas', to: '/admin/salidas', icon: PackageOpenIcon, ready: true },
-      { name: 'Inventario', to: '/admin/inventario', icon: PackageIcon, ready: true },
-      { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart02Icon, ready: true },
-      { name: 'Cuotas', to: '/admin/cuotas', icon: CreditCardIcon, ready: true },
-      { name: 'Caja y banco', to: '/admin/caja', icon: Wallet01Icon, ready: true },
+      { name: 'Reportería', to: '/admin', icon: DashboardSquare01Icon, end: true, ready: true, gesture: 'draw' },
+      // `nudge-y`: el paquete "cae", como stock que se apila.
+      { name: 'Inventario', to: '/admin/inventario', icon: PackageIcon, ready: true, gesture: 'nudge-y' },
+      { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart02Icon, ready: true, gesture: 'pop' },
+      { name: 'Cuotas', to: '/admin/cuotas', icon: CreditCardIcon, ready: true, gesture: 'nudge-x' },
+      { name: 'Caja y banco', to: '/admin/caja', icon: Wallet01Icon, ready: true, gesture: 'pop' },
     ],
   },
   {
     label: 'Tienda',
     items: [
-      { name: 'Catálogo', to: '/admin/catalogo', icon: Package01Icon, ready: true },
-      { name: 'Facturación', to: '/admin/facturacion', icon: File01Icon, ready: true },
-      { name: 'Códigos de descuento', to: '/admin/codigos-descuento', icon: Coupon01Icon, ready: true },
+      { name: 'Catálogo', to: '/admin/catalogo', icon: Package01Icon, ready: true, gesture: 'draw' },
+      { name: 'Facturación', to: '/admin/facturacion', icon: File01Icon, ready: true, gesture: 'draw' },
+      { name: 'Códigos de descuento', to: '/admin/codigos-descuento', icon: Coupon01Icon, ready: true, gesture: 'pop' },
     ],
   },
   {
     label: 'Análisis y sistema',
     items: [
-      { name: 'Logística', to: '/admin/logistica', icon: TruckIcon, ready: false },
-      { name: 'CRM y clientes', to: '/admin/crm', icon: UserMultiple02Icon, ready: false },
-      { name: 'Personal', to: '/admin/usuarios', icon: UserSettings01Icon, ready: true },
-      { name: 'Configuración', to: '/admin/configuracion', icon: Settings02Icon, ready: true },
+      // Los dos primeros están apagados (`ready: false`): el gesto queda
+      // declarado para el día que se enciendan, pero no se dispara.
+      { name: 'Logística', to: '/admin/logistica', icon: TruckIcon, ready: false, gesture: 'nudge-x' },
+      { name: 'CRM y clientes', to: '/admin/crm', icon: UserMultiple02Icon, ready: false, gesture: 'pop' },
+      { name: 'Personal', to: '/admin/usuarios', icon: UserSettings01Icon, ready: true, gesture: 'draw' },
+      { name: 'Configuración', to: '/admin/configuracion', icon: Settings02Icon, ready: true, gesture: 'pop' },
     ],
   },
 ];
@@ -138,54 +147,52 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <SidebarHeader className="relative overflow-hidden transition-[height] duration-200 ease-linear group-data-[collapsible=icon]:h-14 h-16 flex items-center justify-start p-4">
-          
-          {/* Expanded View */}
-          <div className="absolute inset-0 flex items-center justify-start px-4 opacity-100 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none gap-3">
-            {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
-              config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
-                <video 
-                  src={config.images.logoAnimated} 
-                  autoPlay loop muted playsInline 
-                  className="size-10 object-contain rounded-full"
-                />
-              ) : (
-                <img 
-                  src={config?.images?.logoStatic || config?.images?.logoAnimated} 
-                  alt="Gyro Store Logo" 
-                  className="size-10 object-contain"
-                />
-              )
-            ) : (
-              <div className="flex size-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-                <HugeiconsIcon icon={Store01Icon} size={24} strokeWidth={2} />
-              </div>
-            )}
-            <div className="flex flex-col items-start leading-tight">
-              <span className="font-bold text-lg tracking-tight whitespace-nowrap">Gyro Store</span>
-              <span className="text-[10px] text-muted-foreground whitespace-nowrap uppercase tracking-wider font-medium">Panel admin</span>
-            </div>
-          </div>
-  
-          {/* Collapsed View (Icon) */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:pointer-events-auto pointer-events-none">
-            <NavLink to="/admin" className="flex aspect-square size-10 items-center justify-center rounded-lg hover:opacity-80 transition-opacity overflow-hidden">
-               {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
-                 config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
-                   <video src={config.images.logoAnimated} autoPlay loop muted playsInline className="size-full object-contain rounded-full" />
-                 ) : (
-                   <img src={config?.images?.logoStatic || config?.images?.logoAnimated} alt="Logo" className="size-full object-contain" />
-                 )
-               ) : (
-                 <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:opacity-90 transition-opacity">
-                   <HugeiconsIcon icon={Store01Icon} size={24} strokeWidth={2} />
-                 </div>
-               )}
-            </NavLink>
-          </div>
-        </SidebarHeader>
+      {/* La marca va DENTRO de SidebarContent, no en un SidebarHeader.
+          `SidebarHeader` es un hermano flex del contenido, así que quedaba
+          clavado arriba mientras el menú se centraba: logo y botones sin
+          relación visual. Metiéndola acá, marca + navegación son un solo bloque
+          y el `safe center` los centra juntos.
 
-      <SidebarContent>
+          `safe center` y no `justify-center` a secas: con doce módulos + labels,
+          en una ventana baja el contenido es más alto que el sidebar. Con
+          centrado normal el desborde se reparte arriba y abajo y la parte de
+          arriba queda INALCANZABLE al scrollear. `safe` centra mientras entra y
+          cae a alineado-al-tope cuando no. */}
+      <SidebarContent className="[justify-content:safe_center]">
+        <NavLink
+          to="/admin"
+          className="flex shrink-0 flex-col items-center gap-2 rounded-lg px-2 py-4 transition-opacity hover:opacity-80 group-data-[collapsible=icon]:py-2"
+        >
+          {(config?.images?.logoStatic || config?.images?.logoAnimated) ? (
+            config?.images?.logoAnimated?.match(/\.(webm|mp4|mov|m4v)($|\?)/i) || config?.images?.logoAnimated?.includes('video') ? (
+              <video
+                src={config.images.logoAnimated}
+                autoPlay loop muted playsInline
+                className="size-12 shrink-0 rounded-full object-contain transition-[width,height] duration-200 group-data-[collapsible=icon]:size-8"
+              />
+            ) : (
+              <img
+                src={config?.images?.logoStatic || config?.images?.logoAnimated}
+                alt="Gyro Store"
+                className="size-12 shrink-0 object-contain transition-[width,height] duration-200 group-data-[collapsible=icon]:size-8"
+              />
+            )
+          ) : (
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-[width,height] duration-200 group-data-[collapsible=icon]:size-8">
+              <AnimatedIcon icon={Store01Icon} size={24} strokeWidth={2} />
+            </div>
+          )}
+
+          {/* `hidden` y no `opacity-0`: en el rail colapsado el texto no debe
+              ocupar alto, o dejaría un hueco vacío arriba de los iconos. */}
+          <div className="flex flex-col items-center text-center leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="whitespace-nowrap text-lg font-bold tracking-tight">Gyro Store</span>
+            <span className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Panel Admin
+            </span>
+          </div>
+        </NavLink>
+
         {NAV_GROUPS.map((group) => {
           // Quien no es admin solo ve su operación diaria.
           const allowedItems = group.items.filter((item) =>
@@ -209,10 +216,10 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                         <SidebarMenuButton
                           disabled
                           tooltip="Próximamente"
-                          className="cursor-not-allowed opacity-40"
+                          className="cursor-not-allowed opacity-40 [&_svg]:size-6 group-data-[collapsible=icon]:size-10!"
                         >
-                          <HugeiconsIcon icon={item.icon} size={22} strokeWidth={2} />
-                          <span className="text-[15px]">{item.name}</span>
+                          <AnimatedIcon icon={item.icon} size={24} strokeWidth={2} />
+                          <span className="text-[17px]">{item.name}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -227,15 +234,32 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                           transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.15, duration: 0.5 }}
                         />
                       )}
+                      {/* Dos overrides sobre `sidebarMenuButtonVariants`:
+                          · `[&_svg]:size-6` pisa el `[&_svg]:size-4` que la
+                            primitiva fuerza sobre TODO svg — por eso el `size`
+                            del icono no se veía.
+                          · `size-10!` pisa el `size-8!` del estado colapsado.
+                            Sin esto el botón queda en 32 px con 8 px de padding
+                            y su `overflow-hidden` recorta el icono de 24 px.
+                            Cabe porque el rail pasó a 56 px. */}
                       <SidebarMenuButton
                         asChild
                         isActive={false}
                         tooltip={item.name}
-                        className={isActive ? "relative z-10 text-primary-foreground font-medium hover:bg-transparent hover:text-primary-foreground" : ""}
+                        className={cn(
+                          "[&_svg]:size-6 group-data-[collapsible=icon]:size-10!",
+                          isActive && "relative z-10 text-primary-foreground font-medium hover:bg-transparent hover:text-primary-foreground",
+                        )}
                       >
                         <NavLink to={item.to} end={item.end} prefetch="intent">
-                          <HugeiconsIcon icon={item.icon} size={22} strokeWidth={2} />
-                          <span className="text-[15px]">{item.name}</span>
+                          <AnimatedIcon
+                            icon={item.icon}
+                            trigger="press"
+                            gesture={item.gesture ?? 'draw'}
+                            size={24}
+                            strokeWidth={2}
+                          />
+                          <span className="text-[17px]">{item.name}</span>
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -252,7 +276,7 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Ver tienda">
               <NavLink to="/">
-                <HugeiconsIcon icon={SparklesIcon} size={16} strokeWidth={2} />
+                <AnimatedIcon icon={SparklesIcon} size={16} strokeWidth={2} />
                 <span>Ver tienda</span>
               </NavLink>
             </SidebarMenuButton>
@@ -406,7 +430,7 @@ export default function AdminLayout() {
                   <BreadcrumbSeparator className="hidden sm:block" />
                   <BreadcrumbItem>
                     <BreadcrumbPage className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={current.icon} size={16} strokeWidth={2} className="shrink-0" />
+                      <AnimatedIcon icon={current.icon} size={16} strokeWidth={2} className="shrink-0" />
                       {current.name}
                     </BreadcrumbPage>
                   </BreadcrumbItem>
@@ -444,7 +468,7 @@ export default function AdminLayout() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
-                    <HugeiconsIcon icon={Logout03Icon} size={16} strokeWidth={2} className="mr-2" />
+                    <AnimatedIcon icon={Logout03Icon} size={16} strokeWidth={2} className="mr-2" />
                     <span>Cerrar sesión</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

@@ -1,6 +1,6 @@
 // Ranking del equipo de ventas. Solo admin: el endpoint responde 403 a
 // cualquier otro rol, así que este componente nunca debe montarse fuera de ahí.
-import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Award01Icon } from '@hugeicons/core-free-icons';
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -61,8 +61,8 @@ export function SellerRanking({ range }: { range: PeriodRange }) {
 
   return (
     <SpotlightCard variant="default" className="p-5">
-      <div className="mb-4 flex items-center gap-2 border-b border pb-4">
-        <HugeiconsIcon icon={Award01Icon} size={20} strokeWidth={2} className="text-primary" />
+      <div className="mb-4 flex items-center gap-2 border-b pb-4">
+        <AnimatedIcon icon={Award01Icon} size={20} strokeWidth={2} className="text-primary" />
         <h3 className="font-semibold text-foreground">Ranking de vendedores</h3>
       </div>
 

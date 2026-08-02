@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import {
   Delete02Icon,
   MoreVerticalIcon,
@@ -150,7 +150,7 @@ function UserCard({
               {user.name}
             </span>
             {isProtected && (
-              <HugeiconsIcon
+              <AnimatedIcon
                 icon={Shield01Icon}
                 size={14}
                 strokeWidth={2}
@@ -184,7 +184,7 @@ function UserCard({
             onClick={onEdit}
             className="flex-1 gap-1.5"
           >
-            <HugeiconsIcon icon={UserSettings01Icon} size={16} strokeWidth={2} aria-hidden />
+            <AnimatedIcon icon={UserSettings01Icon} size={16} strokeWidth={2} aria-hidden />
             Editar
           </Button>
           <Button
@@ -193,7 +193,7 @@ function UserCard({
             onClick={onPerformance}
             className="flex-1 gap-1.5"
           >
-            <HugeiconsIcon icon={PieChartIcon} size={16} strokeWidth={2} aria-hidden />
+            <AnimatedIcon icon={PieChartIcon} size={16} strokeWidth={2} aria-hidden />
             Rendimiento
           </Button>
 
@@ -204,7 +204,7 @@ function UserCard({
                 size="icon"
                 className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
               >
-                <HugeiconsIcon icon={MoreVerticalIcon} size={16} strokeWidth={2} />
+                <AnimatedIcon icon={MoreVerticalIcon} size={16} strokeWidth={2} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -229,7 +229,7 @@ function UserCard({
                         onClick={onSuspend}
                         className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
                       >
-                        <HugeiconsIcon icon={UserRemove01Icon} size={16} strokeWidth={2} className="mr-2" />
+                        <AnimatedIcon icon={UserRemove01Icon} size={16} strokeWidth={2} className="mr-2" />
                         Dar de baja
                       </DropdownMenuItem>
                     </>
@@ -242,7 +242,7 @@ function UserCard({
                     onClick={onRestore}
                     className="cursor-pointer text-primary focus:bg-primary/10 focus:text-primary"
                   >
-                    <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className="mr-2" />
+                    <AnimatedIcon icon={RefreshIcon} size={16} strokeWidth={2} className="mr-2" />
                     Restaurar
                   </DropdownMenuItem>
                   {!isProtected && (
@@ -250,7 +250,7 @@ function UserCard({
                       onClick={onDelete}
                       className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
                     >
-                      <HugeiconsIcon icon={Delete02Icon} size={16} strokeWidth={2} className="mr-2" />
+                      <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} className="mr-2" />
                       Eliminar
                     </DropdownMenuItem>
                   )}
@@ -280,7 +280,7 @@ function PerformanceTab({ userId }: { userId: string }) {
       }
       emptyFallback={
         <div className="p-8 text-center text-muted-foreground">
-          <HugeiconsIcon icon={PieChartIcon} size={32} strokeWidth={2} className="mx-auto mb-2 opacity-50" aria-hidden />
+          <AnimatedIcon icon={PieChartIcon} size={32} strokeWidth={2} className="mx-auto mb-2 opacity-50" aria-hidden />
           Sin datos de rendimiento disponibles.
         </div>
       }
@@ -518,7 +518,7 @@ export default function AdminUsuarios() {
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="default">
-                <HugeiconsIcon icon={UserAdd01Icon} size={16} strokeWidth={2} className="mr-2" />
+                <AnimatedIcon icon={UserAdd01Icon} size={16} strokeWidth={2} className="mr-2" />
                 Agregar Empleado
               </Button>
             </DialogTrigger>
@@ -586,12 +586,12 @@ export default function AdminUsuarios() {
           <CardTitle className="flex items-center gap-2 text-lg">
             {currentTab === "activos" ? (
               <>
-                <HugeiconsIcon icon={Shield01Icon} size={20} strokeWidth={2} className="text-primary" />
+                <AnimatedIcon icon={Shield01Icon} size={20} strokeWidth={2} className="text-primary" />
                 Personal Activo
               </>
             ) : (
               <>
-                <HugeiconsIcon icon={UserRemove01Icon} size={20} strokeWidth={2} className="text-destructive" />
+                <AnimatedIcon icon={UserRemove01Icon} size={20} strokeWidth={2} className="text-destructive" />
                 Papelera (30 días)
               </>
             )}
@@ -614,7 +614,7 @@ export default function AdminUsuarios() {
             }
             emptyFallback={
               <div className="p-12 text-center text-muted-foreground">
-                <HugeiconsIcon
+                <AnimatedIcon
                   icon={UserSettings01Icon}
                   size={32}
                   strokeWidth={2}
@@ -925,7 +925,7 @@ export default function AdminUsuarios() {
                       onClick={handleSaveProfile}
                       disabled={isUpdatingProfile}
                     >
-                      <HugeiconsIcon
+                      <AnimatedIcon
                         icon={RefreshIcon}
                         size={16}
                         strokeWidth={2}
@@ -945,7 +945,7 @@ export default function AdminUsuarios() {
                         }}
                         disabled={isProtectedUser(selectedUser)}
                       >
-                        <HugeiconsIcon icon={UserRemove01Icon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
+                        <AnimatedIcon icon={UserRemove01Icon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
                         Archivar (Dar de baja)
                       </Button>
                     ) : (
@@ -957,7 +957,7 @@ export default function AdminUsuarios() {
                           setSelectedUser(null);
                         }}
                       >
-                        <HugeiconsIcon icon={RefreshIcon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
+                        <AnimatedIcon icon={RefreshIcon} size={16} strokeWidth={2} className="mr-2" aria-hidden />
                         Restaurar Usuario
                       </Button>
                     )}

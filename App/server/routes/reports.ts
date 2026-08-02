@@ -29,6 +29,8 @@ import {
   getTopProducts,
   getSalesBreakdown,
   getDeliverySummary,
+  getSalesLedger,
+  getDeliveryInvoices,
 } from '../services/reports';
 import { parseCursor } from '../utils/pagination';
 import { BadRequestError } from '../utils/httpError';
@@ -199,6 +201,48 @@ router.get(
 
     const { startDate, endDate } = parsed.data;
     res.json(await getDeliverySummary(startDate, endDate));
+  })
+);
+
+/**
+ * GET /api/reports/sales-ledger
+ * Las filas detrás de los KPIs: una por venta, con vendido, coste, comisión y
+ * ganancia.
+ *
+ * `requireAdmin` y NO el recorte por vendedor que usan `/kpis` y `/trend`: acá
+ * el coste y la ganancia de tienda son el contenido principal, no un campo que
+ * se pueda podar. Un vendedor no tiene por qué ver el margen de la tienda ni
+ * siquiera de sus propias ventas (mismo criterio que POST /api/sales/quote).
+ */
+router.get(
+  '/sales-ledger',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const parsed = dateRangeSchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new BadRequestError(INVALID_RANGE);
+    }
+
+    const { startDate, endDate, sellerUid } = parsed.data;
+    res.json(await getSalesLedger(startDate, endDate, sellerUid));
+  })
+);
+
+/**
+ * GET /api/reports/delivery-invoices
+ * Facturas con envío del periodo, una por fila. Solo admin.
+ */
+router.get(
+  '/delivery-invoices',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const parsed = dateRangeSchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new BadRequestError(INVALID_RANGE);
+    }
+
+    const { startDate, endDate } = parsed.data;
+    res.json(await getDeliveryInvoices(startDate, endDate));
   })
 );
 

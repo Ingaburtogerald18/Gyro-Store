@@ -1,6 +1,6 @@
 "use client"
 
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowDown01Icon, ArrowUp01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import * as React from "react"
 import { Select as SelectPrimitive } from "radix-ui"
@@ -53,7 +53,10 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={2} className="pointer-events-none text-muted-foreground" />
+        {/* `nudge-y` y no `draw`: redibujar un chevron no dice nada; que baje
+            un pelo al pasar por el trigger sí sugiere "acá se despliega".
+            (El giro por estado lo maneja Radix con data-state en CSS.) */}
+        <AnimatedIcon icon={ArrowDown01Icon} gesture="nudge-y" size={16} strokeWidth={2} className="pointer-events-none text-muted-foreground" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -121,7 +124,7 @@ function SelectItem({
     >
       <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <HugeiconsIcon icon={Tick01Icon} size={16} strokeWidth={2} className="pointer-events-none" />
+          <AnimatedIcon icon={Tick01Icon} size={16} strokeWidth={2} className="pointer-events-none" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -155,7 +158,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <HugeiconsIcon icon={ArrowUp01Icon} size={16} strokeWidth={2} />
+      <AnimatedIcon icon={ArrowUp01Icon} gesture="nudge-y" size={16} strokeWidth={2} />
     </SelectPrimitive.ScrollUpButton>
   )
 }
@@ -173,7 +176,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <HugeiconsIcon icon={ArrowDown01Icon} size={16} strokeWidth={2} />
+      <AnimatedIcon icon={ArrowDown01Icon} gesture="nudge-y" size={16} strokeWidth={2} />
     </SelectPrimitive.ScrollDownButton>
   )
 }

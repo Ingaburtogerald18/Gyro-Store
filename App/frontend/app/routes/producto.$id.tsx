@@ -4,7 +4,7 @@
 //
 // El dato se carga en el SERVIDOR para que el título, la descripción y la foto
 // estén en el HTML (Open Graph al compartir por WhatsApp).
-import { HugeiconsIcon } from "@hugeicons/react";
+import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
@@ -194,7 +194,7 @@ export default function ProductDetail() {
                 disabled={soldOut}
                 className="h-12 flex-1 text-sm"
               >
-                <HugeiconsIcon icon={ShoppingCart02Icon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={ShoppingCart02Icon} size={16} strokeWidth={2} aria-hidden />
                 {soldOut ? 'Agotado' : 'Agregar al carrito'}
               </Button>
               <Button
@@ -202,7 +202,7 @@ export default function ProductDetail() {
                 onClick={handleWhatsApp}
                 className="h-12 justify-center rounded-md sm:w-auto sm:px-6"
               >
-                <HugeiconsIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden />
+                <AnimatedIcon icon={Message01Icon} size={16} strokeWidth={2} aria-hidden />
                 {soldOut ? 'Avisame' : 'Pedir por WhatsApp'}
               </Button>
             </div>
