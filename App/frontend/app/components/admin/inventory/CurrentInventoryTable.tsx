@@ -24,6 +24,7 @@ import { CodeCell, MoneyCell } from "~/components/ui/cells";
 import { useNavigate } from "@remix-run/react";
 import { Spinner } from "~/components/ui/spinner";
 import { useGetConfigQuery } from "~/store/api/configApi";
+import { useCategoryLabel } from "~/hooks/useCategoryLabel";
 
 export function CurrentInventoryTable({ period = "all", mode = "all" }: { period?: string; mode?: "inStock" | "outOfStock" | "all" }) {
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ export function CurrentInventoryTable({ period = "all", mode = "all" }: { period
   const { data: purchases = [] } = useGetPurchasesQuery();
   const { data: catalog = [] } = useGetAdminCatalogQuery();
   const { data: config } = useGetConfigQuery();
+  const categoryLabel = useCategoryLabel();
   const [revert] = useRevertPurchaseMutation();
 
   const skuToCatalogMap = useMemo(() => {
@@ -108,14 +110,15 @@ export function CurrentInventoryTable({ period = "all", mode = "all" }: { period
       {
         accessorKey: "category",
         header: "Categoría",
+        // Mismo `useCategoryLabel` que la tabla de Compras. Antes cada una
+        // resolvía por su cuenta contra `config`, así que acá seguían saliendo
+        // los uuids crudos de las categorías de Catálogo.
         cell: (c) => {
           const val = c.getValue() as string;
           if (!val) return <span className="text-muted-foreground">—</span>;
-          const cat = config?.categories?.find((cat: any) => cat.id === val);
           return (
             <div className="flex items-center gap-1.5 whitespace-nowrap bg-muted px-2 py-0.5 rounded-full w-fit">
-              <span className="text-sm">{cat?.icon}</span>
-              <span className="text-xs font-medium text-foreground">{cat?.name || val}</span>
+              <span className="text-xs font-medium text-foreground">{categoryLabel(val)}</span>
             </div>
           );
         },
@@ -192,7 +195,9 @@ export function CurrentInventoryTable({ period = "all", mode = "all" }: { period
         },
       },
     ],
-    [purchases, skuToCatalogMap, navigate, config],
+    // `categoryLabel` en la lista: sin él la columna se quedaba con el primer
+    // valor resuelto y no reaccionaba a un renombrado en Catálogo.
+    [purchases, skuToCatalogMap, navigate, config, categoryLabel],
   );
 
   const columns = useMemo(() => {

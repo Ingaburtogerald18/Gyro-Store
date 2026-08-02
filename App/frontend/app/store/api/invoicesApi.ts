@@ -21,6 +21,21 @@ export interface Invoice {
   deliveryName?: string | null;
 }
 
+/**
+ * Campos corregibles de una factura huérfana, líneas incluidas.
+ * El CÓDIGO de descuento no está: ya se canjeó al emitir y volver a aplicarlo
+ * consumiría otro uso. El monto se conserva y el servidor lo resta al subtotal
+ * nuevo.
+ */
+export interface UpdateInvoiceInput {
+  method?: 'efectivo' | 'transferencia' | 'tarjeta';
+  deliveryFee?: number;
+  customerName?: string;
+  phone?: string;
+  deliveryName?: string;
+  items?: InvoiceItemInput[];
+}
+
 export interface InvoiceItemInput {
   productName: string;
   quantity: number;
@@ -87,17 +102,21 @@ export const invoicesApi = baseApi.injectEndpoints({
       query: (invoiceNumber: string | number) => ({ url: 'invoices/lookup', params: { number: invoiceNumber } }),
       providesTags: ['Invoice'],
     }),
-    updateInvoice: build.mutation<
-      Invoice,
-      { id: string; data: { method?: CreateInvoiceInput['method']; deliveryFee?: number } }
-    >({
+    // Solo datos accesorios: las líneas no se editan (moverían el subtotal de
+    // un papel ya impreso). Si están mal, se anula y se emite otra.
+    updateInvoice: build.mutation<Invoice, { id: string; data: UpdateInvoiceInput }>({
       query: ({ id, data }) => ({ url: `invoices/${id}`, method: 'PUT', body: data }),
       invalidatesTags: ['Invoice'],
     }),
-    // Anular, no borrar: el correlativo conserva el número.
+    // Anular, no borrar: el correlativo conserva el número y el motivo.
     voidInvoice: build.mutation<Invoice, { id: string; reason: string }>({
       query: ({ id, reason }) => ({ url: `invoices/${id}/void`, method: 'POST', body: { reason } }),
       invalidatesTags: ['Invoice', 'Sale'],
+    }),
+    // Descartar definitivamente. NO reabre el número: la secuencia no retrocede.
+    deleteInvoice: build.mutation<{ ok: boolean }, string>({
+      query: (id) => ({ url: `invoices/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Invoice'],
     }),
   }),
 });
@@ -110,4 +129,5 @@ export const {
   useLazyLookupInvoiceQuery,
   useUpdateInvoiceMutation,
   useVoidInvoiceMutation,
+  useDeleteInvoiceMutation,
 } = invoicesApi;

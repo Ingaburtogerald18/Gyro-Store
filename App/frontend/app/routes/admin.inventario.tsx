@@ -2,15 +2,13 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "@remix-run/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AnimatedIcon } from "~/components/ui/animated-icons";
-import { PackageIcon, ArchiveIcon, Calendar02Icon, File01Icon, PackageRemoveIcon } from "@hugeicons/core-free-icons";
+import { PackageIcon, Calendar02Icon, File01Icon, PackageRemoveIcon } from "@hugeicons/core-free-icons";
 import type { MetaFunction } from "@remix-run/node";
 
 import { InventoryKpis } from "~/components/admin/inventory/InventoryKpis";
 import { PurchaseForm } from "~/components/admin/inventory/PurchaseForm";
 import { PurchasesTable } from "~/components/admin/inventory/PurchasesTable";
 import { CurrentInventoryTable } from "~/components/admin/inventory/CurrentInventoryTable";
-import { MigratedInventoryForm } from "~/components/admin/inventory/MigratedInventoryForm";
-import { MigratedInventoryTable } from "~/components/admin/inventory/MigratedInventoryTable";
 import { PurchaseCommandPalette } from "~/components/admin/inventory/PurchaseCommandPalette";
 
 import { Tabs, TabsContent } from "~/components/ui/tabs";
@@ -24,7 +22,7 @@ export const meta: MetaFunction = () => {
 };
 
 type MainTab = "purchases" | "inventory";
-type InvType = "current" | "migrated" | "outOfStock";
+type InvType = "current" | "outOfStock";
 
 const MAIN_TABS = [
   { value: "purchases", label: "Registro de compras", icon: File01Icon },
@@ -32,9 +30,8 @@ const MAIN_TABS = [
 ];
 
 const INV_TYPES = [
-  { value: "current", label: "Inventario actual", icon: PackageIcon },
+  { value: "current", label: "Inventario", icon: PackageIcon },
   { value: "outOfStock", label: "Inventario agotado", icon: PackageRemoveIcon },
-  { value: "migrated", label: "Inventario migrado", icon: ArchiveIcon },
 ];
 
 function buildMonthOptions(): FilterSelectOption[] {
@@ -51,7 +48,6 @@ function buildMonthOptions(): FilterSelectOption[] {
 
 export default function AdminInventario() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [migratedFormOpen, setMigratedFormOpen] = useState(false);
   const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const monthOptions = useMemo(buildMonthOptions, []);
@@ -62,7 +58,9 @@ export default function AdminInventario() {
 
   const tab: MainTab = searchParams.get("tab") === "inventory" ? "inventory" : "purchases";
   const typeParam = searchParams.get("type");
-  const type: InvType = (typeParam === "migrated" || typeParam === "outOfStock") ? typeParam : "current";
+  // `?type=migrated` en un enlace viejo cae a "current" en vez de dejar la
+  // pantalla en blanco: el módulo de inventario migrado ya no existe.
+  const type: InvType = typeParam === "outOfStock" ? "outOfStock" : "current";
   const period = searchParams.get("period") || "all";
 
   const effectiveView = tab === "purchases" ? "purchases" : type;
@@ -179,10 +177,6 @@ export default function AdminInventario() {
             <TabsContent value="outOfStock" className="outline-none m-0">
               <CurrentInventoryTable period={period} mode="outOfStock" />
             </TabsContent>
-
-            <TabsContent value="migrated" className="outline-none m-0">
-              <MigratedInventoryTable period={period} onOpenForm={() => setMigratedFormOpen(true)} />
-            </TabsContent>
           </Tabs>
         </TabsContent>
       </Tabs>
@@ -194,15 +188,6 @@ export default function AdminInventario() {
             <DialogTitle>Registrar compra en China</DialogTitle>
           </DialogHeader>
           <PurchaseForm onDone={() => setPurchaseFormOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={migratedFormOpen} onOpenChange={setMigratedFormOpen}>
-        <DialogContent className="w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Registrar ítem migrado</DialogTitle>
-          </DialogHeader>
-          <MigratedInventoryForm onDone={() => setMigratedFormOpen(false)} />
         </DialogContent>
       </Dialog>
 

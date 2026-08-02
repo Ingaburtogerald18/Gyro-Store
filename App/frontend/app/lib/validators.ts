@@ -75,26 +75,6 @@ const requiredNumber = (msg = "Requerido") =>
     z.number({ message: msg }).nonnegative("No puede ser negativo"),
   );
 
-// Inventario migrado: ítem histórico cargado a mano desde el Excel viejo.
-// Todos los campos obligatorios deben venir llenos (lote y comentarios son opcionales).
-export const migratedItemFormSchema = z.object({
-  purchaseDate: z.string().min(1, "Fecha requerida"),
-  lot: z.string().optional(),
-  code: z.string().min(1, "Código requerido"),
-  productName: z.string().min(2, "Nombre requerido"),
-  quantity: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? NaN : Number(v)),
-    z.number({ message: "Requerido" }).int("Debe ser entero").positive("Debe ser mayor a 0"),
-  ),
-  costUnit: requiredNumber("Precio base requerido"),
-  shippingUnit: requiredNumber("Costo de envío requerido"),
-  comments: z.string().optional(),
-});
-export type MigratedItemFormInput = z.infer<typeof migratedItemFormSchema>;
-// Mismo motivo que PurchaseFormValues: campos con z.preprocess necesitan su
-// tipo de entrada (pre-coerción) separado del de salida.
-export type MigratedItemFormValues = z.input<typeof migratedItemFormSchema>;
-
 // Reportar llegada a Nicaragua.
 export const arrivalFormSchema = z.object({
   arrivalDate: z.string().min(1, "Fecha de ingreso requerida"),

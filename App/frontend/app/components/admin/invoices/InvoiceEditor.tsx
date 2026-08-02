@@ -1,6 +1,6 @@
 import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { Add01Icon, Alert02Icon, Delete01Icon, UserIcon, Coupon01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '~/components/ui/button';
@@ -8,7 +8,7 @@ import { Input } from '~/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { errMsg, formatCordobas } from '~/lib/formatters';
 import { useGetSellableProductsQuery, type SellableProduct } from '~/store/api/salesApi';
-import { useCreateInvoiceMutation } from '~/store/api/invoicesApi';
+import { useCreateInvoiceMutation, useUpdateInvoiceMutation, type Invoice } from '~/store/api/invoicesApi';
 import {
   useValidateDiscountCodeMutation,
   type DiscountCodeValidation,
@@ -31,9 +31,21 @@ interface InvoiceLine {
   unitPrice: number | '';
 }
 
-export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) => void }) {
-  const { data: products = [] } = useGetSellableProductsQuery();
+export function InvoiceEditor({
+  onCreated,
+  invoice,
+  onUpdated,
+}: {
+  onCreated?: (invoiceId: string) => void;
+  /** Si viene, el formulario arranca relleno y guarda en vez de crear. */
+  invoice?: Invoice;
+  onUpdated?: () => void;
+}) {
+  const { data: catalog = [] } = useGetSellableProductsQuery();
   const [createInvoice, { isLoading: creating }] = useCreateInvoiceMutation();
+  const [updateInvoice, { isLoading: updating }] = useUpdateInvoiceMutation();
+
+  const isEdit = !!invoice;
 
   const [lines, setLines] = useState<InvoiceLine[]>([
     { uid: crypto.randomUUID(), productName: '', quantity: 1, unitPrice: '' }
@@ -54,6 +66,50 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
   const [validateCode, { isLoading: validatingCode }] = useValidateDiscountCodeMutation();
   const [codeInput, setCodeInput] = useState('');
   const [appliedCode, setAppliedCode] = useState<DiscountCodeValidation | null>(null);
+
+  // ── Precarga en modo edición ──
+  // Se rellena todo con lo que ya tenía la factura, incluidos los switches: si
+  // la factura trae envío, la sección de delivery arranca abierta, o el dato
+  // quedaría escondido y se perdería al guardar.
+  useEffect(() => {
+    if (!invoice) return;
+    setLines(
+      (invoice.items ?? []).map((it) => ({
+        uid: crypto.randomUUID(),
+        productName: it.productName,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+      })),
+    );
+    setCustomerName(invoice.customerName ?? '');
+    setPhone(invoice.phone ?? '');
+    setIncludeCustomer(!!(invoice.customerName || invoice.phone));
+    setMethod((invoice.method as (typeof METHODS)[number]['value']) ?? 'efectivo');
+    setDeliveryFee(invoice.deliveryFee || '');
+    setDeliveryName(invoice.deliveryName ?? '');
+    setIncludeDelivery((invoice.deliveryFee ?? 0) > 0);
+  }, [invoice]);
+
+  // El catálogo solo trae lo que HOY tiene stock. Un producto de la factura que
+  // se agotó desde entonces no estaría en el desplegable y su línea aparecería
+  // en blanco — con el precio intacto pero sin nombre. Se le suman los propios
+  // productos de la factura para que siempre se pueda ver y re-elegir.
+  const products = useMemo<SellableProduct[]>(() => {
+    if (!invoice?.items?.length) return catalog;
+    const byName = new Map(catalog.map((p) => [p.productName, p]));
+    for (const it of invoice.items) {
+      if (!byName.has(it.productName)) {
+        byName.set(it.productName, {
+          productName: it.productName,
+          price: it.unitPrice,
+          stock: 0,
+          code: null,
+          codes: [],
+        });
+      }
+    }
+    return [...byName.values()].sort((a, b) => a.productName.localeCompare(b.productName));
+  }, [catalog, invoice]);
 
   const addLine = () => setLines([...lines, { uid: crypto.randomUUID(), productName: '', quantity: 1, unitPrice: '' }]);
   const removeLine = (uid: string) => setLines(lines.filter(l => l.uid !== uid));
@@ -108,6 +164,31 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
           ? 'Aplicá el código de descuento o apagá el switch.'
           : null;
 
+  async function handleUpdate() {
+    if (disabledReason || !invoice) return;
+    try {
+      await updateInvoice({
+        id: invoice.id,
+        data: {
+          customerName: includeCustomer ? customerName : '',
+          phone: includeCustomer ? phone : '',
+          method,
+          deliveryFee: includeDelivery ? Number(deliveryFee) || 0 : 0,
+          deliveryName: includeDelivery ? deliveryName : '',
+          items: validLines.map((l) => ({
+            productName: l.productName,
+            quantity: Number(l.quantity),
+            unitPrice: Number(l.unitPrice),
+          })),
+        },
+      }).unwrap();
+      toast.success(`${invoice.invoiceCode} actualizada.`);
+      onUpdated?.();
+    } catch (err) {
+      toast.error(errMsg(err, 'No se pudo actualizar la factura.'));
+    }
+  }
+
   async function applyCode() {
     const code = codeInput.trim();
     if (!code) return;
@@ -147,7 +228,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
       }).unwrap();
       
       toast.success('Factura creada exitosamente.');
-      onCreated(result.id);
+      onCreated?.(result.id);
     } catch (err) {
       toast.error(errMsg(err, 'No se pudo crear la factura.'));
     }
@@ -273,9 +354,25 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
           </div>
         </div>
 
+        {/* En edición el código ya se canjeó al emitir: volver a aplicarlo
+            consumiría otro uso. El monto descontado se conserva tal cual y el
+            servidor lo resta al subtotal nuevo. */}
+        {isEdit && (invoice?.discount ?? 0) > 0 && (
+          <div className="rounded-card border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
+            <span className="font-medium text-primary">
+              Descuento aplicado: {formatCordobas(invoice?.discount ?? 0)}
+            </span>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              El código ya fue canjeado y no se puede cambiar. Si hay que quitarlo, cancelá la
+              factura y emití una nueva.
+            </p>
+          </div>
+        )}
+
         {/* ── Descuento ──
             Switch, no campo libre: si está apagado NO hay descuento. Al
             encenderlo se pide el código, que es lo único que descuenta. */}
+        {!isEdit && (
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -344,6 +441,7 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
             </div>
           </div>
         </section>
+        )}
 
         <section className="space-y-3 rounded-card border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -414,9 +512,13 @@ export function InvoiceEditor({ onCreated }: { onCreated: (invoiceId: string) =>
       </div>
 
       <div className="flex flex-col items-end gap-2">
-        <Button size="lg" onClick={handleCreate} disabled={creating || !!disabledReason}>
-          {creating && <Spinner className="mr-2" />}
-          Crear e Imprimir Factura
+        <Button
+          size="lg"
+          onClick={isEdit ? handleUpdate : handleCreate}
+          disabled={creating || updating || !!disabledReason}
+        >
+          {(creating || updating) && <Spinner className="mr-2" />}
+          {isEdit ? 'Guardar cambios' : 'Crear e Imprimir Factura'}
         </Button>
         {disabledReason && (
           <p className="flex items-center gap-1.5 text-xs text-warning">

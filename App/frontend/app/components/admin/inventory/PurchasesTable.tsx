@@ -21,9 +21,17 @@ import {
   type Purchase,
 } from "~/store/api/inventoryV1Api";
 import { formatUsd } from "~/lib/formatters";
+import { cn } from "~/lib/utils";
 import { CodeCell, MoneyCell } from "~/components/ui/cells";
 import { Spinner } from "~/components/ui/spinner";
 import { useGetConfigQuery } from "~/store/api/configApi";
+import { useCategoryLabel } from "~/hooks/useCategoryLabel";
+import {
+  formatShortDate,
+  getTransitInfo,
+  TRANSIT_BANDS,
+  type TransitBand,
+} from "~/lib/transit";
 
 // Tono del StatusBadge canónico por estado de la compra.
 const STATUS_META: Record<Purchase["status"], { label: string; status: BadgeStatus }> = {
@@ -39,6 +47,80 @@ const STATUS_OPTIONS: FilterSelectOption[] = [
   { value: "received", label: "Recibido" },
 ];
 
+const TRANSIT_OPTIONS: FilterSelectOption[] = [
+  ALL_OPT,
+  { value: "good", label: `🟢 Bueno (< ${TRANSIT_BANDS.good} días)` },
+  { value: "regular", label: `🟠 Regular (${TRANSIT_BANDS.good}–${TRANSIT_BANDS.regular} días)` },
+  { value: "bad", label: `🔴 Atrasado (> ${TRANSIT_BANDS.regular} días)` },
+  { value: "transit", label: "En tránsito" },
+  { value: "arrived", label: "Ya llegaron" },
+  { value: "waiting", label: "Sin zarpar" },
+];
+
+const BAND_STYLES: Record<TransitBand, string> = {
+  good: "bg-success/10 text-success border-success/30",
+  regular: "bg-warning/10 text-warning border-warning/30",
+  bad: "bg-destructive/10 text-destructive border-destructive/30",
+};
+
+/**
+ * Días de tránsito con su banda de color.
+ *
+ * Tres lecturas distintas según el momento de la compra: sin zarpar no hay
+ * contador (mostrar "0 días" durante dos semanas parecería un reloj roto), en
+ * tránsito el número corre contra hoy, y ya recibida el número es final.
+ *
+ * El `title` lleva la cadena completa del cálculo. Sin eso, nadie puede
+ * verificar de dónde salió el 62 y la columna deja de ser confiable a la
+ * primera duda.
+ */
+function TransitCell({ purchase }: { purchase: Purchase }) {
+  const info = getTransitInfo(purchase);
+
+  if (info.state === "unknown") return <span className="text-muted-foreground">—</span>;
+
+  const salida = info.departure ? formatShortDate(info.departure) : "?";
+  const compra = purchase.purchaseDate?.slice(0, 10) ?? "?";
+
+  if (info.state === "waiting") {
+    return (
+      <span
+        className="whitespace-nowrap text-xs text-muted-foreground"
+        title={`Compra ${compra} → zarpa el ${salida}. El contador arranca ese día.`}
+      >
+        Zarpa {salida}
+        {info.daysToDeparture !== null && ` · en ${info.daysToDeparture}d`}
+      </span>
+    );
+  }
+
+  if (info.days === null || !info.band) {
+    return (
+      <span className="text-muted-foreground" title="Recibida sin fecha de llegada cargada.">
+        —
+      </span>
+    );
+  }
+
+  const llegada = info.state === "arrived" ? "Tardó" : "Lleva";
+
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-baseline gap-1 whitespace-nowrap rounded-full border px-2 py-0.5",
+        BAND_STYLES[info.band],
+        // En tránsito el número todavía se mueve: el borde punteado lo dice sin
+        // gastar una palabra.
+        info.state === "transit" && "border-dashed",
+      )}
+      title={`Compra ${compra} → zarpó el ${salida} → ${llegada.toLowerCase()} ${info.days} días.`}
+    >
+      <span className="nums text-xs font-semibold">{info.days}d</span>
+      <span className="text-[10px] opacity-70">{llegada}</span>
+    </span>
+  );
+}
+
 export function PurchasesTable({ period = "all", onOpenForm }: { period?: string; onOpenForm?: () => void }) {
   const { data: purchases = [], isLoading } = useGetPurchasesQuery(period);
   const [del, { isLoading: deleting }] = useDeletePurchaseMutation();
@@ -51,6 +133,7 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterTransit, setFilterTransit] = useState("all");
 
   const { data: config } = useGetConfigQuery();
 
@@ -78,16 +161,14 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
     return [ALL_OPT, ...vals.map((v) => ({ value: v, label: v }))];
   }, [purchases]);
 
+  // Compartido con CurrentInventoryTable: las dos tablas muestran el mismo
+  // campo y tienen que resolverlo igual.
+  const categoryLabel = useCategoryLabel();
+
   const categoryOptions = useMemo<FilterSelectOption[]>(() => {
     const vals = Array.from(new Set(purchases.map((p) => p.category).filter(Boolean)));
-    return [
-      ALL_OPT,
-      ...vals.map((v) => {
-        const cat = config?.categories?.find((c) => c.id === v);
-        return { value: v as string, label: cat ? `${cat.icon} ${cat.name}` : (v as string) };
-      })
-    ];
-  }, [purchases, config]);
+    return [ALL_OPT, ...vals.map((v) => ({ value: v as string, label: categoryLabel(v as string) }))];
+  }, [purchases, categoryLabel]);
 
   const filteredPurchases = useMemo(() => {
     let r = purchases;
@@ -97,6 +178,17 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
     if (filterProduct !== "all") r = r.filter((p) => p.productName === filterProduct);
     if (filterCategory !== "all") r = r.filter((p) => p.category === filterCategory);
     if (filterStatus !== "all") r = r.filter((p) => p.status === filterStatus);
+    // El filtro de tránsito acepta tanto una banda (verde/naranja/rojo) como un
+    // estado (en tránsito / recibidas): son las dos preguntas que se hacen acá
+    // — "¿qué se está atrasando?" y "¿cuánto tardó lo que ya llegó?".
+    if (filterTransit !== "all") {
+      r = r.filter((p) => {
+        const info = getTransitInfo(p);
+        return filterTransit === "transit" || filterTransit === "arrived" || filterTransit === "waiting"
+          ? info.state === filterTransit
+          : info.band === filterTransit;
+      });
+    }
     if (globalFilter.trim()) {
       const q = globalFilter.toLowerCase();
       r = r.filter((p) => p.code.toLowerCase().includes(q) || p.lot.toLowerCase().includes(q) || p.productName.toLowerCase().includes(q));
@@ -157,11 +249,9 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         cell: (c) => {
           const val = c.getValue() as string;
           if (!val) return <span className="text-muted-foreground">—</span>;
-          const cat = config?.categories?.find((cat) => cat.id === val);
           return (
             <div className="flex items-center gap-1.5 whitespace-nowrap bg-muted px-2 py-0.5 rounded-full w-fit">
-              <span className="text-sm">{cat?.icon}</span>
-              <span className="text-xs font-medium text-foreground">{cat?.name || val}</span>
+              <span className="text-xs font-medium text-foreground">{categoryLabel(val)}</span>
             </div>
           );
         },
@@ -176,6 +266,18 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
           const m = STATUS_META[c.getValue() as Purchase["status"]];
           return <StatusBadge status={m.status} label={m.label} />;
         },
+      },
+      {
+        id: "transit",
+        header: () => (
+          <FilterSelect variant="ghost" value={filterTransit} onChange={setFilterTransit} options={TRANSIT_OPTIONS} placeholder="Tránsito" />
+        ),
+        // Ordena por DÍAS, no por texto: es lo que sirve para poner las peores
+        // arriba. Las que aún no zarparon van al fondo con -1, porque un 0 las
+        // mezclaría con las que acaban de salir.
+        accessorFn: (row) => getTransitInfo(row).days ?? -1,
+        sortingFn: "basic",
+        cell: ({ row }) => <TransitCell purchase={row.original} />,
       },
       { 
         accessorKey: "quantity", 
@@ -232,7 +334,10 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
         },
       },
     ],
-    [filterDate, filterLot, filterCode, filterProduct, filterCategory, filterStatus, dateOptions, lotOptions, codeOptions, productOptions, categoryOptions, config],
+    // `categoryLabel` en vez de `config`: la celda ya no mira la config directo,
+    // y sin esta dependencia la columna se quedaba con los uuids crudos hasta el
+    // siguiente re-render, porque las categorías llegan después del primer paint.
+    [filterDate, filterLot, filterCode, filterProduct, filterCategory, filterStatus, dateOptions, lotOptions, codeOptions, productOptions, categoryOptions, categoryLabel],
   );
 
   if (isLoading) {

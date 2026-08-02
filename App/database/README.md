@@ -62,6 +62,15 @@ plegar hacia atrás sin recrear la base. Se aplican una vez, en orden.
     `get_seller_performance`, `get_top_products`, `get_sales_breakdown`,
     `get_delivery_summary`). Es `create or replace` en todo, así que **sí** es
     re-ejecutable.
+14. `0014_drop_salidas.sql`: elimina el módulo Salidas (tabla, enums y la
+    columna `account_movements.salida_id`). **Irreversible.**
+15. `0015_sales_ledger_rpc.sql`: `get_sales_ledger` y `get_delivery_invoices`,
+    que alimentan los pop-ups de drilldown de Reportería. Re-ejecutable.
+16. `0016_drop_migrated_inventory.sql`: elimina `migrated_inventory`. El
+    sistema pasa a manejar solo inventario nuevo. La tabla era una hoja —
+    nunca se pudo vender desde ella— así que no arrastra nada. El valor
+    `'migrated'` del enum `sale_origin` **se conserva**: marca ventas viejas y
+    borrarlo rompería órdenes ya cerradas. **Irreversible.**
 
 ## Cómo Aplicarlas
 

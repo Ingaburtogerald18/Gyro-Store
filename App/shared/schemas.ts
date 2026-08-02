@@ -534,7 +534,7 @@ export type FinancialConfig = z.infer<typeof financialConfigSchema>;
 // ── SCHEMAS DEL DOMINIO: INVENTARIO (ADMIN) ──
 // ============================================================================
 // Contrato de entrada de server/routes/inventory.ts. Los shapes de salida
-// (Purchase, InventoryRow, InventoryKpis, MigratedItem) viven como interfaces
+// (Purchase, InventoryRow, InventoryKpis) viven como interfaces
 // TS en server/services/inventory.ts, no acá: son datos derivados que arma el
 // servicio, no algo que un cliente mande y haya que validar en el borde.
 
@@ -577,18 +577,6 @@ export const arrivalInputSchema = z.object({
   suggestedPrice: z.number().min(0).optional(),
 });
 export type ArrivalInput = z.infer<typeof arrivalInputSchema>;
-
-export const newMigratedInputSchema = z.object({
-  purchaseDate: z.iso.date(),
-  lot: z.string().max(40).optional(),
-  code: z.string().min(1, 'El código es obligatorio.').max(40),
-  productName: z.string().min(1, 'El nombre del producto es obligatorio.').max(160),
-  quantity: z.number().int().positive('La cantidad debe ser mayor a 0.'),
-  costUnit: z.number().min(0),
-  shippingUnit: z.number().min(0),
-  comments: z.string().max(500).optional(),
-});
-export type NewMigratedInput = z.infer<typeof newMigratedInputSchema>;
 
 // ============================================================================
 // ── SCHEMAS DEL DOMINIO: VENTAS (ADMIN/SELLER) ──
@@ -729,9 +717,28 @@ export type VoidInvoiceInput = z.infer<typeof voidInvoiceInputSchema>;
 
 // Corrección de datos de cobro. `orderId` no se puede cambiar: reasignar una
 // factura a otra venta rompería la trazabilidad del correlativo.
+// Corregir una factura huérfana con el MISMO formulario con que se emitió,
+// líneas incluidas. Solo aplica a facturas `unlinked`: una vez ligada a una
+// venta, el snapshot financiero ya se calculó sobre estos números.
+//
+// El CÓDIGO de descuento no se puede cambiar acá: ya se canjeó al emitir, y
+// volver a aplicarlo consumiría otro uso. El monto `discount` se conserva.
 export const updateInvoiceInputSchema = z.object({
   method: z.enum(['efectivo', 'transferencia', 'tarjeta']).optional(),
   deliveryFee: z.number().min(0).max(9_999_999).optional(),
+  customerName: z.string().trim().max(120).optional(),
+  phone: z.string().trim().max(30).optional(),
+  deliveryName: z.string().trim().max(120).optional(),
+  items: z
+    .array(
+      z.object({
+        productName: z.string().trim().min(1).max(200),
+        quantity: z.number().int().positive().max(100_000),
+        unitPrice: z.number().min(0).max(9_999_999),
+      }),
+    )
+    .min(1)
+    .optional(),
 });
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;
 

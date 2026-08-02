@@ -1,5 +1,7 @@
-// CRUD del inventario (bodega) desde el panel: lotes de compra (purchases) e
-// inventario migrado (migrated_inventory). Cumple el contrato de
+// CRUD del inventario (bodega) desde el panel: lotes de compra (purchases).
+// El módulo de inventario migrado se eliminó: nunca se pudo VENDER (sales.ts
+// solo consume `purchases` vía FIFO), así que cargar ítems ahí era registrar
+// stock que el sistema no sabía despachar. Cumple el contrato de
 // frontend/app/store/api/inventoryV1Api.ts (mismos paths/verbos) — no el de
 // inventoryApi.ts, que es un draft sin usar (ver server/services/inventory.ts).
 // Solo admin: a diferencia del catálogo (adminCatalog.ts, admin+seller),
@@ -13,7 +15,6 @@ import {
   newPurchaseInputSchema,
   updatePurchaseInputSchema,
   arrivalInputSchema,
-  newMigratedInputSchema,
 } from '../../shared/schemas';
 import {
   getPurchases,
@@ -26,10 +27,6 @@ import {
   updatePurchase,
   revertPurchase,
   deletePurchase,
-  getMigratedInventory,
-  createMigratedItem,
-  updateMigratedItem,
-  deleteMigratedItem,
   simulateCost,
 } from '../services/inventory';
 
@@ -149,50 +146,6 @@ router.delete(
     const ok = await deletePurchase(id, req.user!.uid);
     if (!ok) {
       res.status(404).json({ error: 'Compra no encontrada.' });
-      return;
-    }
-    res.json({ ok: true });
-  }),
-);
-
-// ── inventario migrado ──
-
-router.get(
-  '/migrated',
-  asyncHandler(async (req, res) => {
-    res.json(await getMigratedInventory(parsePeriod(req.query.period)));
-  }),
-);
-
-router.post(
-  '/migrated',
-  asyncHandler(async (req, res) => {
-    const data = newMigratedInputSchema.parse(req.body);
-    res.status(201).json(await createMigratedItem(data));
-  }),
-);
-
-router.put(
-  '/migrated/:id',
-  asyncHandler(async (req, res) => {
-    const id = parseUuidParam(req.params.id, 'Ítem migrado no encontrado.');
-    const data = newMigratedInputSchema.parse(req.body);
-    const updated = await updateMigratedItem(id, data);
-    if (!updated) {
-      res.status(404).json({ error: 'Ítem migrado no encontrado.' });
-      return;
-    }
-    res.json(updated);
-  }),
-);
-
-router.delete(
-  '/migrated/:id',
-  asyncHandler(async (req, res) => {
-    const id = parseUuidParam(req.params.id, 'Ítem migrado no encontrado.');
-    const ok = await deleteMigratedItem(id);
-    if (!ok) {
-      res.status(404).json({ error: 'Ítem migrado no encontrado.' });
       return;
     }
     res.json({ ok: true });

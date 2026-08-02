@@ -1,5 +1,5 @@
 // Acceso a datos del inventario: CRUD de `purchases` (lotes de compra),
-// recepción de lotes (arrival), CRUD de `migrated_inventory`, y las funciones
+// recepción de lotes (arrival) y las funciones
 // FIFO (reserveForItems, takeFifo, consumeReservation). Sigue el contrato de
 // frontend/app/store/api/inventoryV1Api.ts, que es lo que de verdad consumen
 // los componentes reciclados de admin/inventory/ (no inventoryApi.ts, que es
@@ -13,7 +13,6 @@ import type {
   NewPurchaseInput,
   UpdatePurchaseInput,
   ArrivalInput,
-  NewMigratedInput,
 } from '../../shared/schemas';
 
 // ============================================================================
@@ -76,30 +75,6 @@ export interface InventoryKpis {
   totalEnviosUsd: number;
 }
 
-export interface MigratedItem {
-  id: string;
-  origin: 'migrated';
-  status: string;
-  lot: string;
-  code: string;
-  productName: string;
-  purchaseDate: string;
-  quantity: number;
-  quantitySold: number;
-  quantityReserved: number;
-  stock: number;
-  costUnit: number;
-  shippingUnit: number;
-  priceBaseUsd: number;
-  shippingUnitUsd: number;
-  priceUnitFinalUsd: number;
-  preTotalUsd: number;
-  totalUsd: number;
-  costRealUnitCordobas: number;
-  suggestedPrice: number;
-  comments: string;
-}
-
 // ============================================================================
 // ── Filas crudas de la DB (snake_case) ──
 // ============================================================================
@@ -127,25 +102,6 @@ interface PurchaseRow {
   coste_final: number | null;
 }
 
-interface MigratedRow {
-  id: string;
-  sku: string | null;
-  name: string | null;
-  origin: string;
-  quantity: number;
-  costo_real_cs: number | null;
-  status: string;
-  lot: string | null;
-  code: string | null;
-  purchase_date: string;
-  quantity_sold: number;
-  quantity_reserved: number;
-  cost_unit_usd: number | null;
-  shipping_unit_usd: number | null;
-  suggested_price: number | null;
-  comments: string | null;
-}
-
 const PURCHASE_COLUMNS = [
   'id', 'code', 'lot', 'status', 'purchase_date',
   'quantity', 'quantity_sold', 'quantity_reserved',
@@ -153,13 +109,6 @@ const PURCHASE_COLUMNS = [
   'costo_real_usd', 'costo_real_cs',
   'product_name', 'category', 'arrival_date', 'suggested_price',
   'costo_f_u', 'coste_final',
-].join(', ');
-
-const MIGRATED_COLUMNS = [
-  'id', 'sku', 'name', 'origin', 'quantity', 'costo_real_cs',
-  'status', 'lot', 'code', 'purchase_date',
-  'quantity_sold', 'quantity_reserved', 'cost_unit_usd', 'shipping_unit_usd',
-  'suggested_price', 'comments',
 ].join(', ');
 
 // ============================================================================
@@ -234,44 +183,6 @@ function toInventoryRow(row: PurchaseRow): InventoryRow {
     totalFinalUsd: round(priceUnitFinal * available, 4),
     suggestedPrice: row.suggested_price,
     gananciaUnitCordobas: round(suggested - costeFinal, 2),
-  };
-}
-
-// Doc 11 §7: el inventario migrado queda fuera de la cadena de costeo nueva
-// (sin Costo F/U ni pozos) — se recicla la heurística de v1 para su precio
-// sugerido (costo real × 1.40, redondeado a la decena) en vez de finance.ts.
-function migratedSuggestedPrice(costRealCs: number): number {
-  return Math.round((costRealCs * 1.4) / 10) * 10;
-}
-
-function toMigratedItem(row: MigratedRow): MigratedItem {
-  const stock = Math.max(0, row.quantity - row.quantity_sold - row.quantity_reserved);
-  const priceBaseUsd = row.cost_unit_usd ?? 0;
-  const shippingUnitUsd = row.shipping_unit_usd ?? 0;
-  const priceUnitFinalUsd = priceBaseUsd + shippingUnitUsd;
-
-  return {
-    id: row.id,
-    origin: 'migrated',
-    status: row.status,
-    lot: row.lot ?? '',
-    code: row.code ?? '',
-    productName: row.name ?? '',
-    purchaseDate: row.purchase_date,
-    quantity: row.quantity,
-    quantitySold: row.quantity_sold,
-    quantityReserved: row.quantity_reserved,
-    stock,
-    costUnit: priceBaseUsd,
-    shippingUnit: shippingUnitUsd,
-    priceBaseUsd,
-    shippingUnitUsd,
-    priceUnitFinalUsd: round(priceUnitFinalUsd, 4),
-    preTotalUsd: round(priceBaseUsd * stock, 4),
-    totalUsd: round(priceUnitFinalUsd * stock, 4),
-    costRealUnitCordobas: row.costo_real_cs ?? 0,
-    suggestedPrice: row.suggested_price ?? 0,
-    comments: row.comments ?? '',
   };
 }
 
@@ -593,92 +504,6 @@ export async function deletePurchase(id: string, authorUid: string): Promise<boo
 }
 
 // ============================================================================
-// ── migrated_inventory ──
-// ============================================================================
-
-export async function getMigratedInventory(period?: string): Promise<MigratedItem[]> {
-  let query = db.from('migrated_inventory').select(MIGRATED_COLUMNS).order('purchase_date', { ascending: true });
-  if (period) {
-    const { start, end } = periodRange(period);
-    query = query.gte('purchase_date', start).lt('purchase_date', end);
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  return ((data ?? []) as unknown as MigratedRow[]).map(toMigratedItem);
-}
-
-export async function createMigratedItem(input: NewMigratedInput): Promise<MigratedItem> {
-  const config = await getFinancialConfig();
-  const costoRealCs = round((input.costUnit + input.shippingUnit) * config.exchangeRate, 2);
-
-  const { data, error } = await db
-    .from('migrated_inventory')
-    .insert({
-      name: input.productName,
-      origin: 'migrated',
-      quantity: input.quantity,
-      costo_real_cs: costoRealCs,
-      status: 'received',
-      lot: input.lot ?? null,
-      code: input.code,
-      purchase_date: input.purchaseDate,
-      cost_unit_usd: input.costUnit,
-      shipping_unit_usd: input.shippingUnit,
-      suggested_price: migratedSuggestedPrice(costoRealCs),
-      comments: input.comments ?? null,
-    })
-    .select(MIGRATED_COLUMNS)
-    .single();
-
-  if (error) throw error;
-  return toMigratedItem(data as unknown as MigratedRow);
-}
-
-export async function updateMigratedItem(id: string, input: NewMigratedInput): Promise<MigratedItem | null> {
-  const config = await getFinancialConfig();
-  const costoRealCs = round((input.costUnit + input.shippingUnit) * config.exchangeRate, 2);
-
-  const { data, error } = await db
-    .from('migrated_inventory')
-    .update({
-      name: input.productName,
-      quantity: input.quantity,
-      costo_real_cs: costoRealCs,
-      lot: input.lot ?? null,
-      code: input.code,
-      purchase_date: input.purchaseDate,
-      cost_unit_usd: input.costUnit,
-      shipping_unit_usd: input.shippingUnit,
-      suggested_price: migratedSuggestedPrice(costoRealCs),
-      comments: input.comments ?? null,
-    })
-    .eq('id', id)
-    .select(MIGRATED_COLUMNS)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data ? toMigratedItem(data as unknown as MigratedRow) : null;
-}
-
-export async function deleteMigratedItem(id: string): Promise<boolean> {
-  const { data: existing, error: fetchError } = await db
-    .from('migrated_inventory')
-    .select('quantity_sold, quantity_reserved')
-    .eq('id', id)
-    .maybeSingle();
-  if (fetchError) throw fetchError;
-  if (!existing) return false;
-
-  if (existing.quantity_sold > 0 || existing.quantity_reserved > 0) {
-    throw new BadRequestError('No se puede borrar un ítem migrado con salidas o reservas registradas.');
-  }
-
-  const { error } = await db.from('migrated_inventory').delete().eq('id', id);
-  if (error) throw error;
-  return true;
-}
-
-// ============================================================================
 // ── FIFO ──
 // ============================================================================
 // LIMITACIÓN CONOCIDA: `purchases` no tiene ningún link a catalog_items/SKU
@@ -943,7 +768,7 @@ export async function releaseConsumedReservations(orderId: string): Promise<{ re
 //
 // Solo cuentan los lotes `received`: un lote en tránsito desde China existe en
 // la tabla pero no es vendible, y publicarlo como stock haría prometer entregas
-// que no se pueden cumplir. `migrated_inventory` queda fuera a propósito.
+// que no se pueden cumplir.
 
 export interface AvailableLot {
   code: string;

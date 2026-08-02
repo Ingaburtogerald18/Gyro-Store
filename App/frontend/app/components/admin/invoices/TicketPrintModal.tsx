@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { AnimatedIcon } from '~/components/ui/animated-icons';
-import { PrinterIcon, ViewIcon } from '@hugeicons/core-free-icons';
+import { Download04Icon, PrinterIcon, ViewIcon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
@@ -21,9 +21,18 @@ export function TicketPrintModal({
     skip: !invoiceId,
   });
 
-  const handlePrint = () => {
+  /**
+   * Aísla el ticket del resto de la página y abre el diálogo de impresión.
+   *
+   * Imprimir y "Descargar PDF" son EL MISMO camino: en el diálogo del navegador,
+   * elegir "Guardar como PDF" produce un PDF con texto vectorial real
+   * (seleccionable, nítido a cualquier zoom, unos pocos KB). Rasterizar el
+   * ticket con html2canvas para armar el PDF a mano daría una imagen borrosa,
+   * pesada y sin texto seleccionable — peor resultado y dos dependencias más.
+   */
+  const openPrintDialog = (hint?: string) => {
     if (!ticket) return;
-    // Agregamos estilos temporales al documento para aislar el ticket al imprimir
+
     const style = document.createElement('style');
     style.innerHTML = `
       @page { size: 80mm auto; margin: 0; }
@@ -49,19 +58,23 @@ export function TicketPrintModal({
       }
     `;
     document.head.appendChild(style);
-    
-    // Le ponemos un ID temporal al contenedor para aislarlo en el CSS de arriba
-    if (ticketRef.current) {
-      ticketRef.current.id = 'printable-ticket';
-    }
 
+    // ID temporal para que el CSS de arriba pueda aislarlo.
+    if (ticketRef.current) ticketRef.current.id = 'printable-ticket';
+
+    // La limpieza va en `afterprint` y NO justo después de `window.print()`:
+    // en Firefox y Safari `print()` no bloquea, así que quitar el <style> en la
+    // línea siguiente lo removía ANTES de que el navegador compusiera la
+    // página — y salía impresa la pantalla entera en vez del ticket.
+    const cleanup = () => {
+      style.remove();
+      if (ticketRef.current) ticketRef.current.id = '';
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+
+    if (hint) toast.info(hint);
     window.print();
-
-    // Limpiamos los estilos e IDs temporales después de que window.print() se resuelve
-    document.head.removeChild(style);
-    if (ticketRef.current) {
-      ticketRef.current.id = '';
-    }
   };
 
   if (isError) {
@@ -96,11 +109,19 @@ export function TicketPrintModal({
           </div>
 
           {/* Acciones */}
-          <div className="flex justify-end gap-2 border-t pt-4">
+          <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
             <Button variant="ghost" size="sm" onClick={onClose}>
               Cerrar
             </Button>
-            <Button size="sm" onClick={handlePrint} disabled={!ticket}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openPrintDialog('Elegí "Guardar como PDF" como destino.')}
+              disabled={!ticket}
+            >
+              <AnimatedIcon icon={Download04Icon} size={16} className="mr-1.5" /> Descargar PDF
+            </Button>
+            <Button size="sm" onClick={() => openPrintDialog()} disabled={!ticket}>
               <AnimatedIcon icon={PrinterIcon} size={16} className="mr-1.5" /> Imprimir
             </Button>
           </div>

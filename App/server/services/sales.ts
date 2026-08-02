@@ -2,8 +2,8 @@
 // listar. Sin fotos de recibo, sin venta vía ticket de factura (invoice.ts
 // todavía no existe), sin edición post-aprobación ni pago de comisiones por
 // lotes — eso queda fuera de este pase (ver el plan acordado). Solo
-// inventario NATIVO (`purchases` vía FIFO); vender `migrated_inventory` no
-// está soportado todavía.
+// inventario NATIVO (`purchases` vía FIFO). El módulo de inventario migrado se
+// eliminó en 0016: nunca fue vendible desde acá.
 //
 // Reciclaje de v1 (server/routes/sales/{quotes,register,manage,list}.js +
 // services/{commission,sales}.js): se recicla el algoritmo de semana ISO

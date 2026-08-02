@@ -11,6 +11,7 @@ import { Button } from "~/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
+import { useGetCategoriesQuery } from "~/store/api/catalogAdminApi";
 import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
 import { Combobox } from "~/components/ui/combobox";
@@ -32,6 +33,7 @@ const EMPTY_PURCHASE = {
 export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   const [createPurchase, { isLoading }] = useCreatePurchaseMutation();
   const { data: purchases = [] } = useGetPurchasesQuery();
+  const { data: categories = [] } = useGetCategoriesQuery();
   const { data: config } = useGetConfigQuery();
   const [showSuccessPrompt, setShowSuccessPrompt] = useState(false);
   const {
@@ -175,7 +177,11 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
         </Field>
       </div>
 
-      {/* Categoría: obligatoria en el backend al registrar la compra. */}
+      {/* Categoría: obligatoria en el backend al registrar la compra.
+          Las opciones salen de la tabla `categories` — las que se administran
+          en Catálogo — y NO de `config.categories` (las del storefront, que
+          viven en app_config). Eran dos listas distintas: se podía comprar en
+          una categoría que no existía en el catálogo. */}
       <Field data-invalid={!!errors.category}>
         <FieldLabel htmlFor="purchase-category" required>Categoría</FieldLabel>
         <NativeSelect
@@ -187,15 +193,20 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
           {...register("category")}
         >
           <NativeSelectOption value="" disabled>
-            Selecciona una categoría
+            {categories.length === 0 ? 'No hay categorías creadas' : 'Selecciona una categoría'}
           </NativeSelectOption>
-          {config?.categories.map((c) => (
+          {categories.map((c) => (
             <NativeSelectOption key={c.id} value={c.id}>
-              {c.icon} {c.name}
+              {c.name}
             </NativeSelectOption>
           ))}
         </NativeSelect>
         <FieldError errors={[errors.category]} />
+        {categories.length === 0 && (
+          <FieldDescription>
+            Creá las categorías en Catálogo → Categorías y volvé acá.
+          </FieldDescription>
+        )}
       </Field>
 
       {/* ── Bloque 2: Datos financieros ── */}

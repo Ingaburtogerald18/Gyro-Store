@@ -68,43 +68,6 @@ export interface NewPurchase {
   suggestedPrice?: number;
 }
 
-// Inventario migrado: ítem histórico cargado a mano (colección aparte).
-// Los campos calculados (stock, totales, coste real, sugerido) los devuelve el server.
-export interface MigratedItem {
-  id: string;
-  origin: "migrated";
-  status: string;
-  lot: string;
-  code: string;
-  productName: string;
-  purchaseDate: string;
-  quantity: number; // compradas
-  quantitySold: number; // salidas (ventas)
-  quantityReserved: number;
-  stock: number; // compradas − salidas
-  costUnit: number; // precio base USD
-  shippingUnit: number; // costo de envío unitario USD
-  priceBaseUsd: number;
-  shippingUnitUsd: number;
-  priceUnitFinalUsd: number; // base + envío
-  preTotalUsd: number; // base × compradas
-  totalUsd: number; // compradas × (base + envío)
-  costRealUnitCordobas: number; // (base + envío) × 37
-  suggestedPrice: number; // coste real × 1.40
-  comments: string;
-}
-
-export interface NewMigratedItem {
-  purchaseDate: string;
-  lot?: string;
-  code: string;
-  productName: string;
-  quantity: number;
-  costUnit: number;
-  shippingUnit: number;
-  comments?: string;
-}
-
 export interface ArrivalPayload {
   arrivalDate: string;
   shippingUnit: number;
@@ -162,25 +125,6 @@ export const inventoryApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/inventory/purchases/${id}`, method: "DELETE" }),
       invalidatesTags: ["Purchase"],
     }),
-    getMigratedInventory: build.query<MigratedItem[], string | void>({
-      query: (period) => withPeriod("/inventory/migrated", period || undefined),
-      providesTags: ["Migrated"],
-    }),
-    createMigratedItem: build.mutation<MigratedItem, NewMigratedItem>({
-      query: (body) => ({ url: "/inventory/migrated", method: "POST", body }),
-      // También "Product": /sales/products (cotizador) incluye el inventario migrado,
-      // así el nuevo código aparece al instante sin tener que recargar la página.
-      invalidatesTags: ["Migrated", "Product"],
-    }),
-    updateMigratedItem: build.mutation<MigratedItem, { id: string; body: NewMigratedItem }>({
-      query: ({ id, body }) => ({ url: `/inventory/migrated/${id}`, method: "PUT", body }),
-      invalidatesTags: ["Migrated", "Product"],
-    }),
-    deleteMigratedItem: build.mutation<{ ok: boolean }, string>({
-      query: (id) => ({ url: `/inventory/migrated/${id}`, method: "DELETE" }),
-      // "Product" para que el ítem borrado desaparezca también del cotizador de ventas.
-      invalidatesTags: ["Migrated", "Product"],
-    }),
   }),
 });
 
@@ -196,9 +140,5 @@ export const {
   useUpdatePurchaseMutation,
   useRevertPurchaseMutation,
   useDeletePurchaseMutation,
-  useGetMigratedInventoryQuery,
-  useCreateMigratedItemMutation,
-  useUpdateMigratedItemMutation,
-  useDeleteMigratedItemMutation,
 } = inventoryApi;
 

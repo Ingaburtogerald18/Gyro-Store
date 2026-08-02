@@ -17,6 +17,7 @@ import {
   listInvoices,
   updateInvoice,
   voidInvoice,
+  deleteInvoice,
   getInvoiceTicket,
 } from '../services/invoice';
 
@@ -78,9 +79,9 @@ router.put(
   }),
 );
 
-// Anular en vez de borrar: el correlativo no puede tener huecos. NO hay DELETE
-// — v1 lo tenía, pero borrar un número ya emitido es justo lo que un
-// correlativo no admite.
+// Anular NO es borrar: el correlativo no puede tener huecos, así que anular
+// deja la factura en `void` con su número y su motivo. El DELETE de más abajo
+// es otra cosa — sacar de la vista una factura ya anulada.
 router.post(
   '/:id/void',
   requireAdmin,
@@ -93,6 +94,28 @@ router.post(
       return;
     }
     res.json(voided);
+  }),
+);
+
+/**
+ * DELETE /api/invoices/:id — descartar definitivamente.
+ *
+ * Solo admin, y solo sobre facturas anuladas o huérfanas (lo valida el
+ * servicio). NO reabre el número: la secuencia no retrocede, así que el
+ * correlativo de una factura descartada queda retirado para siempre. Eso es a
+ * propósito — es lo que hace que el correlativo siga siendo auditable.
+ */
+router.delete(
+  '/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = parseUuidParam(req.params.id, 'Factura no encontrada.');
+    const ok = await deleteInvoice(id);
+    if (!ok) {
+      res.status(404).json({ error: 'Factura no encontrada.' });
+      return;
+    }
+    res.json({ ok: true });
   }),
 );
 

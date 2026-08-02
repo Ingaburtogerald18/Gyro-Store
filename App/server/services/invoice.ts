@@ -265,6 +265,40 @@ export async function findInvoiceByNumber(rawCode: string | number): Promise<Inv
   return invoice;
 }
 
+/**
+ * Borra la factura DEFINITIVAMENTE de la base.
+ *
+ * ── Por qué existe y por qué está tan acotado ──
+ * El correlativo es estricto y fiscal: el número de una factura descartada
+ * queda RETIRADO, nunca se reasigna (la secuencia no retrocede). Esto no es un
+ * "deshacer": es sacar de la vista un papel que se anuló y del que no queda
+ * nada que auditar.
+ *
+ * Solo se permite sobre `void` o `unlinked`. Una factura `linked` está atada a
+ * una venta con su snapshot financiero: borrarla dejaría la orden apuntando a
+ * un número que ya no existe.
+ */
+export async function deleteInvoice(id: string): Promise<boolean> {
+  const { data: existing, error: findError } = await db
+    .from('invoices')
+    .select('id, status, sale_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (findError) throw findError;
+  if (!existing) return false;
+
+  if (existing.status === 'linked' || existing.sale_id) {
+    throw new BadRequestError(
+      'Esta factura está vinculada a una venta. Anulá o editá la venta antes de descartarla.',
+    );
+  }
+
+  // `invoice_items` cae solo por el `on delete cascade` de 0007.
+  const { error } = await db.from('invoices').delete().eq('id', id);
+  if (error) throw error;
+  return true;
+}
+
 export async function voidInvoice(
   id: string,
   reason: string,
@@ -298,13 +332,32 @@ export async function voidInvoice(
 }
 
 // Corrección de los datos de cobro. Solo para facturas unlinked.
+/**
+ * Corrige una factura huérfana con el mismo formulario con que se emitió,
+ * LÍNEAS INCLUIDAS.
+ *
+ * Solo sobre `unlinked`: una vez ligada a una venta, estos números ya
+ * alimentaron el snapshot financiero (costos, comisión, ganancia) y moverlos
+ * dejaría la orden describiendo una venta que no ocurrió.
+ *
+ * El CÓDIGO de descuento no se toca: se canjeó al emitir y volver a aplicarlo
+ * consumiría otro uso del código. El monto `discount` ya resuelto se conserva y
+ * se le resta al subtotal nuevo.
+ */
 export async function updateInvoice(
   id: string,
-  input: { method?: string; deliveryFee?: number },
+  input: {
+    method?: string;
+    deliveryFee?: number;
+    customerName?: string;
+    phone?: string;
+    deliveryName?: string;
+    items?: { productName: string; quantity: number; unitPrice: number }[];
+  },
 ): Promise<Invoice | null> {
   const { data: existing, error: findError } = await db
     .from('invoices')
-    .select('id, status, subtotal, discount')
+    .select('id, status, subtotal, discount, delivery_fee')
     .eq('id', id)
     .maybeSingle();
   if (findError) throw findError;
@@ -316,11 +369,50 @@ export async function updateInvoice(
 
   const patch: Record<string, unknown> = {};
   if (input.method !== undefined) patch.method = input.method;
+  // `|| null` para que borrar el campo en el formulario lo deje vacío de verdad
+  // y no guarde una cadena en blanco que después se imprime como un renglón mudo.
+  if (input.customerName !== undefined) patch.customer_name = input.customerName.trim() || null;
+  if (input.phone !== undefined) patch.phone = input.phone.trim() || null;
+  if (input.deliveryName !== undefined) patch.delivery_name = input.deliveryName.trim() || null;
 
-  if (input.deliveryFee !== undefined) {
-    const deliveryFee = round(input.deliveryFee, 2);
+  // ── Líneas ──
+  // Se reemplazan enteras (borrar + insertar) en vez de intentar un diff: las
+  // filas de `invoice_items` no tienen identidad estable en el formulario, y
+  // parchear por posición se rompe apenas se borra una línea del medio.
+  let subtotal = existing.subtotal ?? 0;
+  if (input.items) {
+    subtotal = round(
+      input.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0),
+      2,
+    );
+
+    const { error: delError } = await db.from('invoice_items').delete().eq('invoice_id', id);
+    if (delError) throw delError;
+
+    const { error: insError } = await db.from('invoice_items').insert(
+      input.items.map((it) => ({
+        invoice_id: id,
+        sku: it.productName,
+        quantity: it.quantity,
+        unit_price: round(it.unitPrice, 2),
+        line_total: round(it.quantity * it.unitPrice, 2),
+      })),
+    );
+    if (insError) throw insError;
+
+    patch.subtotal = subtotal;
+  }
+
+  // El total se recalcula si cambió CUALQUIERA de sus tres componentes.
+  if (input.items || input.deliveryFee !== undefined) {
+    const deliveryFee =
+      input.deliveryFee !== undefined ? round(input.deliveryFee, 2) : (existing.delivery_fee ?? 0);
     patch.delivery_fee = deliveryFee;
-    patch.total = round((existing.subtotal ?? 0) - (existing.discount ?? 0) + deliveryFee, 2);
+    // El descuento se acota al subtotal nuevo: si se borraron líneas, un
+    // descuento fijo mayor al subtotal dejaría el total en negativo.
+    const discount = Math.min(existing.discount ?? 0, subtotal);
+    patch.discount = discount;
+    patch.total = round(subtotal - discount + deliveryFee, 2);
   }
 
   if (Object.keys(patch).length === 0) {

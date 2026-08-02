@@ -1,5 +1,5 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
-import { Copy01Icon, File01Icon, Invoice01Icon, PrinterIcon, PlusSignIcon, Tick01Icon, Time02Icon } from "@hugeicons/core-free-icons";
+import { Copy01Icon, Delete02Icon, Edit02Icon, File01Icon, Invoice01Icon, PlusSignIcon, Tick01Icon, Time02Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -11,10 +11,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/com
 import { Button } from '~/components/ui/button';
 import { DataTable } from '~/components/ui/DataTable';
 import { QueryState } from '~/components/ui/QueryState';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
-import { formatCordobas } from "~/lib/formatters";
-import { useGetInvoicesQuery, type Invoice } from '~/store/api/invoicesApi';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import { Spinner } from '~/components/ui/spinner';
+import { RowActionsMenu } from '~/components/ui/RowActionsMenu';
+import { errMsg, formatCordobas } from "~/lib/formatters";
+import {
+  useDeleteInvoiceMutation,
+  useGetInvoicesQuery,
+  useVoidInvoiceMutation,
+  type Invoice,
+} from '~/store/api/invoicesApi';
 import { TicketPrintModal } from '~/components/admin/invoices/TicketPrintModal';
+import { InvoiceEditDialog } from '~/components/admin/invoices/InvoiceEditDialog';
 import { InvoiceEditor } from "~/components/admin/invoices/InvoiceEditor";
 
 export const meta: MetaFunction = () => [{ title: 'Facturación | Gyro Store Admin' }];
@@ -69,9 +79,41 @@ function InvoiceCodeCell({ code, bold }: { code: string; bold?: boolean }) {
 export default function AdminFacturacion() {
   const { data: unlinkedInvoices = [], isLoading: loadingUnlinked, isError: unlinkedError } = useGetInvoicesQuery({ status: 'unlinked' });
   const { data: linkedInvoices = [], isLoading: loadingLinked, isError: linkedError } = useGetInvoicesQuery({ status: 'linked' });
-  
+  const { data: voidInvoices = [], isLoading: loadingVoid, isError: voidError } = useGetInvoicesQuery({ status: 'void' });
+
   const [isCreating, setIsCreating] = useState(false);
   const [printInvoiceId, setPrintInvoiceId] = useState<string | null>(null);
+  const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
+  // Una sola confirmación para las dos acciones destructivas: `mode` decide si
+  // se anula (reversible en el sentido de que la factura queda archivada) o si
+  // se descarta de verdad.
+  const [confirm, setConfirm] = useState<{ invoice: Invoice; mode: 'void' | 'delete' } | null>(null);
+  const [reason, setReason] = useState('');
+
+  const [voidInvoice, { isLoading: voiding }] = useVoidInvoiceMutation();
+  const [deleteInvoice, { isLoading: deleting }] = useDeleteInvoiceMutation();
+
+  async function handleConfirm() {
+    if (!confirm) return;
+    const { invoice, mode } = confirm;
+    try {
+      if (mode === 'void') {
+        if (!reason.trim()) {
+          toast.error('El motivo de la cancelación es obligatorio.');
+          return;
+        }
+        await voidInvoice({ id: invoice.id, reason: reason.trim() }).unwrap();
+        toast.success(`${invoice.invoiceCode} cancelada. Quedó en Facturas eliminadas.`);
+      } else {
+        await deleteInvoice(invoice.id).unwrap();
+        toast.success(`${invoice.invoiceCode} descartada definitivamente.`);
+      }
+      setConfirm(null);
+      setReason('');
+    } catch (err) {
+      toast.error(errMsg(err, 'No se pudo completar la operación.'));
+    }
+  }
 
   const unlinkedColumns = useMemo<ColumnDef<Invoice, unknown>[]>(
     () => [
@@ -130,12 +172,78 @@ export default function AdminFacturacion() {
       {
         id: 'actions',
         header: '',
+        meta: { align: 'right' },
         cell: ({ row }) => (
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setPrintInvoiceId(row.original.id)}>
-              <AnimatedIcon icon={PrinterIcon} size={16} strokeWidth={2} aria-hidden />
-            </Button>
-          </div>
+          <RowActionsMenu
+            className="ml-auto"
+            actions={[
+              {
+                label: 'Ver ticket',
+                icon: <AnimatedIcon icon={ViewIcon} size={16} strokeWidth={2} />,
+                onClick: () => setPrintInvoiceId(row.original.id),
+              },
+              {
+                label: 'Editar datos',
+                icon: <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} />,
+                onClick: () => setEditInvoice(row.original),
+              },
+              {
+                label: 'Cancelar factura',
+                icon: <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />,
+                danger: true,
+                separatorBefore: true,
+                onClick: () => {
+                  setReason('');
+                  setConfirm({ invoice: row.original, mode: 'void' });
+                },
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [],
+  );
+
+  // Facturas anuladas. Sin acciones de edición: lo único que se puede hacer con
+  // una factura muerta es mirarla o sacarla de la vista.
+  const voidColumns = useMemo<ColumnDef<Invoice, unknown>[]>(
+    () => [
+      { accessorKey: 'invoiceCode', header: 'Número de Factura', cell: ({ row }) => <InvoiceCodeCell code={row.original.invoiceCode} /> },
+      { accessorKey: 'customerName', header: 'Cliente', cell: ({ row }) => row.original.customerName || '—' },
+      {
+        accessorKey: 'total',
+        header: 'Total',
+        meta: { align: 'right' },
+        cell: ({ row }) => <span className="text-muted-foreground line-through">{formatCordobas(row.original.total)}</span>,
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Emitida',
+        cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString('es-NI'),
+      },
+      {
+        id: 'actions',
+        header: '',
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <RowActionsMenu
+            className="ml-auto"
+            actions={[
+              {
+                label: 'Ver ticket',
+                icon: <AnimatedIcon icon={ViewIcon} size={16} strokeWidth={2} />,
+                onClick: () => setPrintInvoiceId(row.original.id),
+              },
+              {
+                label: 'Descartar definitivamente',
+                icon: <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />,
+                danger: true,
+                separatorBefore: true,
+                onClick: () => setConfirm({ invoice: row.original, mode: 'delete' }),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -183,12 +291,20 @@ export default function AdminFacturacion() {
       {
         id: 'actions',
         header: '',
+        meta: { align: 'right' },
+        // Una factura vinculada NO se edita ni se cancela desde acá: está atada
+        // a una venta con su snapshot financiero. Para eso hay que ir a la venta.
         cell: ({ row }) => (
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={() => setPrintInvoiceId(row.original.id)}>
-              <AnimatedIcon icon={PrinterIcon} size={16} strokeWidth={2} className="mr-1.5" aria-hidden /> Imprimir
-            </Button>
-          </div>
+          <RowActionsMenu
+            className="ml-auto"
+            actions={[
+              {
+                label: 'Ver ticket',
+                icon: <AnimatedIcon icon={ViewIcon} size={16} strokeWidth={2} />,
+                onClick: () => setPrintInvoiceId(row.original.id),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -251,7 +367,93 @@ export default function AdminFacturacion() {
         </CardContent>
       </Card>
 
+      {/* Facturas eliminadas. Se muestra siempre, aunque esté vacía: si aparece
+          solo cuando hay anuladas, nadie sabe que el tab existe hasta que
+          cancela una y la factura "desaparece". */}
+      <Card className="bg-card border shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg text-foreground flex items-center gap-2">
+            <AnimatedIcon icon={Delete02Icon} size={20} className="text-destructive" />
+            Facturas eliminadas
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Canceladas. Conservan su número: el correlativo no retrocede, así que descartarlas
+            deja ese número retirado para siempre.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <QueryState
+            loading={loadingVoid}
+            error={voidError}
+            empty={voidInvoices.length === 0}
+            loadingFallback={<div className="h-32 animate-pulse rounded-lg bg-muted" />}
+            emptyFallback={
+              <p className="rounded-lg border border-dashed bg-muted/50 py-8 text-center text-sm text-muted-foreground">
+                No hay facturas canceladas.
+              </p>
+            }
+          >
+            <DataTable columns={voidColumns} data={voidInvoices} hideSearch emptyText="No hay facturas canceladas." />
+          </QueryState>
+        </CardContent>
+      </Card>
+
       <TicketPrintModal invoiceId={printInvoiceId} onClose={() => setPrintInvoiceId(null)} />
+
+      <InvoiceEditDialog invoice={editInvoice} onClose={() => setEditInvoice(null)} />
+
+      {/* Confirmación de las dos acciones destructivas. Cancelar pide motivo
+          (queda guardado en la factura); descartar no, porque no queda nada
+          donde escribirlo. */}
+      <Dialog open={!!confirm} onOpenChange={(open) => !open && setConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirm?.mode === 'void' ? 'Cancelar factura' : 'Descartar definitivamente'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirm?.mode === 'void' ? (
+                <>
+                  {confirm?.invoice.invoiceCode} pasa a Facturas eliminadas. Conserva su número y
+                  su motivo. Si solo hay que corregir un dato, usá <strong>Editar</strong> en vez
+                  de cancelar.
+                </>
+              ) : (
+                <>
+                  {confirm?.invoice.invoiceCode} se borra de la base y no se puede recuperar. El
+                  número queda retirado: no se reasigna a ninguna factura nueva.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {confirm?.mode === 'void' && (
+            <div className="space-y-2">
+              <Label htmlFor="void-reason">Motivo (obligatorio)</Label>
+              <Input
+                id="void-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="¿Por qué se cancela?"
+              />
+            </div>
+          )}
+
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setConfirm(null)}>
+              Volver
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={voiding || deleting}
+              className="bg-destructive/90 hover:bg-destructive"
+            >
+              {(voiding || deleting) && <Spinner className="mr-2" />}
+              {confirm?.mode === 'void' ? 'Cancelar factura' : 'Descartar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreating} onOpenChange={setIsCreating}>
         <DialogContent className="w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto">

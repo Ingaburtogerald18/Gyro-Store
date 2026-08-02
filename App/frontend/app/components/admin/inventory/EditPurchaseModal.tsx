@@ -8,7 +8,9 @@ import { Button } from "~/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useUpdatePurchaseMutation, useGetPurchasesQuery, type Purchase } from "~/store/api/inventoryV1Api";
+import { useGetCategoriesQuery } from "~/store/api/catalogAdminApi";
 import { Input } from "~/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { formatUsd } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
 import { DatePicker } from "~/components/ui/date-picker";
@@ -16,7 +18,15 @@ import { DatePicker } from "~/components/ui/date-picker";
 export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
   const [updatePurchase, { isLoading }] = useUpdatePurchaseMutation();
   const { data: purchases = [] } = useGetPurchasesQuery();
+  const { data: categories = [] } = useGetCategoriesQuery();
   const [codeWarn, setCodeWarn] = useState<string | null>(null);
+
+  // Valor guardado que ya no está en la lista (compra vieja, o categoría
+  // borrada en Catálogo). Se agrega como opción propia para no perderlo.
+  const legacyCategory =
+    purchase?.category && !categories.some((c) => c.id === purchase.category)
+      ? purchase.category
+      : null;
 
   const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<PurchaseFormValues, any, PurchaseFormInput>({
     resolver: zodResolver(purchaseFormSchema),
@@ -95,10 +105,39 @@ export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | 
             <FieldError errors={[errors.productName]} />
           </Field>
           
-          {/* Fila 4: Categoría */}
+          {/* Fila 4: Categoría.
+              Era un <Input> de texto libre: se podía guardar cualquier cadena,
+              y la tabla —que resuelve el valor contra la lista de categorías—
+              la mostraba cruda, sin nombre. Ahora es la MISMA lista que en el
+              alta: las categorías de Catálogo.
+
+              `legacyCategory` cubre las compras viejas que quedaron con una
+              categoría que ya no existe en la lista: sin esa opción el select
+              no podría representar su valor y lo borraría en silencio al
+              guardar cualquier otro campo. */}
           <Field data-invalid={!!errors.category}>
             <FieldLabel htmlFor="edit-purchase-category" required>Categoría</FieldLabel>
-            <Input id="edit-purchase-category" aria-required {...register("category")} aria-invalid={!!errors.category} />
+            <NativeSelect
+              id="edit-purchase-category"
+              className="w-full"
+              aria-required
+              aria-invalid={!!errors.category}
+              {...register("category")}
+            >
+              <NativeSelectOption value="" disabled>
+                {categories.length === 0 ? 'No hay categorías creadas' : 'Selecciona una categoría'}
+              </NativeSelectOption>
+              {legacyCategory && (
+                <NativeSelectOption value={legacyCategory}>
+                  {legacyCategory} (categoría anterior)
+                </NativeSelectOption>
+              )}
+              {categories.map((c) => (
+                <NativeSelectOption key={c.id} value={c.id}>
+                  {c.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
             <FieldError errors={[errors.category]} />
           </Field>
         </div>
