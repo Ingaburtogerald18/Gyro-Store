@@ -12,13 +12,12 @@ import {
   Ticket01Icon,
   CheckmarkBadge01Icon,
   DollarCircleIcon,
-  Link01Icon,
 } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
 import { toast } from 'sonner';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';

@@ -33,7 +33,7 @@ import {
 import { BrandLoader } from '~/components/ui/module-loader';
 import { QueryState } from '~/components/ui/QueryState';
 import { useAppDispatch } from '~/store/hooks';
-import { configApi } from '~/store/api/configApi';
+import { configApi } from '~/store/api/sessionApi';
 
 function Section({
   title,

@@ -6,11 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/u
 import { Button } from "~/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { DatePicker } from "~/components/ui/date-picker";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useReportArrivalMutation, useSimulateCostMutation, type Purchase } from "~/store/api/inventoryV1Api";
-import { useGetConfigQuery } from "~/store/api/configApi";
 import { formatCordobas } from "~/lib/formatters";
 import { Spinner } from "~/components/ui/spinner";
 
@@ -21,7 +19,6 @@ export function ArrivalModal({
   purchase: Purchase | null;
   onClose: () => void;
 }) {
-  const { data: config } = useGetConfigQuery();
   const [reportArrival, { isLoading }] = useReportArrivalMutation();
   const [simulateCost] = useSimulateCostMutation();
   const [simulatedPrice, setSimulatedPrice] = useState<number | null>(null);

@@ -1,13 +1,13 @@
 // Modal para editar los datos base de una compra en tránsito (China).
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
+import { Field, FieldError, FieldLabel } from "~/components/ui/field";
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
-import { useUpdatePurchaseMutation, useGetPurchasesQuery, type Purchase } from "~/store/api/inventoryV1Api";
+import { useUpdatePurchaseMutation, type Purchase } from "~/store/api/inventoryV1Api";
 import { useGetCategoriesQuery } from "~/store/api/catalogAdminApi";
 import { Input } from "~/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
@@ -17,9 +17,7 @@ import { DatePicker } from "~/components/ui/date-picker";
 
 export function EditPurchaseModal({ purchase, onClose }: { purchase: Purchase | null; onClose: () => void }) {
   const [updatePurchase, { isLoading }] = useUpdatePurchaseMutation();
-  const { data: purchases = [] } = useGetPurchasesQuery();
   const { data: categories = [] } = useGetCategoriesQuery();
-  const [codeWarn, setCodeWarn] = useState<string | null>(null);
 
   // Valor guardado que ya no está en la lista (compra vieja, o categoría
   // borrada en Catálogo). Se agrega como opción propia para no perderlo.

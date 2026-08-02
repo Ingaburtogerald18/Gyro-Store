@@ -24,7 +24,6 @@ import { formatUsd } from "~/lib/formatters";
 import { cn } from "~/lib/utils";
 import { CodeCell, MoneyCell } from "~/components/ui/cells";
 import { Spinner } from "~/components/ui/spinner";
-import { useGetConfigQuery } from "~/store/api/configApi";
 import { useCategoryLabel } from "~/hooks/useCategoryLabel";
 import {
   formatShortDate,
@@ -138,7 +137,6 @@ export function PurchasesTable({ period = "all", onOpenForm }: { period?: string
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTransit, setFilterTransit] = useState("all");
 
-  const { data: config } = useGetConfigQuery();
 
   const [arrivalFor, setArrivalFor] = useState<Purchase | null>(null);
   const [editFor, setEditFor] = useState<Purchase | null>(null);

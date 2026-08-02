@@ -67,14 +67,6 @@ export type PurchaseFormInput = z.infer<typeof purchaseFormSchema>;
 // dos por separado para que el resolver tipe bien.
 export type PurchaseFormValues = z.input<typeof purchaseFormSchema>;
 
-// Número requerido: un campo vacío ("") debe FALLAR, no convertirse en 0.
-// (z.coerce.number() convierte "" → 0 y lo deja pasar; aquí lo mapeamos a NaN.)
-const requiredNumber = (msg = "Requerido") =>
-  z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? NaN : Number(v)),
-    z.number({ message: msg }).nonnegative("No puede ser negativo"),
-  );
-
 // Reportar llegada a Nicaragua.
 export const arrivalFormSchema = z.object({
   arrivalDate: z.string().min(1, "Fecha de ingreso requerida"),

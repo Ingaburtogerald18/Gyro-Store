@@ -19,7 +19,7 @@ import {
 } from '~/components/ui/sheet';
 import { CheckoutDialog } from './checkout-dialog';
 import { useMediaQuery } from '~/hooks/useMediaQuery';
-import { useGetConfigQuery } from '~/store/api/configApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import {
   closeCart,

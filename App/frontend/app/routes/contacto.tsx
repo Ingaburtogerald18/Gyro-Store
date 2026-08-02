@@ -18,7 +18,7 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
 import { errMsg } from "~/lib/formatters";
-import { useSendContactMutation } from '~/store/api/contactApi';
+import { useSendContactMutation } from '~/store/api/storefrontApi';
 
 export const meta: MetaFunction = () => [{ title: 'Contacto · Gyro Store' }];
 

@@ -8,10 +8,8 @@ import { Button } from "~/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
 import { arrivalFormSchema, type ArrivalFormInput, type ArrivalFormValues } from "~/lib/validators";
 import { useUpdatePurchaseMutation, useSimulateCostMutation, type Purchase } from "~/store/api/inventoryV1Api";
-import { useGetConfigQuery } from "~/store/api/configApi";
 import { formatCordobas } from "~/lib/formatters";
 import { Input } from "~/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
 import { Spinner } from "~/components/ui/spinner";
 import { DatePicker } from "~/components/ui/date-picker";
 
@@ -22,7 +20,6 @@ export function EditArrivalModal({
   purchase: Purchase | null;
   onClose: () => void;
 }) {
-  const { data: config } = useGetConfigQuery();
   const [updatePurchase, { isLoading }] = useUpdatePurchaseMutation();
   const [simulateCost] = useSimulateCostMutation();
   const [simulatedPrice, setSimulatedPrice] = useState<number | null>(null);

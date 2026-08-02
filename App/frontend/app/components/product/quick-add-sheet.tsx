@@ -19,8 +19,8 @@ import {
   variantLabel,
   type VariantSelection,
 } from '~/components/product/variant-picker';
-import { useGetCatalogDetailQuery } from '~/store/api/catalogApi';
-import { useGetConfigQuery } from '~/store/api/configApi';
+import { useGetCatalogDetailQuery } from '~/store/api/storefrontApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
 import { formatCordobas } from '~/lib/formatters';

@@ -19,8 +19,8 @@ import type { LandingConfig } from '@shared/schemas';
 import { SlideMedia } from '~/components/catalog/slide-media';
 import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
-import { useGetConfigQuery } from '~/store/api/configApi';
-import { useGetLandingConfigQuery } from '~/store/api/landingApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
+import { useGetLandingConfigQuery } from '~/store/api/storefrontApi';
 import { cn } from "~/lib/utils"
 import { buildWhatsappUrl } from "~/lib/formatters";
 

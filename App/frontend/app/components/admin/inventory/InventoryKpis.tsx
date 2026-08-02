@@ -6,7 +6,6 @@
 //   rose    = alertas (agotados)
 
 import { CargoShipIcon, DollarSquareIcon, Invoice01Icon, PackageDeliveredIcon, PackageIcon, PackageRemoveIcon, TruckIcon, Wallet01Icon } from "@hugeicons/core-free-icons";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { StatCard } from "~/components/ui/stat-card";
 import { useGetInventoryKpisQuery, useGetCurrentInventoryQuery } from "~/store/api/inventoryV1Api";
 import { formatUsd, cordobasFromUsd } from "~/lib/formatters";
@@ -40,7 +39,6 @@ export function InventoryKpis({ tab, period = "all" }: InventoryKpisProps) {
   }
 
   if (tab === "current" || tab === "outOfStock") {
-    const totalProducts = rows.length;
     const totalAvailable = rows.reduce((acc, r) => acc + (r.available || 0), 0);
     const totalShippingUsd = rows.reduce((acc, r) => acc + (r.shippingUnitUsd || 0) * (r.available || 0), 0);
     const totalPreTotalUsd = rows.reduce((acc, r) => acc + (r.preTotalUsd || 0), 0);

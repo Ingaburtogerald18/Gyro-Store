@@ -23,8 +23,8 @@ import {
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
-import { useGetConfigQuery } from '~/store/api/configApi';
-import { useCreatePublicOrderMutation } from '~/store/api/ordersApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
+import { useCreatePublicOrderMutation } from '~/store/api/storefrontApi';
 import {
   useValidateDiscountCodeMutation,
   type DiscountCodeValidation,

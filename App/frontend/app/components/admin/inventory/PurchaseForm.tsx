@@ -12,7 +12,6 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui
 import { purchaseFormSchema, type PurchaseFormInput, type PurchaseFormValues } from "~/lib/validators";
 import { useCreatePurchaseMutation, useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
 import { useGetCategoriesQuery } from "~/store/api/catalogAdminApi";
-import { useGetConfigQuery } from "~/store/api/configApi";
 import { Input } from "~/components/ui/input";
 import { Combobox } from "~/components/ui/combobox";
 import { NativeSelect, NativeSelectOption } from "~/components/ui/native-select";
@@ -34,7 +33,6 @@ export function PurchaseForm({ onDone }: { onDone?: () => void } = {}) {
   const [createPurchase, { isLoading }] = useCreatePurchaseMutation();
   const { data: purchases = [] } = useGetPurchasesQuery();
   const { data: categories = [] } = useGetCategoriesQuery();
-  const { data: config } = useGetConfigQuery();
   const [showSuccessPrompt, setShowSuccessPrompt] = useState(false);
   const {
     register,

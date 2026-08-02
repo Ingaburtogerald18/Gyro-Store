@@ -1,16 +1,13 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowLeft02Icon } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from "react";
-import { useSearchParams, Link } from "@remix-run/react";
+import { Link } from "@remix-run/react";
 import type { MetaFunction } from "@remix-run/node";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
-import { cn } from "~/lib/utils";
-import { buildWhatsappUrl } from "~/lib/formatters";
 import { getSupabaseClient } from "~/lib/supabase.client";
-import { useGetConfigQuery } from "~/store/api/configApi";
-import { loginSchema, type LoginInput } from "../../../shared/schemas";
+import { useGetConfigQuery } from "~/store/api/sessionApi";
 import { Spinner } from "~/components/ui/spinner";
 
 export const meta: MetaFunction = () => [
@@ -18,11 +15,7 @@ export const meta: MetaFunction = () => [
   { name: "description", content: "Acceso exclusivo para personal de Gyro Store" }
 ];
 
-const WHATSAPP_NUMBER = "50585944758";
-
 export default function Login() {
-  const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo");
   const { data: config } = useGetConfigQuery();
 
   const [busy, setBusy] = useState<null | "microsoft">(null);

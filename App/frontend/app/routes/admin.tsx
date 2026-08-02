@@ -3,11 +3,9 @@ import { AnimatedIcon, type IconGesture } from "~/components/ui/animated-icons";
 import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Search01Icon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
-import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { motion, useReducedMotion } from 'framer-motion';
 
-import { Button } from '~/components/ui/button';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -49,8 +47,7 @@ import { cn } from '~/lib/utils';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
-import { useGetMeQuery } from '~/store/api/authApi';
-import { useGetConfigQuery } from '~/store/api/configApi';
+import { useGetMeQuery, useGetConfigQuery } from '~/store/api/sessionApi';
 import { BrandLoader } from '~/components/ui/module-loader';
 
 interface NavItem {

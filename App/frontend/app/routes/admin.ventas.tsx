@@ -14,7 +14,7 @@
 // en dos líneas (mismo límite del backend, evita la lógica de "distribuir
 // reservas" de v1).
 import { AnimatedIcon } from "~/components/ui/animated-icons";
-import { CancelCircleIcon, CheckmarkCircle01Icon, ShoppingCart02Icon, Add01Icon } from "@hugeicons/core-free-icons";
+import { CancelCircleIcon, CheckmarkCircle01Icon, Add01Icon } from "@hugeicons/core-free-icons";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
@@ -36,7 +36,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { SALE_STATUS, statusMeta } from '~/lib/status';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { errMsg, formatCordobas } from "~/lib/formatters";

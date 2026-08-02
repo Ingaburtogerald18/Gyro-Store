@@ -50,7 +50,6 @@ import { Textarea } from '~/components/ui/textarea';
 import {
   useGetInventoryLotsQuery,
   useGetTemplatesQuery,
-  useGetAdminCatalogQuery,
   type InventoryLot,
 } from '~/store/api/catalogAdminApi';
 import { ImageUploader } from './ImageUploader';
@@ -93,7 +92,6 @@ export function ProductEditorDialog({
 }) {
   const { data: templates = [] } = useGetTemplatesQuery(undefined, { skip: !open });
   const { data: lots = [], isLoading: loadingLots } = useGetInventoryLotsQuery(undefined, { skip: !open });
-  const { data: allProducts = [] } = useGetAdminCatalogQuery(undefined, { skip: !open });
 
   // La regla de la oferta no vive en el backend, pero tampoco se inventa acá:
   // es la que ya tenía este editor, movida del `handleSubmit` al schema para que
@@ -159,25 +157,6 @@ export function ProductEditorDialog({
 
   const form = watch();
   const template = templates.find((t) => t.id === form.templateId) ?? null;
-
-  // Set con los códigos de lote que YA están mapeados a OTROS productos distintos al que se edita.
-  // Permite ocultarlos del buscador para no vender el mismo stock dos veces.
-  const externallyMappedCodes = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of allProducts) {
-      if (product && p.id === product.id) continue;
-      if (p.variantMappings) {
-        for (const mapping of Object.values(p.variantMappings)) {
-          for (const code of mapping.codes) set.add(code);
-        }
-      }
-    }
-    return set;
-  }, [allProducts, product]);
-
-  const availableLots = useMemo(() => {
-    return lots.filter((lot) => !externallyMappedCodes.has(lot.code));
-  }, [lots, externallyMappedCodes]);
 
   // Prefill al abrir. Se depende de `product` y no de `open` a secas para que
   // reabrir el mismo producto tras cancelar no arrastre lo que se había tipeado.
