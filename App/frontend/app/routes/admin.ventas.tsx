@@ -32,8 +32,7 @@ import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
 import { QueryState } from '~/components/ui/QueryState';
 import { SkeletonCard } from '~/components/ui/skeletons';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { SALE_STATUS, statusMeta } from '~/lib/status';
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
@@ -272,14 +271,14 @@ export default function AdminVentas() {
           referencia y el scroll de adentro pelea con el de la página. Acá el
           header queda fijo, el cuerpo scrollea solo, y las ventas pendientes se
           siguen viendo detrás. */}
-      <Sheet open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl lg:max-w-3xl">
-          <SheetHeader className="shrink-0 border-b border-border px-5 py-4">
-            <SheetTitle>Registrar venta</SheetTitle>
-            <SheetDescription>
+      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-14">
+            <DialogTitle>Registrar venta</DialogTitle>
+            <DialogDescription>
               El stock se reserva al registrar y se descuenta al aprobar.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
             {/* El fallback tiene la ALTURA aproximada del editor: con un spinner
@@ -289,8 +288,8 @@ export default function AdminVentas() {
               <SaleEditor onDone={() => setIsEditorOpen(false)} />
             </Suspense>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* El vendedor no tiene Dashboard en su nav, así que su reportería propia
           vive acá. Al admin no se le muestra: ya la tiene completa (y de todo

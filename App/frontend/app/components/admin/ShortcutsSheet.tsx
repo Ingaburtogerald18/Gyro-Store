@@ -2,7 +2,7 @@
 //
 // Un atajo que nadie sabe que existe no es una feature, es código muerto. Esta
 // hoja es la única razón por la que los de `useAdminHotkeys` sirven de algo.
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 
 const GROUPS: { title: string; items: { keys: string[]; label: string }[] }[] = [
   {
@@ -53,16 +53,16 @@ export function ShortcutsSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-sm">
-        <SheetHeader>
-          <SheetTitle>Atajos de teclado</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-4 sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Atajos de teclado</DialogTitle>
+          <DialogDescription>
             Los atajos se ignoran mientras escribís en un campo.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-6 overflow-y-auto px-4 pb-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
           {GROUPS.map((g) => (
             <section key={g.title}>
               <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -83,7 +83,7 @@ export function ShortcutsSheet({
             </section>
           ))}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

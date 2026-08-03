@@ -42,6 +42,7 @@ import {
   SidebarRail,
   SidebarFooter,
   SidebarTrigger,
+  useSidebar,
 } from '~/components/ui/sidebar';
 import { cn } from '~/lib/utils';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
@@ -139,15 +140,19 @@ async function syncEntraPhoto(accessToken: string, providerToken: string): Promi
 function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: string }) {
   const { data: config } = useGetConfigQuery();
   const reduceMotion = useReducedMotion();
-  
-  // Sin `onMouseEnter`/`onMouseLeave`.
-  // La expansión por hover abría el menú cuando el mouse pasaba de camino a
-  // otra cosa —el sidebar se movía solo, sin que nadie lo pidiera— y no existe
-  // en trackpad ni en touch. Ahora abre y cierra con el `SidebarTrigger`, y
-  // `SidebarProvider` persiste el estado en cookie: la elección del usuario
-  // sobrevive al refresh.
+  const { setOpen } = useSidebar();
+
+  // Expansión por hover: en escritorio el panel arranca colapsado (rail de
+  // iconos) y se despliega al acercar el mouse, colapsando al salir. El
+  // `SidebarTrigger` del header sigue funcionando para click/teclado (y en
+  // touch, donde no hay hover). Los handlers van sobre el contenedor del
+  // Sidebar, así que solo disparan al entrar al panel, no de paso.
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar
+      collapsible="icon"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       {/* La marca va DENTRO de SidebarContent, no en un SidebarHeader.
           `SidebarHeader` es un hermano flex del contenido, así que quedaba
           clavado arriba mientras el menú se centraba: logo y botones sin
@@ -423,9 +428,8 @@ export default function AdminLayout() {
   );
 
   return (
-    // El estado del sidebar lo persiste SidebarProvider en cookie (mejor que
-    // localStorage: no parpadea en el primer render del servidor).
-    // Lo cerramos por defecto ya que queremos que sea hover-based.
+    // Arranca colapsado (rail de iconos): el panel es hover-based en escritorio
+    // (ver AdminSidebar) y se abre/cierra con el SidebarTrigger en touch.
     <SidebarProvider data-skin="admin" defaultOpen={false}>
       <AdminSidebar isAdmin={isAdmin} pathname={location.pathname} />
 

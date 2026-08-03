@@ -29,12 +29,12 @@ import { Button } from '~/components/ui/button';
 // modal de 5xl tapa el catálogo que se está editando — y editar un producto es
 // justo cuando conviene seguir viendo los demás.
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '~/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
 import {
   Field,
   FieldContent,
@@ -255,19 +255,19 @@ export function ProductEditorDialog({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      {/* p-0 + flex: el cuerpo scrollea solo y el pie queda siempre a la vista.
-          Con el scroll en el contenedor entero, en un formulario largo había que
-          bajar hasta el final para encontrar «Guardar». */}
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl lg:max-w-3xl">
-        <SheetHeader className="shrink-0 border-b border-border px-6 py-4 pr-14">
-          <SheetTitle className="text-lg">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* p-0 + flex + max-h-[90vh]: el cuerpo scrollea solo y el pie queda
+          siempre a la vista. Con el scroll en el contenedor entero, en un
+          formulario largo había que bajar hasta el final para «Guardar». */}
+      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-4 pr-14">
+          <DialogTitle className="text-lg">
             {product ? 'Editar producto' : 'Nuevo producto'}
-          </SheetTitle>
-          <SheetDescription>
+          </DialogTitle>
+          <DialogDescription>
             El precio de venta se define en cada variante, junto con el lote de bodega que la surte.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -558,8 +558,8 @@ export function ProductEditorDialog({
             </Button>
           </footer>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

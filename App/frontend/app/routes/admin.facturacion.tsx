@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Spinner } from '~/components/ui/spinner';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
 import { SkeletonCard } from '~/components/ui/skeletons';
 import { RowActionsMenu } from '~/components/ui/RowActionsMenu';
 import { errMsg, formatCordobas } from "~/lib/formatters";
@@ -492,14 +491,14 @@ export default function AdminFacturacion() {
           el de la página. Acá el header queda fijo, el cuerpo scrollea solo, y
           el listado de facturas se sigue viendo detrás — que es el contexto que
           el cajero necesita para saber en qué número va. */}
-      <Sheet open={isCreating} onOpenChange={setIsCreating}>
-        <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl lg:max-w-3xl">
-          <SheetHeader className="shrink-0 border-b border-border px-5 py-4">
-            <SheetTitle>Nueva factura (POS)</SheetTitle>
-            <SheetDescription>
+      <Dialog open={isCreating} onOpenChange={setIsCreating}>
+        <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-14">
+            <DialogTitle>Nueva factura (POS)</DialogTitle>
+            <DialogDescription>
               Se emite el ticket y después se vincula al registrar la venta.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
             <Suspense fallback={<SkeletonCard lines={8} className="border-none" />}>
@@ -511,8 +510,8 @@ export default function AdminFacturacion() {
               />
             </Suspense>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

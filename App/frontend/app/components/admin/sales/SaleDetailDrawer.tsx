@@ -1,9 +1,7 @@
-// Detalle de una venta, en drawer lateral.
+// Detalle de una venta, en diálogo centrado.
 //
-// ── Por qué drawer y no modal ──
-// El listado sigue visible detrás. Al revisar seis ventas pendientes una tras
-// otra, un modal te saca del contexto en cada una y hay que volver a ubicarse;
-// el drawer deja la fila a la vista.
+// `flex flex-col` + max-h-[90vh]: el cuerpo scrollea y el pie con las acciones
+// (aprobar/rechazar) queda siempre fijo a la vista.
 //
 // ── Por qué es ENLAZABLE (`?sale=<id>`) ──
 // Es lo que permite que la campana de notificaciones apunte al registro exacto
@@ -14,7 +12,7 @@ import { CancelCircleIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-ic
 
 import { Button } from '~/components/ui/button';
 import { QueryState } from '~/components/ui/QueryState';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { formatCordobas } from '~/lib/formatters';
 import { SALE_STATUS, statusMeta } from '~/lib/status';
@@ -39,22 +37,21 @@ export function SaleDetailDrawer({
   const pending = sale?.status === 'pending_approval';
 
   return (
-    <Sheet open={!!saleId} onOpenChange={(open) => !open && onClose()}>
-      {/* `flex flex-col` + footer fijo: el cuerpo scrollea, las acciones
-          primarias quedan siempre a la vista. Es lo que un modal con scroll
-          interno no puede dar. */}
-      <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-lg">
-        <SheetHeader className="shrink-0 border-b border-border px-5 py-4">
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={!!saleId} onOpenChange={(open) => !open && onClose()}>
+      {/* `flex flex-col` + max-h-[90vh]: el cuerpo scrollea y el pie con las
+          acciones primarias queda siempre a la vista. */}
+      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-14">
+          <DialogTitle className="flex items-center gap-2">
             Venta
             {meta && <StatusBadge status={meta.status} label={meta.label} />}
-          </SheetTitle>
-          <SheetDescription>
+          </DialogTitle>
+          <DialogDescription>
             {sale
               ? `${sale.sellerName || sale.sellerEmail} · ${new Date(sale.createdAt).toLocaleDateString('es-NI')}`
               : 'Cargando…'}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <QueryState
@@ -172,7 +169,7 @@ export function SaleDetailDrawer({
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
