@@ -8,7 +8,7 @@
 // en vez de a la pestaña que lo contiene. Hasta ahora no se podía: no existía
 // `GET /api/sales/:id`.
 import { AnimatedIcon } from '~/components/ui/animated-icons';
-import { CancelCircleIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
+import { CancelCircleIcon, CheckmarkCircle01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
 
 import { Button } from '~/components/ui/button';
 import { QueryState } from '~/components/ui/QueryState';
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { formatCordobas } from '~/lib/formatters';
 import { SALE_STATUS, statusMeta } from '~/lib/status';
-import { useGetSaleQuery } from '~/store/api/salesApi';
+import { useGetSaleQuery, type SaleWithItems } from '~/store/api/salesApi';
 
 export function SaleDetailDrawer({
   saleId,
@@ -24,12 +24,14 @@ export function SaleDetailDrawer({
   isAdmin,
   onApprove,
   onReject,
+  onEdit,
 }: {
   saleId: string | null;
   onClose: () => void;
   isAdmin: boolean;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onEdit?: (sale: SaleWithItems) => void;
 }) {
   const { data: sale, isLoading, isError, refetch } = useGetSaleQuery(saleId!, { skip: !saleId });
 
@@ -144,28 +146,41 @@ export function SaleDetailDrawer({
           </div>
 
           {isAdmin && pending && sale && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  onReject?.(sale.id);
-                  onClose();
-                }}
-              >
-                <AnimatedIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="mr-1.5 text-destructive" />
-                Rechazar
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  onApprove?.(sale.id);
-                  onClose();
-                }}
-              >
-                <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-1.5" />
-                Aprobar
-              </Button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    onReject?.(sale.id);
+                    onClose();
+                  }}
+                >
+                  <AnimatedIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="mr-1.5 text-destructive" />
+                  Rechazar
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    onApprove?.(sale.id);
+                    onClose();
+                  }}
+                >
+                  <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-1.5" />
+                  Aprobar
+                </Button>
+              </div>
+              {/* Corregir antes de aprobar: abre el editor con la venta cargada. */}
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                  onClick={() => onEdit(sale)}
+                >
+                  <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} className="mr-1.5" />
+                  Editar (corregir datos)
+                </Button>
+              )}
             </div>
           )}
         </div>
