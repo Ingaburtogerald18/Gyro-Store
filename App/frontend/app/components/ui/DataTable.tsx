@@ -348,7 +348,10 @@ export function DataTable<T>({
             se veía y en claro se veía barata. */}
       <div className="relative hidden overflow-hidden rounded-card border border-border bg-card md:block">
         <table className={cn("w-full", compact ? "text-[13px]" : "text-sm")}>
-          <thead className="table-header-brand sticky top-14 z-20 text-left">
+          {/* Fondo OPACO + borde inferior: el <thead> es `sticky`, así que sin
+              fondo las filas se transparentaban detrás al scrollear y el título
+              se fundía con la primera fila. Mismo tratamiento que el <tfoot>. */}
+          <thead className="sticky top-14 z-20 border-b border-border bg-background/95 text-left backdrop-blur-md [&_th]:border-b [&_th]:border-border">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {selectable && (
