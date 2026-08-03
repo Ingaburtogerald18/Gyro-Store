@@ -136,7 +136,7 @@ async function syncEntraPhoto(accessToken: string, providerToken: string): Promi
   }
 }
 
-function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin: boolean; pathname: string }) {
+function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: string }) {
   const { data: config } = useGetConfigQuery();
   const reduceMotion = useReducedMotion();
   
@@ -427,7 +427,7 @@ export default function AdminLayout() {
     // localStorage: no parpadea en el primer render del servidor).
     // Lo cerramos por defecto ya que queremos que sea hover-based.
     <SidebarProvider data-skin="admin" defaultOpen={false}>
-      <AdminSidebar user={user} isAdmin={isAdmin} pathname={location.pathname} />
+      <AdminSidebar isAdmin={isAdmin} pathname={location.pathname} />
 
       {/* La barra de progreso NO se monta acá: `root.tsx` ya tiene una para
           toda la app y dos instancias dibujarían dos barras. */}
