@@ -243,9 +243,9 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
                         <SidebarMenuButton
                           aria-disabled
                           tooltip={`${item.name} · Próximamente`}
-                          className="cursor-default text-muted-foreground [&_svg]:size-6 group-data-[collapsible=icon]:size-10!"
+                          className="cursor-default text-muted-foreground [&_svg]:size-5 group-data-[collapsible=icon]:size-10!"
                         >
-                          <AnimatedIcon icon={item.icon} size={24} strokeWidth={2} />
+                          <AnimatedIcon icon={item.icon} size={20} strokeWidth={2} />
                           <span className="text-[17px]">{item.name}</span>
                           <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide group-data-[collapsible=icon]:hidden">
                             Pronto
@@ -265,19 +265,18 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
                         />
                       )}
                       {/* Dos overrides sobre `sidebarMenuButtonVariants`:
-                          · `[&_svg]:size-6` pisa el `[&_svg]:size-4` que la
+                          · `[&_svg]:size-5` pisa el `[&_svg]:size-4` que la
                             primitiva fuerza sobre TODO svg — por eso el `size`
-                            del icono no se veía.
-                          · `size-10!` pisa el `size-8!` del estado colapsado.
-                            Sin esto el botón queda en 32 px con 8 px de padding
-                            y su `overflow-hidden` recorta el icono de 24 px.
-                            Cabe porque el rail pasó a 56 px. */}
+                            del icono no se veía. 20 px queda proporcional a la
+                            etiqueta de 17 px y al resto de la app (encabezados).
+                          · `size-10!` pisa el `size-8!` del estado colapsado, y
+                            centra el icono en el rail de 56 px. */}
                       <SidebarMenuButton
                         asChild
                         isActive={false}
                         tooltip={item.name}
                         className={cn(
-                          "[&_svg]:size-6 group-data-[collapsible=icon]:size-10!",
+                          "[&_svg]:size-5 group-data-[collapsible=icon]:size-10!",
                           isActive && "relative z-10 text-primary-foreground font-medium hover:bg-transparent hover:text-primary-foreground",
                         )}
                       >
@@ -286,7 +285,7 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
                             icon={item.icon}
                             trigger="press"
                             gesture={item.gesture ?? 'draw'}
-                            size={24}
+                            size={20}
                             strokeWidth={2}
                           />
                           <span className="text-[17px]">{item.name}</span>
