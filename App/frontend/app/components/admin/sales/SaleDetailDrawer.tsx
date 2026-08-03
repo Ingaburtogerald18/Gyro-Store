@@ -147,6 +147,19 @@ export function SaleDetailDrawer({
 
           {isAdmin && pending && sale && (
             <div className="flex flex-col gap-2">
+              {/* Corregir antes de decidir: abre el editor con la venta cargada.
+                  Va arriba y como botón visible (no ghost) porque es el paso
+                  previo natural a aprobar/rechazar si hay un dato malo. */}
+              {onEdit && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => onEdit(sale)}
+                >
+                  <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} className="mr-1.5" />
+                  Editar venta (corregir datos)
+                </Button>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -170,17 +183,6 @@ export function SaleDetailDrawer({
                   Aprobar
                 </Button>
               </div>
-              {/* Corregir antes de aprobar: abre el editor con la venta cargada. */}
-              {onEdit && (
-                <Button
-                  variant="ghost"
-                  className="w-full text-muted-foreground"
-                  onClick={() => onEdit(sale)}
-                >
-                  <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} className="mr-1.5" />
-                  Editar (corregir datos)
-                </Button>
-              )}
             </div>
           )}
         </div>
