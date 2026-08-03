@@ -78,11 +78,9 @@ export default function AdminVentas() {
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get('status') ?? 'pending_approval';
 
-  // `?nueva=1` abre el editor. Es lo que permite que "Registrar venta" de la
-  // paleta funcione desde cualquier módulo sin subir el estado del diálogo a un
-  // store global: la acción navega acá y la ruta interpreta el parámetro.
-  // Efecto secundario útil: la acción queda enlazable desde una notificación o
-  // un mensaje.
+  // `?nueva=1` abre el editor: la acción "Registrar venta" queda ENLAZABLE
+  // (una notificación o un mensaje pueden apuntar directo al formulario) sin
+  // subir el estado del diálogo a un store global.
   useEffect(() => {
     if (searchParams.get('nueva') === '1') {
       setIsEditorOpen(true);

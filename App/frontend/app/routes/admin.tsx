@@ -1,6 +1,6 @@
 import type { IconSvgElement } from "@hugeicons/react";
 import { AnimatedIcon, type IconGesture } from "~/components/ui/animated-icons";
-import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Search01Icon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
 import type { User } from '@supabase/supabase-js';
@@ -26,9 +26,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import { Separator } from '~/components/ui/separator';
 import { NotificationsBell } from '~/components/admin/NotificationsBell';
 import { ThemeToggle } from '~/components/layout/ThemeToggle';
-import { CommandPalette, HOTKEY_DESTINATIONS } from '~/components/admin/CommandPalette';
-import { ShortcutsSheet } from '~/components/admin/ShortcutsSheet';
-import { useAdminHotkeys } from '~/hooks/useAdminHotkeys';
 import {
   Sidebar,
   SidebarContent,
@@ -344,16 +341,6 @@ export default function AdminLayout() {
   // cada bloque, que ocupan la forma final del contenido. Ver Docs/16.
   const reduceMotion = useReducedMotion();
 
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-
-  useAdminHotkeys({
-    destinations: HOTKEY_DESTINATIONS,
-    isAdmin,
-    onOpenPalette: () => setPaletteOpen(true),
-    onOpenShortcuts: () => setShortcutsOpen(true),
-  });
-
   useEffect(() => {
     const supabase = getSupabaseClient();
     let active = true;
@@ -463,18 +450,6 @@ export default function AdminLayout() {
             </BreadcrumbList>
           </Breadcrumb>
 
-          {/* Disparador visible de ⌘K. Un atajo que nadie sabe que existe no
-              sirve: el botón es la única forma de que se descubra. */}
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="ml-4 hidden items-center gap-2 rounded-pill border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex sm:w-full sm:max-w-xs"
-          >
-            <AnimatedIcon icon={Search01Icon} size={14} strokeWidth={2} />
-            <span>Buscar…</span>
-            <kbd className="ml-auto rounded border border-border px-1 text-[10px]">⌘K</kbd>
-          </button>
-
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
             <NotificationsBell />
@@ -532,11 +507,6 @@ export default function AdminLayout() {
           <Outlet />
         </motion.main>
       </SidebarInset>
-
-      {/* Montados UNA vez en el shell, no por ruta: los atajos tienen que
-          funcionar desde cualquier módulo. */}
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} isAdmin={isAdmin} />
-      <ShortcutsSheet open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </SidebarProvider>
   );
 }

@@ -89,8 +89,8 @@ export default function AdminFacturacion() {
 
   const [isCreating, setIsCreating] = useState(false);
 
-  // `?nueva=1` abre el editor: así "Emitir factura" de la paleta (⌘K) funciona
-  // desde cualquier módulo. Ver la nota en `CommandPalette.tsx`.
+  // `?nueva=1` abre el editor: deja la acción "Emitir factura" enlazable desde
+  // otro módulo, una notificación o un mensaje.
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     if (searchParams.get('nueva') === '1') {
