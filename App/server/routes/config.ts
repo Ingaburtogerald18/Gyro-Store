@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { getPublicConfig } from '../services/config.js';
-import { getImageResources } from '../services/appConfig.js';
+import { getImageResources, getStoreCategories, getBusinessInfo } from '../services/appConfig.js';
 
 const router = Router();
 
@@ -10,9 +10,15 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const publicConfig = getPublicConfig();
-    const images = await getImageResources();
+    const [images, categories, business] = await Promise.all([
+      getImageResources(),
+      getStoreCategories(),
+      getBusinessInfo(),
+    ]);
     res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
-    res.json({ ...publicConfig, images });
+    // `business` (editable desde el panel) pisa brandName/whatsapp/contactEmail
+    // que vienen de env, y agrega ruc/address.
+    res.json({ ...publicConfig, ...business, categories, images });
   })
 );
 

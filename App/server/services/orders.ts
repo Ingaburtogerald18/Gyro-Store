@@ -37,7 +37,7 @@ function buildWhatsappMessage(
   const money = (n: number) => `${config.currency}${Number(n || 0).toLocaleString('es-NI')}`;
   const div = '━━━━━━━━━━━━━━━';
 
-  let msg = '🛒 *NUEVO PEDIDO — Gyro Store*\n';
+  let msg = `🛒 *NUEVO PEDIDO — ${config.brandName}*\n`;
   msg += `${div}\n`;
   msg += `👤 *${input.customerName}*\n`;
   msg += `📞 ${input.phone}\n`;

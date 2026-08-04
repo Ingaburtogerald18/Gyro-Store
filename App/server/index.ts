@@ -31,6 +31,7 @@ import { apiLimiter, publicOrderLimiter, contactLimiter } from './middleware/rat
 import { sanitizeBody } from './utils/sanitize';
 import { logger } from './utils/logger';
 import { startUserCleanupCron } from './services/cleanupUsers';
+import { serveFrontend } from './serveFrontend';
 
 const app: Express = express();
 
@@ -100,10 +101,17 @@ app.use('/api/reports', reportsRouter);
 
 // ── Cierre de la cadena ──
 app.use('/api', notFoundHandler);
+
+// En producción, Express sirve además el frontend (Remix) en el mismo origen.
+// En dev el frontend corre aparte (:5173) y proxya /api, así que no montamos nada.
+if (config.isProd) {
+  await serveFrontend(app);
+}
+
 app.use(errorHandler);
 
 app.listen(Number(config.port), '0.0.0.0', () => {
-  logger.info(`Gyro Store API arriba en puerto ${config.port}`, { env: config.env });
+  logger.info(`${config.brandName} API arriba en puerto ${config.port}`, { env: config.env });
   
   // Iniciar tareas en segundo plano
   startUserCleanupCron();

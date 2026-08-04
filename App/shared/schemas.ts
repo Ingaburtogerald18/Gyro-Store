@@ -151,6 +151,33 @@ export const imageResourcesSchema = z.object({
   posLogo: z.string().url('Debe ser una URL válida').or(z.literal('')).optional(),
 });
 export type ImageResources = z.infer<typeof imageResourcesSchema>;
+
+// Categorías del storefront (los chips de filtro del landing). Distintas de
+// `categorySchema` (entidad de DB con uuid/slug): esto es una lista CURADA con
+// ícono emoji, editable desde el panel y expuesta en GET /api/config.
+export const storeCategorySchema = z.object({
+  id: z.string().min(1, 'El id es obligatorio.').max(40),
+  name: z.string().min(1, 'El nombre es obligatorio.').max(80),
+  // Ícono emoji opcional; string vacío permitido (sin .default() a propósito:
+  // divergiría el tipo input/output y rompe zodResolver en el form).
+  icon: z.string().max(16),
+});
+export const storeCategoriesSchema = z.array(storeCategorySchema);
+export type StoreCategory = z.infer<typeof storeCategorySchema>;
+
+// Información del negocio editable desde el panel (pestaña "General"). Vive en
+// `app_config` (key 'business_info'); el valor inicial se siembra desde las env
+// vars (BRAND_NAME/WHATSAPP_NUMBER/CONTACT_EMAIL). Sin .default() a propósito
+// (divergiría input/output y rompe zodResolver en el form).
+export const businessInfoSchema = z.object({
+  brandName: z.string().min(1, 'El nombre de la tienda es obligatorio.').max(80),
+  ruc: z.string().max(40),
+  whatsapp: z.string().min(1, 'El WhatsApp es obligatorio.').max(30),
+  contactEmail: z.string().email('Correo inválido.').or(z.literal('')),
+  address: z.string().max(200),
+});
+export type BusinessInfo = z.infer<typeof businessInfoSchema>;
+
 export type CatalogProduct = z.infer<typeof catalogProductSchema>;
 export type CatalogAxis = z.infer<typeof catalogAxisSchema>;
 export type CatalogDetail = z.infer<typeof catalogDetailSchema>;
