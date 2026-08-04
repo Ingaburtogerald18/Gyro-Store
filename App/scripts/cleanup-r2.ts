@@ -1,7 +1,6 @@
+import '../server/loadEnv.js'; // Fuente única de variables de entorno. Debe ir primero.
 import { listFiles, deleteFileByUrl } from '../server/services/storage.js';
 import { getImageResources } from '../server/services/appConfig.js';
-import dotenv from 'dotenv';
-dotenv.config();
 
 async function run() {
   console.log("Fetching currently used images from DB...");

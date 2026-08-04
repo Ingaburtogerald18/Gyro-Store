@@ -18,9 +18,15 @@ import { Pie, PieChart } from 'recharts';
 
 import { NavLink } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
+<<<<<<< Updated upstream
 import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetDeliveryInvoicesQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
 import { useGetCuadreQuery } from '~/store/api/cuadreApi';
 import { useGetAccountsQuery } from '~/store/api/cajaApi';
+=======
+import { pageTitle } from '~/lib/brand';
+import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
+import { useGetCuadreQuery } from '~/store/api/cajaApi';
+>>>>>>> Stashed changes
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { formatCordobas, formatNumber } from '~/lib/formatters';
@@ -45,7 +51,7 @@ import { DrilldownDialog } from '~/components/admin/reports/DrilldownDialog';
 import { getPeriodRange, isPeriodReady, pickBucket, type CustomRange, type PeriodId, type PeriodRange } from '~/components/admin/reports/period';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Reportería | Gyro Store Admin' }];
+  return [{ title: pageTitle('Reportería', { admin: true }) }];
 };
 
 // Los 7 pozos del doc 11, en el orden en que se reparte el Costo F/U.

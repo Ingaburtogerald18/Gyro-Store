@@ -16,6 +16,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
+import { pageTitle } from '~/lib/brand';
 import { toast } from 'sonner';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
@@ -38,7 +39,7 @@ import {
   type DiscountType,
 } from '~/store/api/discountCodesApi';
 
-export const meta: MetaFunction = () => [{ title: 'Códigos de descuento | Gyro Store Admin' }];
+export const meta: MetaFunction = () => [{ title: pageTitle('Códigos de descuento', { admin: true }) }];
 
 // Sin `code`: lo asigna la base (secuencia GS-DC-N) y viene en la respuesta.
 const EMPTY_FORM = { type: 'percent' as DiscountType, value: '', expiresAt: '', note: '' };

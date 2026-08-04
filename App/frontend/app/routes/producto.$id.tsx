@@ -8,6 +8,7 @@ import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Message01Icon, ShoppingCart02Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
+import { getBrandName, pageTitle } from '~/lib/brand';
 import { useLoaderData } from '@remix-run/react';
 
 import { toast } from 'sonner';
@@ -69,12 +70,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const product = data?.product;
-  if (!product) return [{ title: 'Producto · Gyro Store' }];
+  const brand = getBrandName();
+  if (!product) return [{ title: pageTitle('Producto') }];
 
-  const title = `${product.name} · Gyro Store`;
+  const title = pageTitle(product.name);
   const description =
     product.description?.replace(/<[^>]*>?/gm, '').slice(0, 160) ??
-    `${product.name} disponible en Gyro Store, Managua.`;
+    `${product.name} disponible en ${brand}, Managua.`;
 
   return [
     { title },

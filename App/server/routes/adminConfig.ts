@@ -6,8 +6,12 @@ import {
   updateFinancialConfig,
   getImageResources,
   updateImageResources,
+  getStoreCategories,
+  updateStoreCategories,
+  getBusinessInfo,
+  updateBusinessInfo,
 } from '../services/appConfig';
-import { financialConfigSchema, imageResourcesSchema } from '../../shared/schemas';
+import { financialConfigSchema, imageResourcesSchema, storeCategoriesSchema, businessInfoSchema } from '../../shared/schemas';
 import { deleteFileByUrl } from '../services/storage';
 
 const router = Router();
@@ -67,6 +71,54 @@ router.put(
       await Promise.all(removed.map(url => deleteFileByUrl(url).catch(console.error)));
     }
 
+    res.json(updated);
+  })
+);
+
+// Categorías del storefront (chips del landing). GET abierto a seller (las usa
+// el catálogo interno); PUT solo admin.
+router.get(
+  '/categories',
+  requireSeller,
+  asyncHandler(async (_req, res) => {
+    res.json(await getStoreCategories());
+  })
+);
+
+router.put(
+  '/categories',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const parsed = storeCategoriesSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Categorías inválidas.', issues: parsed.error.issues });
+      return;
+    }
+    const updated = await updateStoreCategories(parsed.data);
+    res.json(updated);
+  })
+);
+
+// Info del negocio (nombre, RUC, WhatsApp, correo, dirección). GET a seller;
+// PUT solo admin.
+router.get(
+  '/business',
+  requireSeller,
+  asyncHandler(async (_req, res) => {
+    res.json(await getBusinessInfo());
+  })
+);
+
+router.put(
+  '/business',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const parsed = businessInfoSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Datos del negocio inválidos.', issues: parsed.error.issues });
+      return;
+    }
+    const updated = await updateBusinessInfo(parsed.data);
     res.json(updated);
   })
 );

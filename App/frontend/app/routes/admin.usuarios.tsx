@@ -13,6 +13,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { MetaFunction } from "@remix-run/node";
+import { getBrandName, pageTitle } from '~/lib/brand';
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -77,7 +78,7 @@ import { BrandLoader } from "~/components/ui/module-loader";
 import { formatCordobas } from "~/lib/formatters";
 
 export const meta: MetaFunction = () => {
-  return [{ title: "Personal | Gyro Store Admin" }];
+  return [{ title: pageTitle('Personal', { admin: true }) }];
 };
 
 const ROLE_LABELS: Record<AppRole, string> = {
@@ -508,6 +509,7 @@ export default function AdminUsuarios() {
       <PageHeader
         eyebrow="Análisis y sistema"
         title="Gestión de Personal"
+<<<<<<< Updated upstream
         description="Administra los roles y el acceso del equipo a Gyro Store."
         actions={
         isAdmin ? (
@@ -574,6 +576,10 @@ export default function AdminUsuarios() {
           </Dialog>
         ) : undefined
         }
+=======
+        description={`Administra los roles y el acceso del equipo a ${getBrandName()}.`}
+        actions={isAdmin ? <CreateUserDialog /> : undefined}
+>>>>>>> Stashed changes
       />
 
       <AnimatedTabs items={tabs} value={currentTab} onChange={setCurrentTab} layoutId="users-tabs" />

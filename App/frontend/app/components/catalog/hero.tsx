@@ -42,7 +42,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
   const { data: config } = useGetConfigQuery();
   const whatsappOrderUrl = buildWhatsappUrl(
     config?.whatsapp ?? '',
-    'Hola Gyro Store, quiero hacer un pedido',
+    `Hola ${config?.brandName ?? ''}, quiero hacer un pedido`.replace(/\s+,/, ','),
   );
 
   // El índice nunca debe salirse del rango: los slides pueden crecer o menguar.

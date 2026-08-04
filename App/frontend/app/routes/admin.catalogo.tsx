@@ -2,6 +2,7 @@ import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, DashboardSquare01Icon, Delete02Icon, Edit02Icon, Package01Icon, Search01Icon, SquareIcon, Tag01Icon } from "@hugeicons/core-free-icons";
 import { lazy, Suspense, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
+import { pageTitle } from '~/lib/brand';
 import { 
   useGetAdminCatalogQuery, 
   useCreateAdminProductMutation, 
@@ -37,7 +38,7 @@ import { ToneDot } from '~/components/catalog/ToneDot';
 import { toast } from 'sonner';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Catálogo | Gyro Store Admin' }];
+  return [{ title: pageTitle('Catálogo', { admin: true }) }];
 };
 
 export default function AdminCatalogo() {

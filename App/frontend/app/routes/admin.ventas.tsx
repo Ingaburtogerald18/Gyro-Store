@@ -18,6 +18,7 @@ import { CancelCircleIcon, CheckmarkCircle01Icon, ShoppingCart02Icon, Add01Icon 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
+import { pageTitle } from '~/lib/brand';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 import React from 'react';
@@ -56,7 +57,7 @@ const SaleEditor = lazy(() =>
 import { SellerPerformance } from '~/components/admin/sales/SellerPerformance';
 import { SaleDetailDrawer } from '~/components/admin/sales/SaleDetailDrawer';
 
-export const meta: MetaFunction = () => [{ title: 'Ventas | Gyro Store Admin' }];
+export const meta: MetaFunction = () => [{ title: pageTitle('Ventas', { admin: true }) }];
 
 const STATUS_TABS = [
   { value: 'pending_approval', label: 'Pendientes' },

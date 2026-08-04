@@ -49,8 +49,13 @@ import { cn } from '~/lib/utils';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
+<<<<<<< Updated upstream
 import { useGetMeQuery } from '~/store/api/authApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
+=======
+import { useGetMeQuery, useGetConfigQuery } from '~/store/api/sessionApi';
+import { getBrandName } from '~/lib/brand';
+>>>>>>> Stashed changes
 import { BrandLoader } from '~/components/ui/module-loader';
 
 interface NavItem {
@@ -186,7 +191,7 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
             ) : (
               <img
                 src={config?.images?.logoStatic || config?.images?.logoAnimated}
-                alt="Gyro Store"
+                alt={config?.brandName || getBrandName()}
                 width={36}
                 height={36}
                 loading="lazy"
@@ -203,7 +208,7 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
           {/* `hidden` y no `opacity-0`: en el rail colapsado el texto no debe
               ocupar alto, o dejaría un hueco vacío arriba de los iconos. */}
           <div className="flex flex-col items-center text-center leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="whitespace-nowrap text-lg font-bold tracking-tight">Gyro Store</span>
+            <span className="whitespace-nowrap text-lg font-bold tracking-tight">{config?.brandName || getBrandName()}</span>
             <span className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Panel Admin
             </span>

@@ -189,7 +189,7 @@ export async function authenticate(
   const isInternal = email.endsWith(`@${config.internalDomain}`);
   const isWhitelisted = config.adminEmails.includes(email) || config.sellerEmails.includes(email);
   if (!isInternal && !isWhitelisted) {
-    return { error: 403, message: 'Esta cuenta no pertenece al personal de Gyro Store.' };
+    return { error: 403, message: `Esta cuenta no pertenece al personal de ${config.brandName}.` };
   }
 
   // El chequeo de arriba mira SOLO el correo, y el correo de un JWT de Supabase lo

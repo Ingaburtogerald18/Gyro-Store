@@ -3,6 +3,7 @@ import { Copy01Icon, Delete02Icon, Edit02Icon, File01Icon, Invoice01Icon, PlusSi
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
+import { pageTitle } from '~/lib/brand';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 
@@ -34,7 +35,7 @@ const InvoiceEditor = lazy(() =>
   import('~/components/admin/invoices/InvoiceEditor').then((m) => ({ default: m.InvoiceEditor })),
 );
 
-export const meta: MetaFunction = () => [{ title: 'Facturación | Gyro Store Admin' }];
+export const meta: MetaFunction = () => [{ title: pageTitle('Facturación', { admin: true }) }];
 
 /**
  * Número de factura con botón para copiarlo.

@@ -1,6 +1,4 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
+import '../loadEnv.js'; // Fuente única de variables de entorno.
 
 // sharp is optional
 let sharp: any = null;

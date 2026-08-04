@@ -1,13 +1,42 @@
 import { db } from '../supabase';
+import { config } from '../config';
 import {
   financialConfigSchema,
   type FinancialConfig,
   imageResourcesSchema,
   type ImageResources,
+  storeCategoriesSchema,
+  type StoreCategory,
+  businessInfoSchema,
+  type BusinessInfo,
 } from '../../shared/schemas';
 
 const FINANCIAL_CONFIG_KEY = 'financial_config';
 const IMAGE_RESOURCES_KEY = 'image_resources';
+const STORE_CATEGORIES_KEY = 'store_categories';
+const BUSINESS_INFO_KEY = 'business_info';
+
+// Valor inicial de la info del negocio: se siembra desde las env vars mientras
+// nadie la edite desde el panel. Una vez guardada, mandan los valores de la BD.
+function defaultBusinessInfo(): BusinessInfo {
+  return {
+    brandName: config.brandName,
+    ruc: '',
+    whatsapp: config.whatsapp,
+    contactEmail: config.contactEmail,
+    address: '',
+  };
+}
+
+// Semilla por defecto de las categorías del storefront (recicladas de la v1).
+// Es el valor inicial mientras nadie las edite desde el panel; una vez guardadas,
+// mandan las de la BD. Mismo criterio que DEFAULT_FINANCIAL_CONFIG.
+const DEFAULT_STORE_CATEGORIES: StoreCategory[] = [
+  { id: 'audifonos-kz', name: 'Audífonos KZ in-ear', icon: '🎧' },
+  { id: 'adaptador-bt', name: 'Adaptador Bluetooth para audífonos KZ', icon: '📶' },
+  { id: 'accesorios-kz', name: 'Accesorios para audífonos KZ', icon: '🎚️' },
+  { id: 'accesorios-pc', name: 'Accesorios para computadora', icon: '🖱️' },
+];
 
 // Valores por defecto extraídos del documento 11-Logica-Financiera.md
 const DEFAULT_FINANCIAL_CONFIG: FinancialConfig = {
@@ -147,4 +176,92 @@ export async function updateImageResources(payload: unknown): Promise<ImageResou
 
   if (error) throw error;
   return config;
+}
+
+let cachedStoreCategories: StoreCategory[] | null = null;
+let storeCategoriesCachedAt = 0;
+
+export async function getStoreCategories(): Promise<StoreCategory[]> {
+  if (cachedStoreCategories && Date.now() - storeCategoriesCachedAt < 60_000) {
+    return cachedStoreCategories;
+  }
+
+  const { data, error } = await db
+    .from('app_config')
+    .select('value')
+    .eq('key', STORE_CATEGORIES_KEY)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return DEFAULT_STORE_CATEGORIES;
+
+  const parsed = storeCategoriesSchema.safeParse(data.value);
+  if (!parsed.success) {
+    console.error('Categorías del storefront inválidas en la BD:', parsed.error);
+    return DEFAULT_STORE_CATEGORIES;
+  }
+
+  cachedStoreCategories = parsed.data;
+  storeCategoriesCachedAt = Date.now();
+  return parsed.data;
+}
+
+export async function updateStoreCategories(payload: unknown): Promise<StoreCategory[]> {
+  storeCategoriesCachedAt = 0;
+  const categories = storeCategoriesSchema.parse(payload);
+
+  const { error } = await db
+    .from('app_config')
+    .upsert({
+      key: STORE_CATEGORIES_KEY,
+      value: categories as any,
+    });
+
+  if (error) throw error;
+  return categories;
+}
+
+let cachedBusinessInfo: BusinessInfo | null = null;
+let businessInfoCachedAt = 0;
+
+export async function getBusinessInfo(): Promise<BusinessInfo> {
+  if (cachedBusinessInfo && Date.now() - businessInfoCachedAt < 60_000) {
+    return cachedBusinessInfo;
+  }
+
+  const { data, error } = await db
+    .from('app_config')
+    .select('value')
+    .eq('key', BUSINESS_INFO_KEY)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return defaultBusinessInfo();
+
+  // merge sobre el default: si en la BD falta un campo (versión vieja), se
+  // completa desde env en vez de romper la validación.
+  const parsed = businessInfoSchema.safeParse({ ...defaultBusinessInfo(), ...(data.value as object) });
+  if (!parsed.success) {
+    console.error('Info del negocio inválida en la BD:', parsed.error);
+    return defaultBusinessInfo();
+  }
+
+  cachedBusinessInfo = parsed.data;
+  businessInfoCachedAt = Date.now();
+  return parsed.data;
+}
+
+export async function updateBusinessInfo(payload: unknown): Promise<BusinessInfo> {
+  businessInfoCachedAt = 0;
+  const info = businessInfoSchema.parse(payload);
+
+  const { error } = await db
+    .from('app_config')
+    .upsert({
+      key: BUSINESS_INFO_KEY,
+      value: info as any,
+    });
+
+  if (error) throw error;
+  return info;
 }

@@ -23,6 +23,7 @@ import { Label } from '~/components/ui/label';
 import { Button } from '~/components/ui/button';
 import { Spinner } from '~/components/ui/spinner';
 import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
+<<<<<<< Updated upstream
 
 import {
   financialConfigSchema,
@@ -751,6 +752,12 @@ function GeneralConfig() {
     </div>
   );
 }
+=======
+import { GeneralConfig } from '~/components/admin/config/GeneralConfig';
+import { FinanzasConfig } from '~/components/admin/config/FinanzasConfig';
+import { ImagesConfig } from '~/components/admin/config/ImagesConfig';
+import { CategoriesConfig } from '~/components/admin/config/CategoriesConfig';
+>>>>>>> Stashed changes
 
 export default function AdminConfiguracion() {
   const [currentTab, setCurrentTab] = useState('general');
@@ -758,6 +765,7 @@ export default function AdminConfiguracion() {
   const tabs = [
     { id: 'general', label: 'General' },
     { id: 'variables', label: 'Variables' },
+    { id: 'categorias', label: 'Categorías' },
     { id: 'recursos', label: 'Recursos' },
   ];
 
@@ -778,6 +786,7 @@ export default function AdminConfiguracion() {
       <div className="mt-6">
         {currentTab === 'general' && <GeneralConfig />}
         {currentTab === 'variables' && <FinanzasConfig />}
+        {currentTab === 'categorias' && <CategoriesConfig />}
         {currentTab === 'recursos' && <ImagesConfig />}
       </div>
     </div>
