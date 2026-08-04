@@ -15,6 +15,7 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { ArrowLeft01Icon, Message01Icon, PackageAddIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-run/node';
+import { getBrandName, pageTitle } from '~/lib/brand';
 import { Link, useLoaderData } from '@remix-run/react';
 
 import { toast } from 'sonner';
@@ -67,11 +68,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const combo = data?.combo;
-  if (!combo) return [{ title: 'Combo · Gyro Store' }];
+  const brand = getBrandName();
+  if (!combo) return [{ title: pageTitle('Combo') }];
 
   const name = combo.name ?? 'Combo especial';
-  const title = `${name} · Gyro Store`;
-  const description = `Combo especial en Gyro Store, Managua — ${formatCordobas(combo.price ?? 0)}.`;
+  const title = pageTitle(name);
+  const description = `Combo especial en ${brand}, Managua — ${formatCordobas(combo.price ?? 0)}.`;
   const image = firstImageUrl(combo.images);
 
   return [

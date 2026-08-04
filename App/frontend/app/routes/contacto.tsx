@@ -7,6 +7,7 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Location01Icon } from "@hugeicons/core-free-icons";
 import type { MetaFunction } from '@remix-run/node';
+import { pageTitle } from '~/lib/brand';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -20,7 +21,7 @@ import { Textarea } from '~/components/ui/textarea';
 import { errMsg } from "~/lib/formatters";
 import { useSendContactMutation } from '~/store/api/storefrontApi';
 
-export const meta: MetaFunction = () => [{ title: 'Contacto · Gyro Store' }];
+export const meta: MetaFunction = () => [{ title: pageTitle('Contacto') }];
 
 export default function Contacto() {
   const [sendContact, { isLoading }] = useSendContactMutation();

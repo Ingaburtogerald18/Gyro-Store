@@ -8,6 +8,7 @@ import { AnimatedCart, type AnimatedIconHandle } from '~/components/ui/animated-
 import { useAppDispatch, useAppSelector } from '~/store/hooks';
 import { selectCartCount, toggleCart } from '~/store/slices/cartSlice';
 import { HeaderSettingsMenu } from './header-settings-menu';
+import { getBrandName } from '~/lib/brand';
 
 /** Botón del carrito con contador y "pop" al agregar. Comparte fuente de verdad
  *  con el resto de la app (cartSlice); reemplaza al botón estático. */
@@ -63,7 +64,7 @@ export function StoreHeader() {
         <Link 
           to="/" 
           className="group rounded-xl px-2 py-1 text-left transition-all duration-300 hover:bg-primary active:scale-95"
-          aria-label="Ir al inicio de Gyro Store"
+          aria-label={`Ir al inicio de ${getBrandName()}`}
         >
           <div className="text-xl font-bold tracking-tight text-foreground transition-all group-hover:brightness-125">
             Gyro<span className="text-primary">Store</span>

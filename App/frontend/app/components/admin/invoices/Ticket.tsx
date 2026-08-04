@@ -14,6 +14,11 @@ export const Ticket = forwardRef<HTMLDivElement, { invoice: TicketData }>(functi
   // solo con el nombre en texto — que ya está más abajo y se imprime perfecto.
   const logoUrl = config?.images?.posLogo || config?.images?.logoStatic || '';
 
+  // URL pública de la tienda para el QR y el texto del pie. `storeHost` es solo
+  // el dominio (sin protocolo ni slash), que es lo que se imprime en la térmica.
+  const storeUrl = config?.appUrl || '';
+  const storeHost = storeUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
   const date = invoice.createdAt ? new Date(invoice.createdAt) : new Date();
   const hasDelivery = (invoice.deliveryFee || 0) > 0;
   const grandTotal = invoice.total; // En v2 total ya incluye delivery
@@ -148,17 +153,17 @@ export const Ticket = forwardRef<HTMLDivElement, { invoice: TicketData }>(functi
         <p className="text-[14px] font-black tracking-wide">¡GRACIAS POR TU COMPRA!</p>
         <p className="mt-1 text-[11px]">Visita nuestra tienda en línea</p>
 
-        {/* QR dinámico */}
+        {/* QR dinámico → URL pública de la tienda (config.appUrl). */}
         <div className="my-2 flex justify-center">
           <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
-              'https://gyro-store.onrender.com/',
+              storeUrl || '',
             )}`}
             alt="QR Tienda Online"
             className="h-[72px] w-[72px]"
           />
         </div>
-        <p className="text-[11px] font-bold">gyro-store.onrender.com</p>
+        <p className="text-[11px] font-bold">{storeHost}</p>
         <p className="mt-0.5 text-[10px]">Instagram: @gyrostore</p>
         <p className="text-[10px]">TikTok: @gyrostore</p>
       </div>

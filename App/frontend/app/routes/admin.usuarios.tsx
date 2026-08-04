@@ -6,6 +6,7 @@ import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Shield01Icon, UserRemove01Icon, UserSettings01Icon } from "@hugeicons/core-free-icons";
 import { useState, useMemo } from "react";
 import type { MetaFunction } from "@remix-run/node";
+import { getBrandName, pageTitle } from '~/lib/brand';
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { useGetUsersQuery, type UserProfile } from "~/store/api/usersApi";
@@ -25,7 +26,7 @@ import { UserDetailDialog } from "~/components/admin/users/UserDetailDialog";
 import { useUserActions } from "~/components/admin/users/useUserActions";
 
 export const meta: MetaFunction = () => {
-  return [{ title: "Personal | Gyro Store Admin" }];
+  return [{ title: pageTitle('Personal', { admin: true }) }];
 };
 
 export default function AdminUsuarios() {
@@ -60,6 +61,7 @@ export default function AdminUsuarios() {
         title="Gestión de Personal"
         description="Administra los roles y el acceso del equipo a Gyro Store."
         actions={isAdmin ? <CreateUserDialog /> : undefined}
+main
       />
 
       <AnimatedTabs items={tabs} value={currentTab} onChange={setCurrentTab} layoutId="users-tabs" />

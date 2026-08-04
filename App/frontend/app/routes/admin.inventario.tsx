@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { PackageIcon, Calendar02Icon, File01Icon, PackageRemoveIcon } from "@hugeicons/core-free-icons";
 import type { MetaFunction } from "@remix-run/node";
+import { pageTitle } from '~/lib/brand';
 
 import { InventoryKpis } from "~/components/admin/inventory/InventoryKpis";
 import { PurchaseForm } from "~/components/admin/inventory/PurchaseForm";
@@ -18,7 +19,7 @@ import { FilterSelect, type FilterSelectOption } from "~/components/ui/FilterSel
 import { useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Inventario | Gyro Store Admin' }];
+  return [{ title: pageTitle('Inventario', { admin: true }) }];
 };
 
 type MainTab = "purchases" | "inventory";

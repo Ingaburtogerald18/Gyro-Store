@@ -9,14 +9,17 @@ import { Button } from "~/components/ui/button";
 import { getSupabaseClient } from "~/lib/supabase.client";
 import { useGetConfigQuery } from "~/store/api/sessionApi";
 import { Spinner } from "~/components/ui/spinner";
+import { getBrandName, pageTitle } from "~/lib/brand";
 
 export const meta: MetaFunction = () => [
-  { title: "Acceso Colaboradores · Gyro Store" },
-  { name: "description", content: "Acceso exclusivo para personal de Gyro Store" }
+  { title: pageTitle("Acceso Colaboradores") },
+  { name: "description", content: `Acceso exclusivo para personal de ${getBrandName()}` }
 ];
 
 export default function Login() {
   const { data: config } = useGetConfigQuery();
+  const brand = config?.brandName || getBrandName();
+  const internalDomain = config?.internalDomain ?? "";
 
   const [busy, setBusy] = useState<null | "microsoft">(null);
   const [greeting, setGreeting] = useState<{ text: string; emoji: string } | null>(null);
@@ -112,8 +115,8 @@ export default function Login() {
                 Continuar con Microsoft
               </Button>
               <p className="mt-6 text-center text-xs text-muted-foreground leading-relaxed">
-                Acceso exclusivo para colaboradores de Gyro Store.<br/>
-                Solo se admiten cuentas autorizadas (@gyrostorenic.com, @hotmail o @outlook).
+                Acceso exclusivo para colaboradores de {brand}.<br/>
+                Solo se admiten cuentas autorizadas{internalDomain ? ` (@${internalDomain}, @hotmail o @outlook)` : ""}.
               </p>
             </div>
           </div>
@@ -129,14 +132,14 @@ export default function Login() {
                 />
               ) : (
                 <div className="h-[250px] w-[250px] rounded-2xl bg-white/5 flex items-center justify-center border border-foreground/10">
-                  <span className="text-white/20 font-medium">Gyro Store</span>
+                  <span className="text-white/20 font-medium">{brand}</span>
                 </div>
               )}
             </div>
             <div className="mt-8">
               <h2 className="text-3xl font-extrabold text-white">Acceso a Colaboradores</h2>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Accede al centro de administración para la gestión de Gyro Store.
+                Accede al centro de administración para la gestión de {brand}.
               </p>
             </div>
           </div>

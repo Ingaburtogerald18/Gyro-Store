@@ -5,6 +5,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { useAppSelector } from '~/store/hooks';
 import { useGetConfigQuery } from '~/store/api/sessionApi';
+import { useGetConfigQuery } from '~/store/api/configApi';
+main
 
 /**
  * ¿Hay alguna query de RTK en vuelo? Se lee del estado del baseApi
@@ -59,7 +61,7 @@ export function BrandLoader({ text = 'Cargando…' }: { text?: string }) {
       transition={{ type: 'spring', stiffness: 320, damping: 26 }}
       className="flex flex-col items-center gap-4"
     >
-      <h2 className="text-lg font-bold tracking-tight text-foreground">Gyro Store</h2>
+      <h2 className="text-lg font-bold tracking-tight text-foreground">{config?.brandName || getBrandName()}</h2>
       <div className="relative grid size-24 place-items-center">
         {/* Anillo: pista tenue + arco cyan que gira. */}
         <motion.svg

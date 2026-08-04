@@ -15,6 +15,7 @@ import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, ArrowDown01Icon, ArrowUp01Icon, CreditCardIcon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
+import { pageTitle } from '~/lib/brand';
 import { toast } from 'sonner';
 
 import { PageHeader } from '~/components/layout/PageHeader';
@@ -37,7 +38,7 @@ import {
 import { useGetSalesQuery, type SaleListItem } from '~/store/api/salesApi';
 import { Spinner } from "~/components/ui/spinner";
 
-export const meta: MetaFunction = () => [{ title: 'Cuotas | Gyro Store Admin' }];
+export const meta: MetaFunction = () => [{ title: pageTitle('Cuotas', { admin: true }) }];
 
 function pctPaid(paid: number, total: number): number {
   return total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;

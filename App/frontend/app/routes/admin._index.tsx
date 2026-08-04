@@ -7,6 +7,10 @@ import { SkeletonChart } from '~/components/ui/skeletons';
 import type { MetaFunction } from '@remix-run/node';
 import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
 import { useGetCuadreQuery } from '~/store/api/cajaApi';
+import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetDeliveryInvoicesQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
+import { useGetCuadreQuery } from '~/store/api/cuadreApi';
+import { useGetAccountsQuery } from '~/store/api/cajaApi';
+main
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { formatCordobas } from '~/lib/formatters';
@@ -33,7 +37,7 @@ import { DashboardDrilldowns, type DrilldownType } from '~/components/admin/repo
 import { getPeriodRange, isPeriodReady, pickBucket, type CustomRange, type PeriodId } from '~/components/admin/reports/period';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Reportería | Gyro Store Admin' }];
+  return [{ title: pageTitle('Reportería', { admin: true }) }];
 };
 
 export default function AdminDashboard() {

@@ -2,6 +2,7 @@ import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Add01Icon, ArrowDownRight01Icon, ArrowUpRight01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import type { MetaFunction } from '@remix-run/node';
+import { pageTitle } from '~/lib/brand';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { Button } from '~/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '~/components/ui/dialog';
@@ -24,7 +25,7 @@ import { format } from 'date-fns';
 import type { AccountMovement } from '@shared/schemas';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Caja y Bancos | Gyro Store' }];
+  return [{ title: pageTitle('Caja y Bancos', { admin: true }) }];
 };
 
 export default function AdminCajaRoute() {

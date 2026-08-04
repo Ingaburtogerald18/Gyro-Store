@@ -3,10 +3,14 @@
 
 declare global {
   // Config pública inyectada por el loader de root.tsx (ver Layout).
+  // Solo valores PÚBLICOS: la service_role vive únicamente en el backend.
   interface Window {
     ENV: {
       SUPABASE_URL: string;
       SUPABASE_ANON_KEY: string;
+      BRAND_NAME: string;
+      INTERNAL_DOMAIN: string;
+      APP_URL: string;
     };
   }
 }
