@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { useAppSelector } from '~/store/hooks';
 import { useGetConfigQuery } from '~/store/api/configApi';
+import { getBrandName } from '~/lib/brand';
 
 /**
  * ¿Hay alguna query de RTK en vuelo? Se lee del estado del baseApi

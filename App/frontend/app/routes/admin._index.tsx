@@ -7,12 +7,11 @@ import { SkeletonChart } from '~/components/ui/skeletons';
 import type { MetaFunction } from '@remix-run/node';
 import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
 import { useGetCuadreQuery } from '~/store/api/cajaApi';
-import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetDeliveryInvoicesQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
-import { useGetCuadreQuery } from '~/store/api/cajaApi';
 import { useGetAccountsQuery } from '~/store/api/cajaApi';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { formatCordobas } from '~/lib/formatters';
+import { pageTitle } from '~/lib/brand';
 
 // Reportería de ventas. Vive en components/admin/reports/ porque el panel del
 // vendedor en /admin/ventas reusa la tendencia y el top de productos.
