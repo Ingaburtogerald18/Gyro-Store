@@ -1,7 +1,7 @@
 // Configuración central del backend. Lee variables de entorno desde .env.
 // Fuente única de constantes de negocio expuestas al frontend vía GET /api/config.
 // Portado de la v1 (server/config.js), adaptado a Supabase (sin Firebase).
-import 'dotenv/config'; // Trigger server reload
+import './loadEnv.js'; // Carga las variables de entorno (fuente única). Debe ir primero.
 
 function parseEmailList(value: string | undefined): string[] {
   return (value || '')
@@ -61,18 +61,16 @@ export const config = {
   // Dominio interno del tenant: los correos @gyrostorenic.com son staff local.
   internalDomain: (process.env.INTERNAL_DOMAIN || 'gyrostorenic.com').toLowerCase(),
 
-  // ── Datos de negocio (se exponen vía GET /api/config) ──
-  whatsapp: process.env.WHATSAPP_NUMBER || '50585944758',
-  currency: process.env.CURRENCY || 'C$',
-  exchangeRate: Number(process.env.EXCHANGE_RATE) || 37,
+  // ── Marca / datos de negocio (se exponen vía GET /api/config) ──
+  // Sin fallbacks hardcodeados: son datos del negocio, se declaran por env.
+  brandName: process.env.BRAND_NAME || '',
+  contactEmail: (process.env.CONTACT_EMAIL || '').toLowerCase(),
+  whatsapp: process.env.WHATSAPP_NUMBER || '',
+  currency: process.env.CURRENCY || '',
+  exchangeRate: Number(process.env.EXCHANGE_RATE) || 0,
 
-  // Categorías del catálogo (recicladas de v1).
-  categories: [
-    { id: 'audifonos-kz', name: 'Audífonos KZ in-ear', icon: '🎧' },
-    { id: 'adaptador-bt', name: 'Adaptador Bluetooth para audífonos KZ', icon: '📶' },
-    { id: 'accesorios-kz', name: 'Accesorios para audífonos KZ', icon: '🎚️' },
-    { id: 'accesorios-pc', name: 'Accesorios para computadora', icon: '🖱️' },
-  ],
+  // Las categorías del storefront ya NO viven acá: son editables desde el panel
+  // y viven en `app_config` (ver services/appConfig.ts → getStoreCategories).
 
   // CORS: orígenes permitidos en producción.
   // CORS_ORIGIN manda sobre RENDER_EXTERNAL_URL: el dominio propio (o el del front,
@@ -85,16 +83,21 @@ export const config = {
 // Preferimos morir acá, con un mensaje propio y accionable, antes de arrancar a
 // medias. Sin esto, la falta de SUPABASE_URL explota más adelante como un
 // "supabaseUrl is required" de supabase-js que no dice qué hacer.
-const missingSupabaseVars = [
+const missingVars = [
   !config.supabaseUrl && 'SUPABASE_URL',
   !config.supabaseServiceRoleKey && 'SUPABASE_SERVICE_ROLE_KEY',
+  // Datos de negocio: ya no tienen fallback en código, así que deben venir por env.
+  !config.brandName && 'BRAND_NAME',
+  !config.whatsapp && 'WHATSAPP_NUMBER',
+  !config.currency && 'CURRENCY',
+  !config.exchangeRate && 'EXCHANGE_RATE',
 ].filter(Boolean);
 
-if (missingSupabaseVars.length) {
+if (missingVars.length) {
   throw new Error(
-    `Faltan variables de entorno de Supabase: ${missingSupabaseVars.join(', ')}. ` +
-      'Copiá App/.env.example a App/.env y completá los valores de tu proyecto ' +
-      '(Supabase > Project Settings > API).',
+    `Faltan variables de entorno: ${missingVars.join(', ')}. ` +
+      'Revisá tu archivo de secretos (el que apunta GYRO_ENV_FILE, p. ej. en OneDrive) ' +
+      'o copiá App/.env.example como base.',
   );
 }
 
