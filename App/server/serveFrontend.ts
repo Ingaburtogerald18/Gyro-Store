@@ -56,7 +56,9 @@ export async function serveFrontend(app: Express): Promise<void> {
   // catch-all es un middleware sin ruta (el patrón '*' de Express 4 ya no existe).
   app.use(async (req: ExRequest, res: ExResponse, next: NextFunction) => {
     try {
-      const response = await handleRemix(toWebRequest(req));
+      // El nonce lo genera el middleware de CSP (ver index.ts) y lo consume
+      // root.tsx para firmar sus <script> inline; ambos leen el mismo valor.
+      const response = await handleRemix(toWebRequest(req), { cspNonce: res.locals.cspNonce });
       res.status(response.status);
       response.headers.forEach((value, key) => {
         if (key.toLowerCase() !== 'set-cookie') res.append(key, value);

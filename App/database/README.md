@@ -22,8 +22,14 @@ vez, ya en su forma final.
 | `migrations/0002_functions.sql` | Los 10 RPCs de reportería y canje, la vista `sales_export_view`, y el `notify pgrst` final. |
 | `migrations/0003_seed.sql` | Datos de arranque: categorías, las 8 plantillas heredadas de v1, cuentas de caja/banco y la configuración financiera. |
 
+### Migraciones incrementales
+
+| Archivo | Contiene |
+|---|---|
+| `migrations/0004_sales_export_view_security_invoker.sql` | Fija `security_invoker = on` en `sales_export_view` (fix del Advisor de Supabase "Security Definer View"). Idempotente. |
+
 **El orden importa.** `0002` usa tablas de `0001`; `0003` inserta en tablas de
-`0001`.
+`0001`; `0004` altera la vista creada en `0002`.
 
 `0001` no es idempotente (usa `create table` / `create type` pelados) y eso es lo
 correcto para un baseline: si falla, es porque la base no estaba limpia, y es

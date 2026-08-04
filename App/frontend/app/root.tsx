@@ -1,7 +1,7 @@
 // Layout raíz de Remix (doc 09 ítem 41, versión mínima de fundación).
 // Responsabilidades: cargar tailwind.css, fijar data-theme/data-skin y exponer
 // las llaves públicas de Supabase al navegador vía window.ENV.
-import type { LinksFunction } from '@remix-run/node';
+import type { LinksFunction, LoaderFunctionArgs } from '@remix-run/node';
 import {
   Links,
   Meta,
@@ -30,8 +30,11 @@ export const links: LinksFunction = () => [
 
 // Único lugar donde el server pasa config al cliente. Solo llaves PÚBLICAS:
 // la service_role vive exclusivamente en el backend Express.
-export async function loader() {
+export async function loader({ context }: LoaderFunctionArgs) {
   return {
+    // Nonce de la CSP (lo inyecta el server Express, ver serveFrontend.ts).
+    // En dev (vite sin Express) no hay context: '' desactiva el atributo nonce.
+    cspNonce: (context as { cspNonce?: string } | undefined)?.cspNonce ?? '',
     ENV: {
       SUPABASE_URL: process.env.SUPABASE_URL ?? '',
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ?? '',
@@ -49,6 +52,7 @@ export function Layout({ children }: { children: ReactNode }) {
   // ErrorBoundary, donde el loader pudo no haber corrido.
   const data = useRouteLoaderData<typeof loader>('root');
   const env = JSON.stringify(data?.ENV ?? {}).replace(/</g, '\\u003c');
+  const nonce = data?.cspNonce ?? '';
 
   return (
     // suppressHydrationWarning: el script anti-flash puede cambiar data-theme
@@ -65,6 +69,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {/* Anti-flash de tema: aplica el tema guardado ANTES del primer paint.
             Debe ir primero en <head>. Clave sincronizada con useTheme. */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `try{var t=localStorage.getItem('gyro:theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}`,
           }}
@@ -76,9 +81,9 @@ export function Layout({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
-        <script dangerouslySetInnerHTML={{ __html: `window.ENV=${env};` }} />
-        <ScrollRestoration />
-        <Scripts />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: `window.ENV=${env};` }} />
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
       </body>
     </html>
   );

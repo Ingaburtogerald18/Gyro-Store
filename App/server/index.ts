@@ -1,6 +1,7 @@
 // Entry del backend Express (TS/ESM). Monta la cadena de middleware, expone la
 // API bajo /api y (más adelante) sirve el build del frontend.
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type Request, type Response, type NextFunction } from 'express';
+import { randomBytes } from 'node:crypto';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config';
@@ -38,7 +39,35 @@ const app: Express = express();
 // Render corre detrás de un proxy: necesario para IPs correctas y rate-limit.
 app.set('trust proxy', 1);
 
-app.use(helmet());
+// Nonce por request para la CSP: habilita SOLO los <script> inline de Remix
+// (hidratación, window.ENV, anti-flash de tema) sin abrir 'unsafe-inline'.
+// Debe ir ANTES de helmet, porque la directiva script-src lo lee de res.locals.
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.locals.cspNonce = randomBytes(16).toString('base64');
+  next();
+});
+
+// Orígenes de Supabase permitidos para fetch/websocket desde el navegador:
+// el login y la sesión hablan directo con supabase-js (auth + realtime + rest).
+const supabaseOrigin = new URL(config.supabaseUrl).origin; // https://xxxx.supabase.co
+const supabaseWss = supabaseOrigin.replace(/^https:/, 'wss:');
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        // 'self' para los bundles con hash; nonce para los inline de Remix.
+        scriptSrc: ["'self'", (_req, res) => `'nonce-${(res as Response).locals.cspNonce}'`],
+        // Radix y demás primitivas inyectan style="" inline; no se pueden firmar
+        // con nonce, así que se permite inline SOLO para estilos (no scripts).
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'", supabaseOrigin, supabaseWss],
+        imgSrc: ["'self'", 'data:', 'blob:', supabaseOrigin],
+      },
+    },
+  }),
+);
 app.use(
   cors({
     origin: config.isProd ? config.corsOrigin || false : true,
