@@ -46,7 +46,7 @@ import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
 import { useGetMeQuery, useGetConfigQuery } from '~/store/api/sessionApi';
-import { useGetMeQuery } from '~/store/api/authApi';
+import { useGetMeQuery } from '~/store/api/sessionApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
 main
 import { BrandLoader } from '~/components/ui/module-loader';
