@@ -733,7 +733,6 @@ function GeneralConfig() {
     </div>
   );
 }
-main
 
 export default function AdminConfiguracion() {
   const [currentTab, setCurrentTab] = useState('general');

@@ -10,7 +10,6 @@ import { useGetCuadreQuery } from '~/store/api/cajaApi';
 import { useGetKpisQuery, useGetSellerPerformanceQuery, useGetSalesLedgerQuery, useGetDeliveryInvoicesQuery, useGetSalesTrendQuery } from '~/store/api/reportsApi';
 import { useGetCuadreQuery } from '~/store/api/cajaApi';
 import { useGetAccountsQuery } from '~/store/api/cajaApi';
-main
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { formatCordobas } from '~/lib/formatters';

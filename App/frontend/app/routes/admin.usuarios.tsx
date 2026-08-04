@@ -61,7 +61,6 @@ export default function AdminUsuarios() {
         title="Gestión de Personal"
         description="Administra los roles y el acceso del equipo a Gyro Store."
         actions={isAdmin ? <CreateUserDialog /> : undefined}
-main
       />
 
       <AnimatedTabs items={tabs} value={currentTab} onChange={setCurrentTab} layoutId="users-tabs" />
