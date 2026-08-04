@@ -2,7 +2,6 @@ import * as React from "react"
 import { AnimatedIcon } from "~/components/ui/animated-icons"
 import { CheckmarkBadge01Icon } from "@hugeicons/core-free-icons"
 
-import { cn } from "~/lib/utils"
 import { Input } from "~/components/ui/input"
 import {
   Command,

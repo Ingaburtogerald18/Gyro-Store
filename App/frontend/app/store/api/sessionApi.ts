@@ -16,18 +16,6 @@ export interface StoreCategory {
 }
 
 export interface StoreConfig {
-  // Nombre de la marca / tienda (ej. 'Gyro Store').
-  brandName: string;
-  // Correo de contacto del negocio.
-  contactEmail: string;
-  // Número RUC (fiscal) del negocio.
-  ruc?: string;
-  // Dirección física del negocio.
-  address?: string;
-  // Dominio interno del staff (ej. 'gyrostorenic.com'), para validar correos.
-  internalDomain: string;
-  // URL pública de la app (para QR, tickets, links).
-  appUrl: string;
   // Símbolo de la moneda local, ej. 'C$' (córdoba).
   currency: string;
   // Tasa USD → córdoba vigente.

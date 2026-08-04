@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import type { TicketData } from '~/store/api/invoicesApi';
 import { formatCordobas } from '~/lib/formatters';
-import { useGetConfigQuery } from '~/store/api/configApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
 
 export const Ticket = forwardRef<HTMLDivElement, { invoice: TicketData }>(function Ticket(
   { invoice },

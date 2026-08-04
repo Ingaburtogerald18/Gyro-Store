@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { getSupabaseClient } from '~/lib/supabase.client';
-import { useLazyGetMeQuery } from '~/store/api/authApi';
+import { useLazyGetMeQuery } from '~/store/api/sessionApi';
 import { useAppDispatch } from '~/store/hooks';
 import { signedOut } from '~/store/slices/authSlice';
 

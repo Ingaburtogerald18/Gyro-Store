@@ -28,7 +28,7 @@ import { StoreHeader } from '~/components/store/store-header';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
-import type { StoreConfig } from '~/store/api/configApi';
+import type { StoreConfig } from '~/store/api/sessionApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
 import { buildWhatsappUrl, formatCordobas, getProductUrl } from "~/lib/formatters";

@@ -19,11 +19,11 @@ import {
   type Purchase,
 } from "~/store/api/inventoryV1Api";
 import { useGetAdminCatalogQuery } from "~/store/api/catalogAdminApi";
-import { formatUsd, formatCordobas } from "~/lib/formatters";
+import { formatUsd } from "~/lib/formatters";
 import { CodeCell, MoneyCell } from "~/components/ui/cells";
 import { useNavigate } from "@remix-run/react";
 import { Spinner } from "~/components/ui/spinner";
-import { useGetConfigQuery } from "~/store/api/configApi";
+import { useGetConfigQuery } from "~/store/api/sessionApi";
 import { useCategoryLabel } from "~/hooks/useCategoryLabel";
 
 export function CurrentInventoryTable({ period = "all", mode = "all" }: { period?: string; mode?: "inStock" | "outOfStock" | "all" }) {

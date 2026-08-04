@@ -1,13 +1,11 @@
 import type { IconSvgElement } from "@hugeicons/react";
 import { AnimatedIcon, type IconGesture } from "~/components/ui/animated-icons";
-import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Search01Icon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
-import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 import { motion, useReducedMotion } from 'framer-motion';
 
-import { Button } from '~/components/ui/button';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,9 +26,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import { Separator } from '~/components/ui/separator';
 import { NotificationsBell } from '~/components/admin/NotificationsBell';
 import { ThemeToggle } from '~/components/layout/ThemeToggle';
-import { CommandPalette, HOTKEY_DESTINATIONS } from '~/components/admin/CommandPalette';
-import { ShortcutsSheet } from '~/components/admin/ShortcutsSheet';
-import { useAdminHotkeys } from '~/hooks/useAdminHotkeys';
 import {
   Sidebar,
   SidebarContent,
@@ -44,18 +39,16 @@ import {
   SidebarRail,
   SidebarFooter,
   SidebarTrigger,
+  useSidebar,
 } from '~/components/ui/sidebar';
 import { cn } from '~/lib/utils';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
-<<<<<<< Updated upstream
+import { useGetMeQuery, useGetConfigQuery } from '~/store/api/sessionApi';
 import { useGetMeQuery } from '~/store/api/authApi';
 import { useGetConfigQuery } from '~/store/api/configApi';
-=======
-import { useGetMeQuery, useGetConfigQuery } from '~/store/api/sessionApi';
-import { getBrandName } from '~/lib/brand';
->>>>>>> Stashed changes
+main
 import { BrandLoader } from '~/components/ui/module-loader';
 
 interface NavItem {
@@ -144,18 +137,22 @@ async function syncEntraPhoto(accessToken: string, providerToken: string): Promi
   }
 }
 
-function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin: boolean; pathname: string }) {
+function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: string }) {
   const { data: config } = useGetConfigQuery();
   const reduceMotion = useReducedMotion();
-  
-  // Sin `onMouseEnter`/`onMouseLeave`.
-  // La expansión por hover abría el menú cuando el mouse pasaba de camino a
-  // otra cosa —el sidebar se movía solo, sin que nadie lo pidiera— y no existe
-  // en trackpad ni en touch. Ahora abre y cierra con el `SidebarTrigger`, y
-  // `SidebarProvider` persiste el estado en cookie: la elección del usuario
-  // sobrevive al refresh.
+  const { setOpen } = useSidebar();
+
+  // Expansión por hover: en escritorio el panel arranca colapsado (rail de
+  // iconos) y se despliega al acercar el mouse, colapsando al salir. El
+  // `SidebarTrigger` del header sigue funcionando para click/teclado (y en
+  // touch, donde no hay hover). Los handlers van sobre el contenedor del
+  // Sidebar, así que solo disparan al entrar al panel, no de paso.
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar
+      collapsible="icon"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       {/* La marca va DENTRO de SidebarContent, no en un SidebarHeader.
           `SidebarHeader` es un hermano flex del contenido, así que quedaba
           clavado arriba mientras el menú se centraba: logo y botones sin
@@ -246,9 +243,9 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                         <SidebarMenuButton
                           aria-disabled
                           tooltip={`${item.name} · Próximamente`}
-                          className="cursor-default text-muted-foreground [&_svg]:size-6 group-data-[collapsible=icon]:size-10!"
+                          className="cursor-default text-muted-foreground [&_svg]:size-5 group-data-[collapsible=icon]:size-10!"
                         >
-                          <AnimatedIcon icon={item.icon} size={24} strokeWidth={2} />
+                          <AnimatedIcon icon={item.icon} size={20} strokeWidth={2} />
                           <span className="text-[17px]">{item.name}</span>
                           <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide group-data-[collapsible=icon]:hidden">
                             Pronto
@@ -268,19 +265,18 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                         />
                       )}
                       {/* Dos overrides sobre `sidebarMenuButtonVariants`:
-                          · `[&_svg]:size-6` pisa el `[&_svg]:size-4` que la
+                          · `[&_svg]:size-5` pisa el `[&_svg]:size-4` que la
                             primitiva fuerza sobre TODO svg — por eso el `size`
-                            del icono no se veía.
-                          · `size-10!` pisa el `size-8!` del estado colapsado.
-                            Sin esto el botón queda en 32 px con 8 px de padding
-                            y su `overflow-hidden` recorta el icono de 24 px.
-                            Cabe porque el rail pasó a 56 px. */}
+                            del icono no se veía. 20 px queda proporcional a la
+                            etiqueta de 17 px y al resto de la app (encabezados).
+                          · `size-10!` pisa el `size-8!` del estado colapsado, y
+                            centra el icono en el rail de 56 px. */}
                       <SidebarMenuButton
                         asChild
                         isActive={false}
                         tooltip={item.name}
                         className={cn(
-                          "[&_svg]:size-6 group-data-[collapsible=icon]:size-10!",
+                          "[&_svg]:size-5 group-data-[collapsible=icon]:size-10!",
                           isActive && "relative z-10 text-primary-foreground font-medium hover:bg-transparent hover:text-primary-foreground",
                         )}
                       >
@@ -289,7 +285,7 @@ function AdminSidebar({ user, isAdmin, pathname }: { user: User | null; isAdmin:
                             icon={item.icon}
                             trigger="press"
                             gesture={item.gesture ?? 'draw'}
-                            size={24}
+                            size={20}
                             strokeWidth={2}
                           />
                           <span className="text-[17px]">{item.name}</span>
@@ -347,16 +343,6 @@ export default function AdminLayout() {
   // 150 ms, así que en las cargas rápidas no se ve nada) más los skeletons de
   // cada bloque, que ocupan la forma final del contenido. Ver Docs/16.
   const reduceMotion = useReducedMotion();
-
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-
-  useAdminHotkeys({
-    destinations: HOTKEY_DESTINATIONS,
-    isAdmin,
-    onOpenPalette: () => setPaletteOpen(true),
-    onOpenShortcuts: () => setShortcutsOpen(true),
-  });
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -431,11 +417,10 @@ export default function AdminLayout() {
   );
 
   return (
-    // El estado del sidebar lo persiste SidebarProvider en cookie (mejor que
-    // localStorage: no parpadea en el primer render del servidor).
-    // Lo cerramos por defecto ya que queremos que sea hover-based.
+    // Arranca colapsado (rail de iconos): el panel es hover-based en escritorio
+    // (ver AdminSidebar) y se abre/cierra con el SidebarTrigger en touch.
     <SidebarProvider data-skin="admin" defaultOpen={false}>
-      <AdminSidebar user={user} isAdmin={isAdmin} pathname={location.pathname} />
+      <AdminSidebar isAdmin={isAdmin} pathname={location.pathname} />
 
       {/* La barra de progreso NO se monta acá: `root.tsx` ya tiene una para
           toda la app y dos instancias dibujarían dos barras. */}
@@ -467,18 +452,6 @@ export default function AdminLayout() {
               )}
             </BreadcrumbList>
           </Breadcrumb>
-
-          {/* Disparador visible de ⌘K. Un atajo que nadie sabe que existe no
-              sirve: el botón es la única forma de que se descubra. */}
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="ml-4 hidden items-center gap-2 rounded-pill border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex sm:w-full sm:max-w-xs"
-          >
-            <AnimatedIcon icon={Search01Icon} size={14} strokeWidth={2} />
-            <span>Buscar…</span>
-            <kbd className="ml-auto rounded border border-border px-1 text-[10px]">⌘K</kbd>
-          </button>
 
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
@@ -537,11 +510,6 @@ export default function AdminLayout() {
           <Outlet />
         </motion.main>
       </SidebarInset>
-
-      {/* Montados UNA vez en el shell, no por ruta: los atajos tienen que
-          funcionar desde cualquier módulo. */}
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} isAdmin={isAdmin} />
-      <ShortcutsSheet open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </SidebarProvider>
   );
 }

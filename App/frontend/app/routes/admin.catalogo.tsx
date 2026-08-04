@@ -14,7 +14,7 @@ import {
   useUpdateCategoryMutation,
   useDeleteCategoryMutation,
 } from '~/store/api/catalogAdminApi';
-import type { AdminProductInput, AdminProduct, Category } from '@shared/schemas';
+import type { AdminProductInput, AdminProduct } from '@shared/schemas';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';

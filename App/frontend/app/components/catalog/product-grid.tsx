@@ -11,7 +11,7 @@ import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { PackageSearchIcon } from '@hugeicons/core-free-icons';
 
 import type { CatalogProduct } from '@shared/schemas';
-import type { StoreCategory } from '~/store/api/configApi';
+import type { StoreCategory } from '~/store/api/sessionApi';
 import { ProductCard } from '~/components/product/product-card';
 import { ProductCarousel } from '~/components/product/product-carousel';
 import { CategoryChips } from '~/components/catalog/category-chips';

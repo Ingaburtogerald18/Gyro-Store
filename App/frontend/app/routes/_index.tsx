@@ -9,7 +9,7 @@ import { CartDrawer } from '~/components/cart/cart-drawer';
 import { Hero } from '~/components/catalog/hero';
 import { ProductGrid } from '~/components/catalog/product-grid';
 import { StoreHeader } from '~/components/store/store-header';
-import type { StoreConfig } from '~/store/api/configApi';
+import type { StoreConfig } from '~/store/api/sessionApi';
 
 // Catálogo público: 60s fresco + 5min de stale-while-revalidate. El HTML del SSR
 // no contiene nada privado, así que es seguro cachearlo en navegador/CDN.

@@ -5,13 +5,12 @@ import type { MetaFunction } from '@remix-run/node';
 import { pageTitle } from '~/lib/brand';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { Button } from '~/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '~/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '~/components/ui/dialog';
 import { Input } from '~/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { Label } from '~/components/ui/label';
 import { toast } from 'sonner';
 import { DataTable } from '~/components/ui/DataTable';
-import { StatusBadge } from '~/components/ui/StatusBadge';
 import { QueryState } from '~/components/ui/QueryState';
 import { StatCard } from '~/components/ui/stat-card';
 import {
@@ -19,8 +18,8 @@ import {
   useGetMovementsQuery,
   useRegisterMovementMutation,
   useCreateAccountMutation,
+  useGetCuadreQuery,
 } from '~/store/api/cajaApi';
-import { useGetCuadreQuery } from '~/store/api/cuadreApi';
 import { formatByCurrency } from '~/lib/formatters';
 import { format } from 'date-fns';
 import type { AccountMovement } from '@shared/schemas';

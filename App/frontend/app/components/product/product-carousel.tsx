@@ -10,7 +10,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import type { CatalogProduct } from '@shared/schemas';
 import { ProductCard } from './product-card';
 import { Button } from '~/components/ui/button';
-import { useGetConfigQuery } from '~/store/api/configApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
 import { cn } from "~/lib/utils"
 import { formatCordobas, getProductUrl } from "~/lib/formatters";
 

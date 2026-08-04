@@ -4,12 +4,9 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { useAppSelector } from '~/store/hooks';
-<<<<<<< Updated upstream
-import { useGetConfigQuery } from '~/store/api/configApi';
-=======
 import { useGetConfigQuery } from '~/store/api/sessionApi';
-import { getBrandName } from '~/lib/brand';
->>>>>>> Stashed changes
+import { useGetConfigQuery } from '~/store/api/configApi';
+main
 
 /**
  * ¿Hay alguna query de RTK en vuelo? Se lee del estado del baseApi

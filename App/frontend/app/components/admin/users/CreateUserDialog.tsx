@@ -5,7 +5,6 @@ import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { UserAdd01Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { useCreateUserMutation, type AppRole } from "~/store/api/usersApi";
-import { useGetConfigQuery } from "~/store/api/sessionApi";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -29,8 +28,6 @@ import { ROLE_LABELS } from "./constants";
 
 export function CreateUserDialog() {
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
-  const { data: config } = useGetConfigQuery();
-  const internalDomain = config?.internalDomain ?? "";
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -38,8 +35,8 @@ export function CreateUserDialog() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (internalDomain && !newEmail.endsWith(`@${internalDomain}`)) {
-      toast.error(`El correo debe pertenecer al dominio @${internalDomain}`);
+    if (!newEmail.endsWith("@gyrostorenic.com")) {
+      toast.error("El correo debe pertenecer al dominio @gyrostorenic.com");
       return;
     }
     try {
@@ -88,7 +85,7 @@ export function CreateUserDialog() {
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                placeholder={internalDomain ? `usuario@${internalDomain}` : "usuario@empresa.com"}
+                placeholder="usuario@gyrostorenic.com"
                 required
               />
             </Field>

@@ -14,7 +14,7 @@ import type { CatalogProduct } from '@shared/schemas';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { QuickAddSheet } from '~/components/product/quick-add-sheet';
-import { useGetConfigQuery } from '~/store/api/configApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
 import { cn } from "~/lib/utils"

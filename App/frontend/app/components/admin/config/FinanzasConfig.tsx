@@ -1,283 +1,27 @@
-// Configuración: orquestador delgado. Cada pestaña vive en components/admin/config/
-// (General, Finanzas/Variables, Imágenes/Recursos); acá solo se elige cuál mostrar.
-import { useState } from 'react';
-import { AnimatedTabs } from '~/components/ui/AnimatedTabs';
-import { GeneralConfig } from '~/components/admin/config/GeneralConfig';
-import { FinanzasConfig } from '~/components/admin/config/FinanzasConfig';
-import { ImagesConfig } from '~/components/admin/config/ImagesConfig';
-
+// Pestaña "Variables" de Configuración: parámetros financieros (tasa, pozos,
+// escalas de costo/margen/comisión, mayoreo). Extraída de admin.configuracion.tsx.
+// Carga y guarda contra /api/admin/config/financial con fallback a /api/admin/config.
+import { AnimatedIcon } from "~/components/ui/animated-icons";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { useEffect, useState } from "react";
 import {
-  financialConfigSchema,
-  imageResourcesSchema,
-  type FinancialConfig,
-  type ImageResources,
-} from '@shared/schemas';
-import { BrandLoader } from '~/components/ui/module-loader';
-import { QueryState } from '~/components/ui/QueryState';
-import { useAppDispatch } from '~/store/hooks';
-import { configApi } from '~/store/api/configApi';
-
-function Section({
-  title,
-  description,
-  children,
-  className
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <Card className={`flex flex-col bg-card border shadow-sm overflow-hidden ${className || ''}`}>
-      <div className="p-6 pb-4">
-        <h2 className="text-lg font-semibold text-foreground tracking-tight">{title}</h2>
-        {description && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>}
-      </div>
-      <CardContent className="flex-1 p-6 pt-0">
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
-
-const EMPTY_IMAGES: ImageResources = {
-  logoStatic: '',
-  logoAnimated: '',
-  favicon: '',
-  posLogo: '',
-};
-
-function ImagesConfig() {
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  // Track images uploaded in this session to clean them up if discarded
-  const uploadedInSession = useRef<Set<string>>(new Set());
-  const dispatch = useAppDispatch();
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-    getValues,
-    formState: { errors, isSubmitting },
-  } = useForm<ImageResources>({
-    resolver: zodResolver(imageResourcesSchema),
-    defaultValues: EMPTY_IMAGES,
-  });
-
-  const config = watch();
-
-  useEffect(() => {
-    const fetchConfig = async () => {
-      const supabase = getSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      try {
-        const res = await fetch('/api/admin/config/images', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        });
-        if (!res.ok) throw new Error('Error al cargar imágenes');
-        const data = await res.json();
-        reset({
-          logoStatic: data.logoStatic || '',
-          logoAnimated: data.logoAnimated || '',
-          favicon: data.favicon || '',
-          posLogo: data.posLogo || ''
-        });
-      } catch (err: any) {
-        toast.error(err.message || 'No se pudieron cargar los recursos.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchConfig();
-  }, [reset]);
-
-  const onSubmit = async (values: ImageResources) => {
-    try {
-      const supabase = getSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No hay sesión');
-
-      const res = await fetch('/api/admin/config/images', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(values)
-      });
-
-      if (!res.ok) throw new Error('Error al guardar imágenes');
-      const data = await res.json();
-      reset(data);
-      uploadedInSession.current.clear(); // All saved, nothing to clean up
-      dispatch(configApi.util.invalidateTags(['Config']));
-      toast.success('Recursos guardados correctamente.');
-    } catch (err: any) {
-      toast.error(err.message || 'No se pudieron guardar los recursos.');
-    }
-  };
-
-  const uploadFile = async (file: File, key: keyof ImageResources) => {
-    try {
-      setUploading(true);
-
-      const supabase = getSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', 'config'); // Folder in Cloudflare R2
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {})
-        },
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al subir la imagen');
-
-      // If replacing an image that was uploaded *in this session* (not yet saved),
-      // delete it from R2 to avoid orphans.
-      const prevUrl = getValues(key);
-      if (prevUrl && uploadedInSession.current.has(prevUrl)) {
-        fetch('/api/upload', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {})
-          },
-          body: JSON.stringify({ url: prevUrl })
-        }).catch(console.error);
-        uploadedInSession.current.delete(prevUrl);
-      }
-
-      uploadedInSession.current.add(data.url);
-      setValue(key, data.url, { shouldDirty: true });
-    } catch (err: any) {
-      toast.error(err.message || 'Error al subir la imagen');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const renderUploadBox = (title: string, desc: string, key: keyof ImageResources) => {
-    const isAnimated = key === 'logoAnimated';
-    const acceptAttr = isAnimated ? "image/*,video/*" : "image/*";
-
-    return (
-      <div className="flex flex-col gap-3 rounded-lg border bg-muted p-4">
-        <div>
-          <h3 className="text-sm font-medium text-foreground">{title}</h3>
-          <p className="text-xs text-muted-foreground">{desc}</p>
-        </div>
-        {config[key] ? (
-          <div className="relative group rounded-lg border bg-card p-2">
-            <div className="aspect-video w-full flex items-center justify-center overflow-hidden rounded-md bg-black/20">
-              {config[key]?.match(/\.(webm|mp4|mov)$/i) ? (
-                <video src={config[key]} autoPlay loop muted playsInline className="max-h-32 max-w-full object-contain" />
-              ) : (
-                <img src={config[key]} alt={title} className="max-h-32 max-w-full object-contain" />
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={async () => {
-                const url = config[key];
-                if (url && uploadedInSession.current.has(url)) {
-                  const supabase = getSupabaseClient();
-                  const { data: { session } } = await supabase.auth.getSession();
-                  fetch('/api/upload', {
-                    method: 'DELETE',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {})
-                    },
-                    body: JSON.stringify({ url })
-                  }).catch(console.error);
-                  uploadedInSession.current.delete(url);
-                }
-                setValue(key, '', { shouldDirty: true });
-              }}
-              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-              aria-label={`Eliminar ${title}`}
-            >
-              <AnimatedIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
-            </button>
-          </div>
-        ) : (
-          <label className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-card transition-colors hover:border-primary hover:bg-primary/5">
-            <AnimatedIcon icon={CloudUploadIcon} size={32} strokeWidth={2} className="text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Subir imagen</span>
-            <input 
-              type="file" 
-              className="hidden" 
-              accept={acceptAttr}
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) uploadFile(file, key);
-              }}
-            />
-          </label>
-        )}
-        <Field data-invalid={!!errors[key]}>
-          <FieldLabel htmlFor={`img-url-${key}`} className="sr-only">
-            URL de {title}
-          </FieldLabel>
-          <Input
-            id={`img-url-${key}`}
-            placeholder="O ingresa la URL de la imagen"
-            aria-invalid={!!errors[key]}
-            {...register(key)}
-          />
-          <FieldError errors={[errors[key]]} />
-        </Field>
-      </div>
-    );
-  };
-
-  return (
-    <Section
-      title="Recursos de Imágenes"
-      description="Sube los logos y favicons que se utilizarán en la interfaz y en los tickets generados."
-    >
-      <QueryState
-        loading={loading}
-        loadingFallback={<div className="flex py-12 justify-center"><BrandLoader text="Cargando recursos..." /></div>}
-      >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {renderUploadBox("Logo estático", "Cabeceras y web. Recomendado: 512x512px (PNG transparente)", "logoStatic")}
-          {renderUploadBox("Logo animado", "Animación principal. Recomendado: 512x512px (WebM/GIF)", "logoAnimated")}
-          {renderUploadBox("Favicon", "Ícono de la pestaña. Recomendado: 32x32px o 64x64px (PNG/ICO)", "favicon")}
-          {renderUploadBox("Logo del ticket", "Impresoras térmicas. Recomendado: 300x300px o similar (Blanco y Negro puro)", "posLogo")}
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={isSubmitting || uploading}>
-            {isSubmitting ? (
-              <Spinner className="mr-2" />
-            ) : (
-              <AnimatedIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
-            )}
-            Guardar Imágenes
-          </Button>
-        </div>
-      </form>
-      </QueryState>
-    </Section>
-  );
-}
+  Controller,
+  useFieldArray,
+  useForm,
+  type Control,
+  type FieldPath,
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { getSupabaseClient } from "~/lib/supabase.client";
+import { Field, FieldDescription, FieldError, FieldLabel } from "~/components/ui/field";
+import { Input } from "~/components/ui/input";
+import { Button } from "~/components/ui/button";
+import { Spinner } from "~/components/ui/spinner";
+import { financialConfigSchema, type FinancialConfig } from "@shared/schemas";
+import { BrandLoader } from "~/components/ui/module-loader";
+import { QueryState } from "~/components/ui/QueryState";
+import { Section } from "./Section";
 
 // Las llaves de `pozos` son fijas (`pozosSchema`): se listan acá para que el
 // formulario tipe cada campo en vez de recorrer el objeto con `any`.
@@ -291,7 +35,46 @@ const POZO_KEYS = [
   'servicios',
 ] as const;
 
-function FinanzasConfig() {
+// El techo de un tramo admite "sin techo" (null → placeholder «Infinito»), así
+// que no puede ir por `register` con `valueAsNumber` (un campo vacío daría NaN,
+// no null). Es el único campo de las escalas que necesita Controller.
+function CeilingField({
+  control,
+  name,
+  id,
+  label,
+  error,
+}: {
+  control: Control<FinancialConfig>;
+  name: FieldPath<FinancialConfig>;
+  id: string;
+  label: string;
+  error?: { message?: string };
+}) {
+  return (
+    <Field className="flex-1" data-invalid={!!error}>
+      <FieldLabel htmlFor={id} className="text-xs">{label}</FieldLabel>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field }) => (
+          <Input
+            id={id}
+            type="number"
+            placeholder="Infinito"
+            aria-invalid={!!error}
+            value={field.value === null || field.value === undefined ? '' : String(field.value)}
+            onBlur={field.onBlur}
+            onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+          />
+        )}
+      />
+      <FieldError errors={[error]} />
+    </Field>
+  );
+}
+
+export function FinanzasConfig() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -652,119 +435,6 @@ function FinanzasConfig() {
           </Button>
         </div>
       </form>
-    </div>
-  );
-}
-
-// El techo de un tramo admite "sin techo" (null → placeholder «Infinito»), así
-// que no puede ir por `register` con `valueAsNumber` (un campo vacío daría NaN,
-// no null). Es el único campo de las escalas que necesita Controller.
-function CeilingField({
-  control,
-  name,
-  id,
-  label,
-  error,
-}: {
-  control: Control<FinancialConfig>;
-  name: FieldPath<FinancialConfig>;
-  id: string;
-  label: string;
-  error?: { message?: string };
-}) {
-  return (
-    <Field className="flex-1" data-invalid={!!error}>
-      <FieldLabel htmlFor={id} className="text-xs">{label}</FieldLabel>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => (
-          <Input
-            id={id}
-            type="number"
-            placeholder="Infinito"
-            aria-invalid={!!error}
-            value={field.value === null || field.value === undefined ? '' : String(field.value)}
-            onBlur={field.onBlur}
-            onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
-          />
-        )}
-      />
-      <FieldError errors={[error]} />
-    </Field>
-  );
-}
-
-function GeneralConfig() {
-  return (
-    <div className="space-y-6">
-      <Section title="Información del Negocio" description="Datos generales de contacto y operación de la tienda.">
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Nombre de la Tienda</Label>
-              <Input defaultValue="Gyro Store" />
-            </div>
-            <div className="space-y-2">
-              <Label>Número RUC</Label>
-              <Input placeholder="Opcional" />
-            </div>
-            <div className="space-y-2">
-              <Label>Teléfono Principal (WhatsApp)</Label>
-              <Input defaultValue="+505 " />
-            </div>
-            <div className="space-y-2">
-              <Label>Correo de Contacto</Label>
-              <Input type="email" placeholder="contacto@gyrostore.com" />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Dirección Física</Label>
-              <Input defaultValue="Managua, Nicaragua" />
-            </div>
-          </div>
-          <div className="flex justify-end pt-4">
-            <Button className="shadow-sm">
-              <AnimatedIcon icon={FloppyDiskIcon} size={16} strokeWidth={2} className="mr-2" />
-              Guardar General
-            </Button>
-          </div>
-        </div>
-      </Section>
-    </div>
-  );
-}
-main
-
-export default function AdminConfiguracion() {
-  const [currentTab, setCurrentTab] = useState('general');
-
-  const tabs = [
-    { id: 'general', label: 'General' },
-    { id: 'variables', label: 'Variables' },
-    { id: 'categorias', label: 'Categorías' },
-    { id: 'recursos', label: 'Recursos' },
-  ];
-
-  return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 pb-20 pt-4 animate-in fade-in zoom-in-95 duration-200">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Configuración</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Parámetros del negocio editables desde la UI.</p>
-      </div>
-
-      <AnimatedTabs
-        items={tabs}
-        value={currentTab}
-        onChange={setCurrentTab}
-        layoutId="config-tabs"
-      />
-
-      <div className="mt-6">
-        {currentTab === 'general' && <GeneralConfig />}
-        {currentTab === 'variables' && <FinanzasConfig />}
-        {currentTab === 'categorias' && <CategoriesConfig />}
-        {currentTab === 'recursos' && <ImagesConfig />}
-      </div>
     </div>
   );
 }

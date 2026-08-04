@@ -1,8 +1,24 @@
 import { baseApi } from './baseApi';
 import type { Account, AccountMovement, RegisterMovementInput } from '../../../../shared/schemas';
+import type { AccountBalance } from '../../../../server/services/caja';
+import type { FinancialKPIs } from '../../../../server/services/reports';
+
+// Dashboard de cuadre (cierre financiero): saldos por cuenta + KPIs del día.
+// Vive acá porque es el mismo dominio que caja — las mutaciones de movimientos
+// invalidan el tag 'Cuadre' que este query provee.
+export interface CuadreDashboard {
+  ventasPendientes: number;
+  saldosCuentas: AccountBalance[];
+  kpisHoy: FinancialKPIs;
+}
 
 export const cajaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getCuadre: builder.query<CuadreDashboard, void>({
+      query: () => '/cuadre',
+      providesTags: ['Cuadre'],
+    }),
+
     getAccounts: builder.query<Account[], void>({
       query: () => '/caja/accounts',
       providesTags: ['Accounts'],
@@ -54,6 +70,7 @@ export const cajaApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetCuadreQuery,
   useGetAccountsQuery,
   useCreateAccountMutation,
   useToggleAccountStatusMutation,

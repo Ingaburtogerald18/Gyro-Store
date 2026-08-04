@@ -14,7 +14,7 @@
 // en dos líneas (mismo límite del backend, evita la lógica de "distribuir
 // reservas" de v1).
 import { AnimatedIcon } from "~/components/ui/animated-icons";
-import { CancelCircleIcon, CheckmarkCircle01Icon, ShoppingCart02Icon, Add01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon } from "@hugeicons/core-free-icons";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
@@ -33,11 +33,10 @@ import { Label } from '~/components/ui/label';
 import { DataTable } from '~/components/ui/DataTable';
 import { QueryState } from '~/components/ui/QueryState';
 import { SkeletonCard } from '~/components/ui/skeletons';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { SALE_STATUS, statusMeta } from '~/lib/status';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useAppSelector } from '~/store/hooks';
 import { selectIsAdmin } from '~/store/slices/authSlice';
 import { errMsg, formatCordobas } from "~/lib/formatters";
@@ -46,6 +45,7 @@ import {
   useGetSalesQuery,
   useRejectSaleMutation,
   type SaleListItem,
+  type SaleWithItems,
 } from '~/store/api/salesApi';
 import { Spinner } from "~/components/ui/spinner";
 // `SaleEditor` son 22 KB que hoy se descargaban al abrir Ventas aunque nadie
@@ -73,6 +73,14 @@ export default function AdminVentas() {
   const [rejectSale, { isLoading: rejecting }] = useRejectSaleMutation();
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  // Venta en edición (corregir datos antes/después de aprobar). El mismo editor
+  // sirve para registrar (sin `sale`) y para editar (con `sale`).
+  const [editingSale, setEditingSale] = useState<SaleWithItems | null>(null);
+
+  function closeEditor() {
+    setIsEditorOpen(false);
+    setEditingSale(null);
+  }
 
   // El filtro vive en la URL para que la campana de notificaciones pueda
   // enlazar directo al estado que anuncia ("3 ventas esperan tu aprobación").
@@ -80,11 +88,9 @@ export default function AdminVentas() {
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get('status') ?? 'pending_approval';
 
-  // `?nueva=1` abre el editor. Es lo que permite que "Registrar venta" de la
-  // paleta funcione desde cualquier módulo sin subir el estado del diálogo a un
-  // store global: la acción navega acá y la ruta interpreta el parámetro.
-  // Efecto secundario útil: la acción queda enlazable desde una notificación o
-  // un mensaje.
+  // `?nueva=1` abre el editor: la acción "Registrar venta" queda ENLAZABLE
+  // (una notificación o un mensaje pueden apuntar directo al formulario) sin
+  // subir el estado del diálogo a un store global.
   useEffect(() => {
     if (searchParams.get('nueva') === '1') {
       setIsEditorOpen(true);
@@ -171,46 +177,6 @@ export default function AdminVentas() {
 
 
   const columns = useMemo<ColumnDef<SaleListItem, unknown>[]>(() => {
-    const actionsColumn: ColumnDef<SaleListItem, unknown> = {
-      id: 'actions',
-      header: '',
-      // `stopPropagation` en los dos: la fila ahora abre el drawer de detalle,
-      // así que sin esto aprobar una venta además abriría el panel de la venta
-      // que se acaba de aprobar.
-      cell: ({ row }) =>
-        row.original.status === 'pending_approval' ? (
-          <div className="flex justify-end gap-1.5">
-            {/* Aprobar / rechazar solo admin. */}
-            {isAdmin && (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label="Aprobar venta"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleApprove(row.original.id);
-                  }}
-                >
-                  <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="text-success" aria-hidden />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label="Rechazar venta"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRejectFor(row.original);
-                  }}
-                >
-                  <AnimatedIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="text-destructive" aria-hidden />
-                </Button>
-              </>
-            )}
-          </div>
-        ) : null,
-    };
-
     return [
       {
         accessorKey: 'createdAt',
@@ -250,9 +216,8 @@ export default function AdminVentas() {
           return <StatusBadge status={meta.status} label={meta.label} />;
         },
       },
-      actionsColumn,
     ];
-  }, [isAdmin, handleApprove]);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -268,30 +233,29 @@ export default function AdminVentas() {
         }
       />
 
-      {/* Drawer y no modal. Un `Dialog` de 5xl con scroll interno es el peor
-          contenedor para un formulario largo: se pierde el listado de
-          referencia y el scroll de adentro pelea con el de la página. Acá el
-          header queda fijo, el cuerpo scrollea solo, y las ventas pendientes se
-          siguen viendo detrás. */}
-      <Sheet open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl lg:max-w-3xl">
-          <SheetHeader className="shrink-0 border-b border-border px-5 py-4">
-            <SheetTitle>Registrar venta</SheetTitle>
-            <SheetDescription>
-              El stock se reserva al registrar y se descuenta al aprobar.
-            </SheetDescription>
-          </SheetHeader>
+      {/* El editor sirve para registrar (sin `sale`) y para editar (con `sale`,
+          disparado desde el detalle). El header queda fijo y el cuerpo scrollea. */}
+      <Dialog open={isEditorOpen || !!editingSale} onOpenChange={(open) => !open && closeEditor()}>
+        <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-14">
+            <DialogTitle>{editingSale ? 'Editar venta' : 'Registrar venta'}</DialogTitle>
+            <DialogDescription>
+              {editingSale
+                ? 'Corregí los datos de la venta antes de aprobarla o rechazarla.'
+                : 'El stock se reserva al registrar y se descuenta al aprobar.'}
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
             {/* El fallback tiene la ALTURA aproximada del editor: con un spinner
                 chico el panel se abriría casi vacío y saltaría al llegar el
                 chunk. */}
             <Suspense fallback={<SkeletonCard lines={8} className="border-none" />}>
-              <SaleEditor onDone={() => setIsEditorOpen(false)} />
+              <SaleEditor sale={editingSale} onDone={closeEditor} />
             </Suspense>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* El vendedor no tiene Dashboard en su nav, así que su reportería propia
           vive acá. Al admin no se le muestra: ya la tiene completa (y de todo
@@ -344,6 +308,12 @@ export default function AdminVentas() {
         onReject={(id) => {
           const sale = sales.find((s) => s.id === id);
           if (sale) setRejectFor(sale);
+        }}
+        onEdit={(sale) => {
+          // El detalle trae la venta completa (SaleWithItems); se abre el editor
+          // con ella y se cierra el detalle para no apilar dos diálogos.
+          setEditingSale(sale);
+          openSale(null);
         }}
       />
 

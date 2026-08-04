@@ -1,24 +1,22 @@
-// Detalle de una venta, en drawer lateral.
+// Detalle de una venta, en diálogo centrado.
 //
-// ── Por qué drawer y no modal ──
-// El listado sigue visible detrás. Al revisar seis ventas pendientes una tras
-// otra, un modal te saca del contexto en cada una y hay que volver a ubicarse;
-// el drawer deja la fila a la vista.
+// `flex flex-col` + max-h-[90vh]: el cuerpo scrollea y el pie con las acciones
+// (aprobar/rechazar) queda siempre fijo a la vista.
 //
 // ── Por qué es ENLAZABLE (`?sale=<id>`) ──
 // Es lo que permite que la campana de notificaciones apunte al registro exacto
 // en vez de a la pestaña que lo contiene. Hasta ahora no se podía: no existía
 // `GET /api/sales/:id`.
 import { AnimatedIcon } from '~/components/ui/animated-icons';
-import { CancelCircleIcon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
+import { CancelCircleIcon, CheckmarkCircle01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
 
 import { Button } from '~/components/ui/button';
 import { QueryState } from '~/components/ui/QueryState';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { StatusBadge } from '~/components/ui/StatusBadge';
 import { formatCordobas } from '~/lib/formatters';
 import { SALE_STATUS, statusMeta } from '~/lib/status';
-import { useGetSaleQuery } from '~/store/api/salesApi';
+import { useGetSaleQuery, type SaleWithItems } from '~/store/api/salesApi';
 
 export function SaleDetailDrawer({
   saleId,
@@ -26,12 +24,14 @@ export function SaleDetailDrawer({
   isAdmin,
   onApprove,
   onReject,
+  onEdit,
 }: {
   saleId: string | null;
   onClose: () => void;
   isAdmin: boolean;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onEdit?: (sale: SaleWithItems) => void;
 }) {
   const { data: sale, isLoading, isError, refetch } = useGetSaleQuery(saleId!, { skip: !saleId });
 
@@ -39,22 +39,21 @@ export function SaleDetailDrawer({
   const pending = sale?.status === 'pending_approval';
 
   return (
-    <Sheet open={!!saleId} onOpenChange={(open) => !open && onClose()}>
-      {/* `flex flex-col` + footer fijo: el cuerpo scrollea, las acciones
-          primarias quedan siempre a la vista. Es lo que un modal con scroll
-          interno no puede dar. */}
-      <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-lg">
-        <SheetHeader className="shrink-0 border-b border-border px-5 py-4">
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={!!saleId} onOpenChange={(open) => !open && onClose()}>
+      {/* `flex flex-col` + max-h-[90vh]: el cuerpo scrollea y el pie con las
+          acciones primarias queda siempre a la vista. */}
+      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-4 pr-14">
+          <DialogTitle className="flex items-center gap-2">
             Venta
             {meta && <StatusBadge status={meta.status} label={meta.label} />}
-          </SheetTitle>
-          <SheetDescription>
+          </DialogTitle>
+          <DialogDescription>
             {sale
               ? `${sale.sellerName || sale.sellerEmail} · ${new Date(sale.createdAt).toLocaleDateString('es-NI')}`
               : 'Cargando…'}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <QueryState
@@ -147,32 +146,47 @@ export function SaleDetailDrawer({
           </div>
 
           {isAdmin && pending && sale && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  onReject?.(sale.id);
-                  onClose();
-                }}
-              >
-                <AnimatedIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="mr-1.5 text-destructive" />
-                Rechazar
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  onApprove?.(sale.id);
-                  onClose();
-                }}
-              >
-                <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-1.5" />
-                Aprobar
-              </Button>
+            <div className="flex flex-col gap-2">
+              {/* Corregir antes de decidir: abre el editor con la venta cargada.
+                  Va arriba y como botón visible (no ghost) porque es el paso
+                  previo natural a aprobar/rechazar si hay un dato malo. */}
+              {onEdit && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => onEdit(sale)}
+                >
+                  <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} className="mr-1.5" />
+                  Editar venta (corregir datos)
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    onReject?.(sale.id);
+                    onClose();
+                  }}
+                >
+                  <AnimatedIcon icon={CancelCircleIcon} size={16} strokeWidth={2} className="mr-1.5 text-destructive" />
+                  Rechazar
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    onApprove?.(sale.id);
+                    onClose();
+                  }}
+                >
+                  <AnimatedIcon icon={CheckmarkCircle01Icon} size={16} strokeWidth={2} className="mr-1.5" />
+                  Aprobar
+                </Button>
+              </div>
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

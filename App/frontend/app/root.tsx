@@ -16,8 +16,8 @@ import { Toaster } from 'sonner';
 import { store } from '~/store/store';
 import tailwindHref from './tailwind.css?url';
 
-// Sin Google Fonts: Figtree (body) y Geist (headings) se sirven localmente
-// vía @fontsource-variable, importados desde tailwind.css.
+// Sin Google Fonts: Geist (body y headings, según el preset Rhea) se sirve
+// localmente vía @fontsource-variable, importado desde tailwind.css.
 //
 // El `rel="icon"` NO es decorativo: sin un icono declarado, el navegador pide
 // `/favicon.ico` por su cuenta, Remix no tiene esa ruta y cada carga de página
@@ -53,10 +53,10 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     // suppressHydrationWarning: el script anti-flash puede cambiar data-theme
     // antes de que React hidrate; ese "mismatch" es intencional.
-    // `style-maia`: activa el style del preset shadcn sobre todas las primitivas.
+    // `style-rhea`: activa el style del preset shadcn sobre todas las primitivas.
     <html
       lang="es"
-      className="style-maia"
+      className="style-rhea"
       data-theme="dark"
       data-skin="store"
       suppressHydrationWarning

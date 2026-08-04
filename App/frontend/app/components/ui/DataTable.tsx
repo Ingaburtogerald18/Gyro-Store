@@ -339,16 +339,14 @@ export function DataTable<T>({
         </div>
       ) : (
       <>
-      {/* Tres cambios sobre lo que había:
-          · Sin `max-h-[75vh] overflow-auto`: la PÁGINA scrollea, la tabla no.
-            Dos scrolls anidados obligan a adivinar cuál se va a mover.
-          · `sticky top-14` en el <thead>, justo debajo del topbar, en vez de
-            `top-0` dentro de un contenedor con scroll propio.
-          · Sin `shadow-lg`: elevación por borde y fondo. En oscuro la sombra no
-            se veía y en claro se veía barata. */}
+      {/* La PÁGINA scrollea, la tabla no (sin scroll anidado). El <thead> NO es
+          sticky: dentro de este contenedor `overflow-hidden` (necesario para
+          recortar las esquinas redondeadas) el sticky se anclaba mal y empujaba
+          el encabezado sobre la primera fila. Va en flujo normal, con un borde
+          inferior que lo separa del cuerpo. */}
       <div className="relative hidden overflow-hidden rounded-card border border-border bg-card md:block">
         <table className={cn("w-full", compact ? "text-[13px]" : "text-sm")}>
-          <thead className="table-header-brand sticky top-14 z-20 text-left">
+          <thead className="border-b border-border bg-muted/50 text-left">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {selectable && (

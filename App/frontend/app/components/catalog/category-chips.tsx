@@ -6,7 +6,7 @@
 // contrato. Cuando existan, el dropdown va acá.
 import { useRef } from 'react';
 
-import type { StoreCategory } from '~/store/api/configApi';
+import type { StoreCategory } from '~/store/api/sessionApi';
 import { cn } from '~/lib/utils';
 
 interface CategoryChipsProps {

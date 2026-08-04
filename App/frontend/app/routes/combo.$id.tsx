@@ -24,7 +24,7 @@ import { CartDrawer } from '~/components/cart/cart-drawer';
 import { StoreHeader } from '~/components/store/store-header';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import type { StoreConfig } from '~/store/api/configApi';
+import type { StoreConfig } from '~/store/api/sessionApi';
 import { useAppDispatch } from '~/store/hooks';
 import { addItem, openCart } from '~/store/slices/cartSlice';
 import { buildWhatsappUrl, formatCordobas, getComboUrl } from "~/lib/formatters";

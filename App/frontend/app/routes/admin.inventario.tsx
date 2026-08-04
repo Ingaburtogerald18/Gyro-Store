@@ -17,7 +17,6 @@ import { Tabs, TabsContent } from "~/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { FilterSelect, type FilterSelectOption } from "~/components/ui/FilterSelect";
 import { useGetPurchasesQuery } from "~/store/api/inventoryV1Api";
-import { cn } from "~/lib/utils";
 
 export const meta: MetaFunction = () => {
   return [{ title: pageTitle('Inventario', { admin: true }) }];

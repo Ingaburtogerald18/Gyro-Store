@@ -14,7 +14,7 @@
 import { useCallback } from 'react';
 
 import { useGetCategoriesQuery } from '~/store/api/catalogAdminApi';
-import { useGetConfigQuery } from '~/store/api/configApi';
+import { useGetConfigQuery } from '~/store/api/sessionApi';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

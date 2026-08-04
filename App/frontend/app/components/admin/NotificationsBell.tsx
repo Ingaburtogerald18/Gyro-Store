@@ -26,9 +26,9 @@ import { useNavigate } from '@remix-run/react';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
-import { useGetSalesQuery, type SaleListItem, type SaleStatus } from '~/store/api/salesApi';
+import { useGetSalesQuery, type SaleListItem } from '~/store/api/salesApi';
 import { useAppSelector } from '~/store/hooks';
-import { selectIsAdmin, selectUser } from '~/store/slices/authSlice';
+import { selectIsAdmin } from '~/store/slices/authSlice';
 import { cn } from '~/lib/utils';
 import { formatCordobas } from '~/lib/formatters';
 
@@ -68,8 +68,6 @@ const money = (value: number) => formatCordobas(value, 'C$', 2);
 export function NotificationsBell() {
   const bellRef = useRef<AnimatedIconHandle>(null);
   const isAdmin = useAppSelector(selectIsAdmin);
-  const user = useAppSelector(selectUser);
-  const myEmail = user?.email?.toLowerCase() ?? '';
   const navigate = useNavigate();
 
   // El admin necesita las que esperan su aprobación; el vendedor, el desenlace

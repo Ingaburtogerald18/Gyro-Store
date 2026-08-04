@@ -18,7 +18,6 @@ import type { MetaFunction } from '@remix-run/node';
 import { pageTitle } from '~/lib/brand';
 import { toast } from 'sonner';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { PageHeader } from '~/components/layout/PageHeader';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
