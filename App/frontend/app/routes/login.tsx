@@ -53,7 +53,7 @@ export default function Login() {
         provider: "azure",
         options: {
           scopes: 'email openid profile User.Read',
-          redirectTo: `${window.location.origin}/admin`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
