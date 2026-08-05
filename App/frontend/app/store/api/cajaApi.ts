@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { Account, AccountMovement, RegisterMovementInput } from '../../../../shared/schemas';
+import type { Account, AccountMovement, RegisterMovementInput } from '@shared/schemas';
 import type { AccountBalance } from '../../../../server/services/caja';
 import type { FinancialKPIs } from '../../../../server/services/reports';
 

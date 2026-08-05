@@ -92,6 +92,7 @@ export function Layout({ children }: { children: ReactNode }) {
 import { AuthSync } from '~/components/auth/AuthSync';
 import { GlobalProgress } from '~/components/ui/global-progress';
 import { TooltipProvider } from '~/components/ui/tooltip';
+import { StorefrontAnalytics } from '~/components/layout/storefront-analytics';
 
 export default function App() {
   return (
@@ -104,6 +105,7 @@ export default function App() {
       <TooltipProvider delayDuration={0}>
         <GlobalProgress />
         <AuthSync />
+        <StorefrontAnalytics />
         <Outlet />
         {/* Toasts pintados con los tokens de marca, no con el tema de sonner. */}
         <Toaster

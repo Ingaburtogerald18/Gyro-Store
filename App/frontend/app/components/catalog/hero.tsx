@@ -87,10 +87,10 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
 
   return (
     <section className="mx-auto w-full max-w-[1400px] px-4 pt-3 pb-6 sm:pt-6 sm:pb-12">
-      <div className="group relative w-full overflow-hidden rounded-[2.5rem] border border/40 bg-card shadow-2xl">
+      <div className="group relative w-full overflow-hidden rounded-[2.5rem] border border-border/40 bg-card shadow-2xl">
         <div className="flex min-h-[380px] flex-col items-stretch md:h-[620px] md:flex-row">
           {/* ── Media ── */}
-          <div className="relative flex h-[190px] w-full items-center justify-center overflow-hidden border-b border/30 bg-card sm:h-[260px] md:h-auto md:w-1/2 md:border-r md:border-b-0">
+          <div className="relative flex h-[190px] w-full items-center justify-center overflow-hidden border-b border-border/30 bg-card sm:h-[260px] md:h-auto md:w-1/2 md:border-r md:border-b-0">
             {/* Glow radial muy tenue: da profundidad al vacío sin leerse como halo. */}
             <div
               aria-hidden
@@ -104,7 +104,10 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                 safeIndex === 0 ? 'p-2 sm:p-6' : 'p-6 max-md:scale-125 max-md:p-0',
               )}
             />
-            <div className="pointer-events-none absolute inset-0 bg-black/10" />
+            {/* Velo de contraste sobre la media. Con `bg-foreground/5` sigue a la
+                inversa del tema: oscurece en claro y aclara en oscuro, en vez de
+                pintar negro fijo (que en tema claro ensuciaba la foto). */}
+            <div className="pointer-events-none absolute inset-0 bg-foreground/5" />
           </div>
 
           {/* ── Texto ── */}
@@ -165,14 +168,14 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
       {/* ── Barra flotante de navegación y progreso ── */}
       {slides.length > 1 && (
         <div className="mt-3 flex justify-center sm:mt-6">
-          <div className="flex items-center gap-3 rounded-full border border/40 bg-card px-4 py-2.5">
+          <div className="flex items-center gap-3 rounded-full border border-border/40 bg-card px-4 py-2.5">
             <Button
               variant="secondary"
               size="icon"
               onClick={() => setPlaying((p) => !p)}
               title={playing ? 'Pausar presentación' : 'Reanudar presentación'}
               aria-label={playing ? 'Pausar presentación' : 'Reanudar presentación'}
-              className="h-11 w-11 rounded-full bg-white/5 md:h-7 md:w-7"
+              className="h-11 w-11 rounded-full md:h-7 md:w-7"
             >
               {playing ? (
                 <AnimatedIcon icon={PauseIcon} size={14} strokeWidth={2} aria-hidden className="fill-current" />
@@ -181,7 +184,7 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
               )}
             </Button>
 
-            <Separator orientation="vertical" className="h-4 bg-white/10" />
+            <Separator orientation="vertical" className="h-4" />
 
             <div className="flex items-center gap-1">
               <Button
@@ -217,8 +220,8 @@ export function Hero({ initialLanding }: { initialLanding?: LandingConfig | null
                     >
                       <span
                         className={cn(
-                          'relative h-2.5 overflow-hidden rounded-full bg-white/15 transition-all duration-300',
-                          isActive ? 'w-11' : 'w-2.5 group-hover/dot:bg-white/35',
+                          'relative h-2.5 overflow-hidden rounded-full bg-muted-foreground/25 transition-all duration-300',
+                          isActive ? 'w-11' : 'w-2.5 group-hover/dot:bg-muted-foreground/50',
                         )}
                       >
                         {isActive && autoPlaying && (

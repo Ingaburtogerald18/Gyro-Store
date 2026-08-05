@@ -28,7 +28,8 @@ import contactRouter from './routes/contact';
 import authRouter from './routes/auth';
 import cajaRouter from './routes/caja';
 import cuadreRouter from './routes/cuadre';
-import { apiLimiter, publicOrderLimiter, contactLimiter } from './middleware/rateLimiter';
+import analyticsRouter from './routes/analytics';
+import { apiLimiter, publicOrderLimiter, contactLimiter, telemetryLimiter } from './middleware/rateLimiter';
 import { sanitizeBody } from './utils/sanitize';
 import { logger } from './utils/logger';
 import { startUserCleanupCron } from './services/cleanupUsers';
@@ -127,6 +128,13 @@ app.use('/api/orders', ordersRouter);
 app.post('/api/contact', contactLimiter);
 app.use('/api/contact', contactRouter);
 app.use('/api/reports', reportsRouter);
+
+// Telemetría del storefront. El límite estricto solo intercepta la ingesta
+// pública (POST /api/analytics); las lecturas del dashboard (GET /admin/*) van
+// autenticadas y con el límite general. Al no ser el último handler del método,
+// la petición continúa hacia analyticsRouter.
+app.post('/api/analytics', telemetryLimiter);
+app.use('/api/analytics', analyticsRouter);
 
 // ── Cierre de la cadena ──
 app.use('/api', notFoundHandler);

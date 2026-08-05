@@ -1,6 +1,6 @@
 import type { IconSvgElement } from "@hugeicons/react";
 import { AnimatedIcon, type IconGesture } from "~/components/ui/animated-icons";
-import { Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import { Analytics01Icon, Coupon01Icon, CreditCardIcon, DashboardSquare01Icon, File01Icon, Logout03Icon, Package01Icon, PackageIcon, Settings02Icon, ShoppingCart02Icon, SparklesIcon, Store01Icon, TruckIcon, UserMultiple02Icon, UserSettings01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from '@remix-run/react';
 import type { User } from '@supabase/supabase-js';
@@ -95,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
       // declarado para el día que se enciendan, pero no se dispara.
       { name: 'Logística', to: '/admin/logistica', icon: TruckIcon, ready: false, gesture: 'nudge-x' },
       { name: 'CRM y clientes', to: '/admin/crm', icon: UserMultiple02Icon, ready: false, gesture: 'pop' },
+      { name: 'Analítica', to: '/admin/analitica', icon: Analytics01Icon, ready: true, gesture: 'draw' },
       { name: 'Personal', to: '/admin/usuarios', icon: UserSettings01Icon, ready: true, gesture: 'draw' },
       { name: 'Configuración', to: '/admin/configuracion', icon: Settings02Icon, ready: true, gesture: 'pop' },
     ],

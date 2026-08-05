@@ -15,13 +15,28 @@ export interface StoreCategory {
   icon: string;
 }
 
+// Espejo de lo que responde GET /api/config: `getPublicConfig()` (desde env) +
+// `getBusinessInfo()` (editable en el panel, pisa brandName/whatsapp/contactEmail
+// y agrega ruc/address) + categorías + imágenes. Ver server/routes/config.ts.
+//
+// Los campos de negocio faltaban acá aunque el endpoint ya los devolvía, así que
+// el footer no podía mostrar la dirección y `config.brandName` no compilaba.
 export interface StoreConfig {
+  // ── Desde env (server/services/config.ts) ──
+  brandName: string;
+  contactEmail: string;
+  internalDomain: string;
+  appUrl: string;
   // Símbolo de la moneda local, ej. 'C$' (córdoba).
   currency: string;
   // Tasa USD → córdoba vigente.
   exchangeRate: number;
   // Número de WhatsApp del negocio (para wa.me/...).
   whatsapp: string;
+  // ── Desde app_config → 'business_info' (editable en el panel) ──
+  ruc: string;
+  /** Dirección del local; el footer la enlaza a Google Maps. */
+  address: string;
   categories: StoreCategory[];
   images?: {
     logoStatic?: string;

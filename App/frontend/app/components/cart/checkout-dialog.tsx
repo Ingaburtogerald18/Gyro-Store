@@ -8,9 +8,15 @@ import { AnimatedIcon } from "~/components/ui/animated-icons";
 import { Location01Icon, Store01Icon, TruckIcon, Coupon01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { publicOrderInputSchema, type PublicOrderInput } from '@shared/schemas';
+import {
+  DELIVERY_DESTINATION_MESSAGE,
+  hasDeliveryDestination,
+  publicOrderFieldsSchema,
+} from '@shared/schemas';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -20,8 +26,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '~/components/ui/field';
 import { Input } from '~/components/ui/input';
-import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
 import { useGetConfigQuery } from '~/store/api/sessionApi';
 import { useCreatePublicOrderMutation } from '~/store/api/storefrontApi';
@@ -40,8 +46,17 @@ import {
 import { cn } from "~/lib/utils"
 import { formatCordobas } from "~/lib/formatters";
 
-// Los campos que llena la persona; los ítems los pone el carrito al enviar.
-type CheckoutForm = Omit<PublicOrderInput, 'items'>;
+// El formulario DERIVA del contrato (DESIGN.md §6b): mismos campos y mismos
+// mensajes que validaría el backend, menos los que no llena la persona —
+// `items` los pone el carrito y `discountCode` tiene su propio flujo de canje.
+const checkoutFormSchema = publicOrderFieldsSchema
+  .omit({ discountCode: true })
+  .refine(hasDeliveryDestination, {
+    message: DELIVERY_DESTINATION_MESSAGE,
+    path: ['address'],
+  });
+
+type CheckoutForm = z.infer<typeof checkoutFormSchema>;
 
 export function CheckoutDialog({
   open,
@@ -97,6 +112,7 @@ export function CheckoutDialog({
     reset,
     formState: { errors },
   } = useForm<CheckoutForm>({
+    resolver: zodResolver(checkoutFormSchema),
     defaultValues: { deliveryMethod: 'retiro', customerName: '', phone: '' },
   });
 
@@ -138,21 +154,14 @@ export function CheckoutDialog({
       return;
     }
 
-    // Se valida con el schema compartido ANTES de salir: los mismos mensajes
-    // que devolvería el backend, pero sin gastar el viaje.
-    const payload = {
-      ...form,
-      items: toOrderItems(items),
-      discountCode: appliedCode?.code,
-    };
-    const parsed = publicOrderInputSchema.safeParse(payload);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? 'Revisá los datos del formulario.');
-      return;
-    }
-
+    // Los campos ya los validó el resolver (los errores salen en su campo, no
+    // por toast). Acá solo se completa lo que el carrito aporta.
     try {
-      const order = await createOrder(parsed.data).unwrap();
+      const order = await createOrder({
+        ...form,
+        items: toOrderItems(items),
+        discountCode: appliedCode?.code,
+      }).unwrap();
       reset();
       removeCode();
       dispatch(clearCart());
@@ -181,29 +190,37 @@ export function CheckoutDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="customerName">Nombre</Label>
+          <Field data-invalid={Boolean(errors.customerName)}>
+            <FieldLabel htmlFor="customerName" required>
+              Nombre
+            </FieldLabel>
             <Input
               id="customerName"
               autoComplete="name"
               placeholder="Tu nombre"
+              aria-required
               aria-invalid={Boolean(errors.customerName)}
               {...register('customerName')}
             />
-          </div>
+            <FieldError errors={[errors.customerName]} />
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="phone">Teléfono</Label>
+          <Field data-invalid={Boolean(errors.phone)}>
+            <FieldLabel htmlFor="phone" required>
+              Teléfono
+            </FieldLabel>
             <Input
               id="phone"
               type="tel"
               inputMode="tel"
               autoComplete="tel"
               placeholder="8888 8888"
+              aria-required
               aria-invalid={Boolean(errors.phone)}
               {...register('phone')}
             />
-          </div>
+            <FieldError errors={[errors.phone]} />
+          </Field>
 
           <fieldset className="space-y-1.5">
             <legend className="mb-1.5 text-sm font-medium text-foreground">¿Cómo lo recibís?</legend>
@@ -237,8 +254,8 @@ export function CheckoutDialog({
           </fieldset>
 
           {deliveryMethod === 'envio' && (
-            <div className="space-y-1.5">
-              <Label htmlFor="address">Dirección</Label>
+            <Field data-invalid={Boolean(errors.address)}>
+              <FieldLabel htmlFor="address">Dirección</FieldLabel>
               <Textarea
                 id="address"
                 rows={2}
@@ -246,6 +263,9 @@ export function CheckoutDialog({
                 aria-invalid={Boolean(errors.address)}
                 {...register('address')}
               />
+              {/* La regla de entrega cuelga de `address`, así que su mensaje
+                  ("agregá dirección o ubicación") aparece justo acá. */}
+              <FieldError errors={[errors.address]} />
               <input type="hidden" {...register('locationUrl')} />
               <Button
                 type="button"
@@ -261,22 +281,23 @@ export function CheckoutDialog({
                     ? 'Obteniendo ubicación…'
                     : 'Compartir mi ubicación'}
               </Button>
-            </div>
+            </Field>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="note">Nota (opcional)</Label>
+          <Field>
+            <FieldLabel htmlFor="note">Nota (opcional)</FieldLabel>
             <Textarea
               id="note"
               rows={2}
               placeholder="¿Algo que debamos saber?"
               {...register('note')}
             />
-          </div>
+          </Field>
 
-          {/* Código de descuento (opcional) */}
-          <div className="space-y-1.5">
-            <Label htmlFor="discountCode">Código de descuento (opcional)</Label>
+          {/* Código de descuento: fuera de `register` a propósito — no es un
+              campo del pedido sino un canje que valida el servidor aparte. */}
+          <Field>
+            <FieldLabel htmlFor="discountCode">Código de descuento (opcional)</FieldLabel>
             {appliedCode ? (
               <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/10 px-3 py-2">
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
@@ -316,7 +337,7 @@ export function CheckoutDialog({
                 </Button>
               </div>
             )}
-          </div>
+          </Field>
 
           <div className="space-y-1 border-t border-border pt-3">
             {codeDiscount > 0 && (

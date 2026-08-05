@@ -451,17 +451,39 @@ export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 // ── Checkout público (doc 04 §6, doc 12: server SIEMPRE recalcula el
 // precio, nunca confía en lo que manda el cliente) ──
 
-export const publicOrderItemInputSchema = z.object({
-  catalogItemId: z.uuid(),
-  // Techo por línea: sin él, un `quantity` absurdo (1e9) infla el total y puede
-  // desbordar los cálculos financieros. El mayoreo real se cotiza con un vendedor.
-  quantity: z.number().int().positive().max(999, 'Máximo 999 unidades por producto.'),
-  // Variante elegida (ej. "negro / 128GB"). Es SOLO para el mensaje de WhatsApp:
-  // el precio nunca depende de esto, lo resuelve el servidor por catalogItemId.
-  variantName: z.string().max(120).optional(),
-});
+// Una línea del pedido es UN producto suelto O UN combo, nunca ambos. Los dos
+// ids son opcionales en el objeto y el `superRefine` de abajo exige exactamente
+// uno: así el tipo refleja que son excluyentes sin partir el schema en dos.
+export const publicOrderItemInputSchema = z
+  .object({
+    catalogItemId: z.uuid().optional(),
+    // Paquete publicado (tabla `combos`). Igual que con `catalogItemId`, el
+    // precio lo resuelve el servidor: el cliente solo dice CUÁL combo quiere.
+    comboId: z.uuid().optional(),
+    // Techo por línea: sin él, un `quantity` absurdo (1e9) infla el total y puede
+    // desbordar los cálculos financieros. El mayoreo real se cotiza con un vendedor.
+    quantity: z.number().int().positive().max(999, 'Máximo 999 unidades por producto.'),
+    // Variante elegida (ej. "negro / 128GB"). Es SOLO para el mensaje de WhatsApp:
+    // el precio nunca depende de esto, lo resuelve el servidor por catalogItemId.
+    variantName: z.string().max(120).optional(),
+  })
+  // Sin esta regla, una línea sin ningún id pasaría la validación y el service
+  // la descartaría en silencio — que es exactamente el bug que esto cierra: el
+  // combo se veía en el carrito y desaparecía del pedido.
+  .superRefine((item, ctx) => {
+    if (Boolean(item.catalogItemId) === Boolean(item.comboId)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['catalogItemId'],
+        message: 'Cada línea debe referenciar un producto o un combo, no ambos ni ninguno.',
+      });
+    }
+  });
 
-export const publicOrderInputSchema = z.object({
+// Los campos que llena la PERSONA, sin los ítems. Se exporta aparte para que el
+// formulario del checkout derive de acá (DESIGN.md §6b: derivar, no reescribir)
+// en vez de mantener una copia de las mismas reglas.
+export const publicOrderFieldsSchema = z.object({
   phone: z
     .string()
     .min(1, 'El teléfono es obligatorio.')
@@ -481,27 +503,42 @@ export const publicOrderInputSchema = z.object({
   // Código de descuento opcional (incentivo por reseña). El servidor lo canjea
   // atómicamente y recalcula el total: nunca se confía en el monto del cliente.
   discountCode: z.string().max(30).optional(),
-  // Techo de líneas por pedido: acota el trabajo que un request anónimo puede
-  // pedirle a la DB (el service consulta y luego inserta una fila por ítem).
-  items: z
-    .array(publicOrderItemInputSchema)
-    .min(1, 'El pedido necesita al menos un ítem.')
-    .max(50, 'El pedido no puede tener más de 50 productos distintos.'),
-})
-  // Para envío hace falta dirección escrita O ubicación GPS: sin ninguna de las
-  // dos, el pedido no es despachable y solo generaría una ida y vuelta por chat.
-  .refine(
-    (d) =>
-      d.deliveryMethod !== 'envio' ||
-      (d.address ?? '').trim().length > 4 ||
-      Boolean(d.locationUrl),
-    {
-      message: 'Agregá tu dirección o compartí tu ubicación para el envío.',
-      path: ['address'],
-    },
-  );
+});
+
+// Para envío hace falta dirección escrita O ubicación GPS: sin ninguna de las
+// dos, el pedido no es despachable y solo generaría una ida y vuelta por chat.
+// Exportada porque la aplican los dos: el contrato del endpoint y el formulario
+// del checkout. Una sola definición, un solo mensaje.
+export const hasDeliveryDestination = (d: {
+  deliveryMethod: 'retiro' | 'envio';
+  address?: string;
+  locationUrl?: string;
+}) =>
+  d.deliveryMethod !== 'envio' || (d.address ?? '').trim().length > 4 || Boolean(d.locationUrl);
+
+export const DELIVERY_DESTINATION_MESSAGE =
+  'Agregá tu dirección o compartí tu ubicación para el envío.';
+
+export const publicOrderInputSchema = publicOrderFieldsSchema
+  .extend({
+    // Techo de líneas por pedido: acota el trabajo que un request anónimo puede
+    // pedirle a la DB (el service consulta y luego inserta una fila por ítem).
+    items: z
+      .array(publicOrderItemInputSchema)
+      .min(1, 'El pedido necesita al menos un ítem.')
+      .max(50, 'El pedido no puede tener más de 50 productos distintos.'),
+    // Sesión anónima de analítica (opcional, sin PII). El cliente la manda para
+    // enlazar el pedido con el resto del embudo (evento `order_created`). No
+    // influye en precios ni en nada del pedido; si no vino, el pedido igual se crea.
+    sessionId: z.string().max(64).optional(),
+  })
+  .refine(hasDeliveryDestination, {
+    message: DELIVERY_DESTINATION_MESSAGE,
+    path: ['address'],
+  });
 
 export type PublicOrderItemInput = z.infer<typeof publicOrderItemInputSchema>;
+export type PublicOrderFields = z.infer<typeof publicOrderFieldsSchema>;
 export type PublicOrderInput = z.infer<typeof publicOrderInputSchema>;
 
 // ============================================================================

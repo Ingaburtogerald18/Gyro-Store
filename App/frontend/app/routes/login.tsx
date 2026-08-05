@@ -67,14 +67,17 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" data-skin="store">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Spinner className="text-primary" />
       </div>
     );
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-background font-sans text-white" data-skin="store">
+    // `data-skin="store"` era residuo del V1 (allá conmutaba una hoja de tokens
+    // propia); en este proyecto no engancha con nada. El tema lo fija `data-theme`
+    // en <html>, así que el atributo se retira.
+    <main className="relative min-h-screen w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Background concentric circles */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-30">
         <div className="absolute -left-64 -top-64 h-[800px] w-[800px] rounded-full border border-primary/10" />
@@ -85,7 +88,7 @@ export default function Login() {
 
       {/* Top Left Back Button */}
       <div className="absolute left-6 top-6 z-20">
-        <Button asChild variant="ghost" className="h-10 rounded-full bg-primary/20 px-4 text-primary hover:bg-primary/30 hover:text-white transition-colors">
+        <Button asChild variant="ghost" className="h-10 rounded-full bg-primary/20 px-4 text-primary hover:bg-primary/30 hover:text-primary transition-colors">
           <Link to="/">
             <AnimatedIcon icon={ArrowLeft02Icon} size={16} strokeWidth={2} className="mr-2" /> Volver al catálogo
           </Link>
@@ -109,7 +112,7 @@ export default function Login() {
                 variant="outline"
                 disabled={busy === "microsoft"}
                 onClick={runMicrosoft}
-                className="h-14 w-full rounded-xl border-foreground/10 bg-muted text-base font-bold text-white hover:bg-foreground/5 hover:border-foreground/20 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                className="h-14 w-full rounded-xl border-foreground/10 bg-muted text-base font-bold text-foreground hover:bg-foreground/5 hover:border-foreground/20 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
                 {busy !== "microsoft" ? <OutlookIcon className="mr-3 h-6 w-6" /> : <Spinner className="mr-3" />}
                 Continuar con Microsoft
@@ -131,13 +134,13 @@ export default function Login() {
                   className="max-h-[300px] object-contain drop-shadow-2xl animate-in fade-in zoom-in duration-700" 
                 />
               ) : (
-                <div className="h-[250px] w-[250px] rounded-2xl bg-white/5 flex items-center justify-center border border-foreground/10">
-                  <span className="text-white/20 font-medium">{brand}</span>
+                <div className="h-[250px] w-[250px] rounded-2xl bg-background/50 flex items-center justify-center border border-foreground/10">
+                  <span className="text-muted-foreground font-medium">{brand}</span>
                 </div>
               )}
             </div>
             <div className="mt-8">
-              <h2 className="text-3xl font-extrabold text-white">Acceso a Colaboradores</h2>
+              <h2 className="text-3xl font-extrabold text-foreground">Acceso a Colaboradores</h2>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                 Accede al centro de administración para la gestión de {brand}.
               </p>

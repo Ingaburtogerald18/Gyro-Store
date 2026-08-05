@@ -55,3 +55,55 @@ export async function createLead(input: PublicContactInput): Promise<Lead> {
 
   return { contactId, activityId: activity.id };
 }
+
+// find-or-create por teléfono para un PEDIDO WEB. Igual que createLead no pisa el
+// nombre de un contacto existente (el staff pudo corregirlo a mano) y deja una
+// actividad en el historial para que el pedido aparezca en la ficha del CRM.
+//
+// Best-effort desde el checkout: TODO va en try/catch y devuelve null si algo
+// falla, porque un pedido NO debe romperse porque el CRM tuvo un problema. El
+// origen es `whatsapp_link` (el pedido se cierra por el link de WhatsApp).
+export async function findOrCreateOrderContact(
+  phone: string,
+  name: string,
+): Promise<string | null> {
+  try {
+    const { data: existing } = await db
+      .from('contacts')
+      .select('id')
+      .eq('phone', phone)
+      .maybeSingle();
+
+    let contactId: string;
+    if (existing) {
+      contactId = existing.id;
+    } else {
+      const { data: created } = await db
+        .from('contacts')
+        .insert({ phone, name, origin: 'whatsapp_link' })
+        .select('id')
+        .single();
+      if (created) {
+        contactId = created.id;
+      } else {
+        // Carrera: otro pedido del mismo teléfono lo creó en el ínterin
+        // (contacts.phone es UNIQUE). Re-leer en vez de fallar.
+        const { data: retry } = await db
+          .from('contacts')
+          .select('id')
+          .eq('phone', phone)
+          .maybeSingle();
+        if (!retry) return null;
+        contactId = retry.id;
+      }
+    }
+
+    await db
+      .from('contact_activities')
+      .insert({ contact_id: contactId, type: 'web_order', note: 'Pedido desde el catálogo web.' });
+
+    return contactId;
+  } catch {
+    return null;
+  }
+}

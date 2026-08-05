@@ -24,7 +24,14 @@ export interface CreatedPublicOrder {
   phone: string;
   total: number;
   status: string;
-  items: Array<{ catalogItemId: string; quantity: number; unitPrice: number }>;
+  /** Cada línea trae `catalogItemId` (producto) o `comboId` (paquete), nunca ambos. */
+  items: Array<{
+    catalogItemId?: string;
+    comboId?: string;
+    quantity: number;
+    unitPrice: number;
+    variantName?: string;
+  }>;
   /** Link a WhatsApp con el pedido ya formateado, listo para abrir. */
   whatsappUrl: string;
 }

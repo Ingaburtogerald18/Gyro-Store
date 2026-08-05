@@ -115,12 +115,18 @@ const cartSlice = createSlice({
   },
 });
 
-// Payload para POST /api/orders/public. Los combos aún no viajan por este
-// endpoint (el contrato solo acepta ítems de catálogo), así que se excluyen.
+// Payload para POST /api/orders/public. Una línea viaja como producto O como
+// combo — nunca las dos cosas: el contrato lo exige y el servidor resuelve el
+// precio a partir del id que reciba.
+//
+// Antes esta función hacía `.filter((i) => !i.comboId)`: el combo se veía en el
+// carrito, sumaba al subtotal y desaparecía del pedido sin avisar.
 export function toOrderItems(items: CartItem[]): PublicOrderItemInput[] {
-  return items
-    .filter((i) => !i.comboId)
-    .map((i) => ({ catalogItemId: i.catalogId, quantity: i.quantity }));
+  return items.map((i) =>
+    i.comboId
+      ? { comboId: i.comboId, quantity: i.quantity }
+      : { catalogItemId: i.catalogId, quantity: i.quantity, variantName: i.variantName },
+  );
 }
 
 export const {

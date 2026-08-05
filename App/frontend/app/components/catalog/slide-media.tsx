@@ -12,7 +12,7 @@ export function SlideMedia({
 }) {
   if (!slide.mediaUrl) {
     return (
-      <div className={cn('grid place-items-center bg-black/40 text-xs text-white/40', className)}>
+      <div className={cn('grid place-items-center bg-muted text-xs text-muted-foreground', className)}>
         Sin media
       </div>
     );

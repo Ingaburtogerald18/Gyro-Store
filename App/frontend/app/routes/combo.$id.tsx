@@ -20,8 +20,7 @@ import { Link, useLoaderData } from '@remix-run/react';
 
 import { toast } from 'sonner';
 import type { Combo } from '@shared/schemas';
-import { CartDrawer } from '~/components/cart/cart-drawer';
-import { StoreHeader } from '~/components/store/store-header';
+import { StorefrontShell } from '~/components/layout/storefront-shell';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import type { StoreConfig } from '~/store/api/sessionApi';
@@ -74,7 +73,12 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const name = combo.name ?? 'Combo especial';
   const title = pageTitle(name);
   const description = `Combo especial en ${brand}, Managua — ${formatCordobas(combo.price ?? 0)}.`;
-  const image = firstImageUrl(combo.images);
+  // Si el combo no trae foto propia se cae al logo: un link sin imagen en
+  // WhatsApp se lee como spam.
+  const image =
+    firstImageUrl(combo.images) ||
+    data?.config?.images?.logoStatic ||
+    `${data?.origin ?? ''}/logo.jpg`;
 
   return [
     { title },
@@ -82,8 +86,10 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     { property: 'og:type', content: 'product' },
     { property: 'og:title', content: title },
     { property: 'og:description', content: description },
-    ...(image ? [{ property: 'og:image', content: image }] : []),
+    { property: 'og:image', content: image },
     { property: 'og:url', content: `${data?.origin ?? ''}${getComboUrl(combo.id, name)}` },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:image', content: image },
   ];
 };
 
@@ -119,8 +125,7 @@ export default function ComboDetail() {
   }
 
   return (
-    <>
-      <StoreHeader />
+    <StorefrontShell>
       <main className="mx-auto max-w-7xl px-4 py-6">
         <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
           <Link to="/#catalogo" prefetch="intent">
@@ -178,7 +183,6 @@ export default function ComboDetail() {
           </div>
         </div>
       </main>
-      <CartDrawer />
-    </>
+    </StorefrontShell>
   );
 }

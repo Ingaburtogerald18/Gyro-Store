@@ -1,11 +1,17 @@
-// Catálogo de la home, restaurado al layout del V1: una GRILLA UNIFORME
-// filtrable por CategoryChips, no una pila de carruseles por categoría.
-// "SuperOfertas" se conserva como carrusel destacado arriba, que es la única
-// sección donde el scroll horizontal aporta (es una selección corta y curada).
+// Catálogo de la home. Dos vistas bien distintas:
 //
-// Regla del V1: todas las tarjetas del mismo tamaño, cero huecos. Nada de
-// col-span-2 ni grid-auto-flow:dense.
-import { useMemo, useState } from 'react';
+//   · Por DEFECTO (sin filtros): SuperOfertas + un carrusel por categoría. Se
+//     recorre como una tienda, gama por gama, sin decidir nada primero.
+//   · Con búsqueda o filtro: una GRILLA UNIFORME de resultados. Acá el usuario ya
+//     dijo qué quiere y lo que importa es comparar, no descubrir.
+//
+// Regla dura de esa grilla: todas las tarjetas del mismo tamaño y aspect-ratio,
+// cero huecos. Nada de `col-span-2` ni `grid-auto-flow:dense`.
+//
+// El filtrado NO vive acá: lo hace useCatalogFilter sobre el uiSlice, para que
+// la barra de herramientas y esta grilla cuenten siempre lo mismo. Las
+// categorías se eligen desde el header (CategoryNav / CategoriesDrawer).
+import { useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { AnimatedIcon } from '~/components/ui/animated-icons';
 import { PackageSearchIcon } from '@hugeicons/core-free-icons';
@@ -14,11 +20,10 @@ import type { CatalogProduct } from '@shared/schemas';
 import type { StoreCategory } from '~/store/api/sessionApi';
 import { ProductCard } from '~/components/product/product-card';
 import { ProductCarousel } from '~/components/product/product-carousel';
-import { CategoryChips } from '~/components/catalog/category-chips';
 import { Skeleton } from '~/components/ui/skeleton';
+import { isDeal, useCatalogFilter } from '~/hooks/useCatalogFilter';
 
-export const isDeal = (p: CatalogProduct) =>
-  p.isPromo || (p.compareAtPrice ?? 0) > p.price;
+export { isDeal };
 
 // Un producto pertenece a la categoría tanto si guarda el id como el nombre
 // (el contrato trae `category` como texto y `categoryId` opcional).
@@ -33,51 +38,81 @@ interface ProductGridProps {
 }
 
 export function ProductGrid({ products, categories = [], isLoading }: ProductGridProps) {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-
-  // Solo se ofrecen las categorías que de verdad tienen productos: un chip que
-  // filtra a cero es una vía muerta.
-  const usableCategories = useMemo(
-    () => categories.filter((c) => products.some((p) => inCategory(p, c))),
-    [categories, products],
-  );
+  const { filtered, isDefault } = useCatalogFilter(products);
 
   const deals = useMemo(() => products.filter(isDeal), [products]);
 
-  const visible = useMemo(() => {
-    if (!activeCategory) return products;
-    const cat = categories.find((c) => c.id === activeCategory);
-    return cat ? products.filter((p) => inCategory(p, cat)) : products;
-  }, [products, categories, activeCategory]);
+  // Una fila por categoría CON productos, y las ofertas fuera (ya tienen la suya
+  // arriba): si no, el mismo producto aparece dos veces en la misma pantalla.
+  const rows = useMemo(() => {
+    const rest = products.filter((p) => !isDeal(p));
+    return categories
+      .map((c) => ({ category: c, items: rest.filter((p) => inCategory(p, c)) }))
+      .filter((row) => row.items.length > 0);
+  }, [products, categories]);
+
+  // Productos que no caen en ninguna categoría de la config: sin este cajón
+  // quedarían invisibles en la vista por defecto.
+  const uncategorized = useMemo(() => {
+    if (categories.length === 0) return [];
+    return products.filter((p) => !isDeal(p) && !categories.some((c) => inCategory(p, c)));
+  }, [products, categories]);
 
   if (isLoading) return <GridSkeleton />;
+
+  // "No hay catálogo" y "tu filtro no encontró nada" son problemas distintos, y
+  // el usuario solo puede resolver el segundo.
   if (products.length === 0) {
     return <EmptyState text="Aún no hay productos publicados." />;
   }
 
+  if (isDefault) {
+    return (
+      <div className="space-y-2 pb-2 md:space-y-6 md:pb-12">
+        {deals.length > 0 && (
+          <ProductCarousel
+            title="SuperOfertas"
+            subtitle="Precios rebajados por tiempo limitado"
+            products={deals}
+            variant="showcase"
+          />
+        )}
+
+        {rows.map((row) => (
+          <ProductCarousel
+            key={row.category.id}
+            title={row.category.name}
+            products={row.items}
+            variant="showcase"
+          />
+        ))}
+
+        {uncategorized.length > 0 && (
+          <ProductCarousel title="Más productos" products={uncategorized} variant="showcase" />
+        )}
+
+        {/* Sin categorías configuradas no hay filas que armar: se cae a la
+            grilla completa antes que dejar la home en blanco. */}
+        {rows.length === 0 && uncategorized.length === 0 && deals.length === 0 && (
+          <ProductResultsGrid products={products} />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 pb-2 md:space-y-10 md:pb-12">
-      {/* SuperOfertas: única sección que sigue siendo carrusel. Se oculta si hay
-          un filtro activo — ahí manda la categoría elegida, no la promoción. */}
-      {deals.length > 0 && activeCategory === null && (
-        <ProductCarousel
-          title="SuperOfertas"
-          subtitle="Precios rebajados por tiempo limitado"
-          products={deals}
-          variant="showcase" />
-      )}
+    <div className="space-y-4 pb-2 md:pb-12">
+      <h2 className="text-lg font-bold tracking-tight text-foreground md:text-xl">
+        Resultados{' '}
+        <span className="ml-1 text-sm font-medium text-muted-foreground tabular-nums">
+          ({filtered.length})
+        </span>
+      </h2>
 
-      {usableCategories.length > 0 && (
-        <CategoryChips
-          categories={usableCategories}
-          active={activeCategory}
-          onChange={setActiveCategory} />
-      )}
-
-      {visible.length > 0 ? (
-        <ProductResultsGrid products={visible} />
+      {filtered.length > 0 ? (
+        <ProductResultsGrid products={filtered} />
       ) : (
-        <EmptyState text="No hay productos en esta categoría." />
+        <EmptyState text="Ningún producto coincide con lo que buscás. Probá quitar algún filtro." />
       )}
     </div>
   );

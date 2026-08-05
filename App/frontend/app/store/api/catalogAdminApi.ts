@@ -5,7 +5,7 @@ import type {
   AdminTemplate,
   Category,
   TemplateInput,
-} from '../../../../shared/schemas';
+} from '@shared/schemas';
 
 // Un lote de bodega ya recibido, tal como lo devuelve
 // GET /admin/catalog/inventory-lots. Es la unidad a la que se vincula una

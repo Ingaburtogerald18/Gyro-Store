@@ -59,7 +59,7 @@ export default function AuthCallback() {
   }, []);
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-white" data-skin="store">
+    <main className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
       {error ? (
         <>
           <p className="text-sm text-destructive max-w-sm text-center px-6">{error}</p>

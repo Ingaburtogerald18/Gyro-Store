@@ -81,7 +81,7 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
             className="w-full max-w-xl mx-4 overflow-hidden rounded-2xl border border-white/10 bg-card/80 shadow-2xl backdrop-blur-xl"
           >
             {/* Search input */}
-            <div className="flex items-center gap-3 border-b border/60 px-4 py-3.5">
+            <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3.5">
               <AnimatedIcon icon={Search01Icon} size={20} strokeWidth={2} className="shrink-0 text-muted-foreground" />
               <input
                 ref={inputRef}
@@ -142,7 +142,7 @@ export function PurchaseCommandPalette({ open, onOpenChange, purchases, onSelect
             </div>
 
             {/* Footer hint */}
-            <div className="flex items-center gap-3 border-t border/40 px-4 py-2 text-[11px] text-muted-foreground/60">
+            <div className="flex items-center gap-3 border-t border-border/40 px-4 py-2 text-[11px] text-muted-foreground/60">
               <span><kbd className="font-mono">↵</kbd> seleccionar</span>
               <span><kbd className="font-mono">Esc</kbd> cerrar</span>
               <span className="ml-auto"><kbd className="font-mono">⌘K</kbd> abrir</span>

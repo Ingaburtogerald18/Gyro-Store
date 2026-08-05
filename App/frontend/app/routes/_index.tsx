@@ -5,10 +5,12 @@ import type { HeadersFunction, LoaderFunctionArgs, MetaFunction } from '@remix-r
 import { getBrandName } from '~/lib/brand';
 import { useLoaderData } from '@remix-run/react';
 import type { CatalogProduct, LandingConfig } from '@shared/schemas';
-import { CartDrawer } from '~/components/cart/cart-drawer';
+import { ActiveFilters } from '~/components/catalog/active-filters';
+import { FilterBar } from '~/components/catalog/filter-bar';
+import { FilterSheet } from '~/components/catalog/filter-sheet';
 import { Hero } from '~/components/catalog/hero';
 import { ProductGrid } from '~/components/catalog/product-grid';
-import { StoreHeader } from '~/components/store/store-header';
+import { StorefrontShell } from '~/components/layout/storefront-shell';
 import type { StoreConfig } from '~/store/api/sessionApi';
 
 // Catálogo público: 60s fresco + 5min de stale-while-revalidate. El HTML del SSR
@@ -42,10 +44,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   const origin = data?.origin ?? '';
-  const brand = getBrandName();
+  const brand = data?.config?.brandName || getBrandName();
   const title = brand;
   const description =
     'Audífonos KZ, adaptadores Bluetooth y accesorios de tecnología en Managua, Nicaragua.';
+  // Sin `og:image` el link compartido por WhatsApp sale sin foto y parece spam.
+  // Se usa el logo configurado desde el panel; si no hay, el del repo.
+  const image = data?.config?.images?.logoStatic || `${origin}/logo.jpg`;
+
   return [
     { title },
     { name: 'description', content: description },
@@ -53,8 +59,10 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
     { property: 'og:site_name', content: brand },
     { property: 'og:title', content: title },
     { property: 'og:description', content: description },
+    { property: 'og:image', content: image },
     { property: 'og:url', content: `${origin}/` },
     { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:image', content: image },
   ];
 };
 
@@ -62,21 +70,18 @@ export default function Index() {
   const { products, config, landing } = useLoaderData<typeof loader>();
 
   return (
-    <>
-      <StoreHeader />
+    <StorefrontShell>
       <main>
         <Hero initialLanding={landing} />
         <div id="catalogo" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-8">
+          <FilterBar products={products} />
+          <ActiveFilters categories={config?.categories} />
           <ProductGrid products={products} categories={config?.categories} />
         </div>
       </main>
-      <CartDrawer />
-      <footer className="mt-12 py-8 border-t border-border dark:border-border text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
-        <p>&copy; {new Date().getFullYear()} {getBrandName()}.</p>
-        <a href="/login" className="opacity-20 hover:opacity-100 transition-opacity" title="Acceso de Personal">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </a>
-      </footer>
-    </>
+
+      {/* Vive fuera del <main>: es un panel modal, no contenido de la página. */}
+      <FilterSheet />
+    </StorefrontShell>
   );
 }

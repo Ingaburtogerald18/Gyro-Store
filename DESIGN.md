@@ -1,7 +1,9 @@
-# DESIGN.md — Gyro Store · Sistema de diseño **shadcn / style Maia**
+# DESIGN.md — Gyro Store · Sistema de diseño **shadcn / style Rhea**
 
-> El proyecto adopta el preset oficial de shadcn `b3ae24HXW4` tal cual, en storefront y
-> back-office: **style Maia · theme Emerald · charts Green · Figtree + Geist**.
+> El proyecto adopta el preset oficial de shadcn `b2DeDk3s1` en storefront y back-office:
+> **style Rhea (base `radix`) · base color Mist · theme Emerald · charts Green · Figtree + Geist**.
+> La configuración vive en `components.json` (`"style": "radix-rhea"`, `"baseColor": "mist"`,
+> `"iconLibrary": "hugeicons"`).
 > Este documento describe el sistema **vivo en el código**; si el código y este archivo
 > divergen, se actualiza este archivo en el mismo PR.
 
@@ -9,8 +11,8 @@
 
 ## 0. En una frase
 
-La apariencia **no se escribe en los componentes**: se hereda del style `Maia` de shadcn. Los
-componentes solo declaran estructura y semántica; el vestido vive en `app/style-maia.css`.
+Rhea es la variante **compacta** de shadcn: controles y superficies más densos que Maia o Luma.
+Los componentes declaran estructura y semántica; la densidad y los estados salen del preset.
 
 ---
 
@@ -18,13 +20,30 @@ componentes solo declaran estructura y semántica; el vestido vive en `app/style
 
 | Capa | Archivo | Qué define |
 |---|---|---|
-| Primitivas | `app/components/ui/*.tsx` | Estructura, accesibilidad, `data-slot`, clases `.cn-*` |
-| Style (apariencia) | `app/style-maia.css` | Geometría, densidad, estados, sombras y anillos |
+| Primitivas | `app/components/ui/*.tsx` | Estructura, accesibilidad, `data-slot`, **y hoy también la apariencia** (vía `cva`) |
+| Style del registry | `app/style-rhea.css` | Las clases `.cn-*` del preset — hoy **sin uso** (ver aviso abajo) |
 | Tokens (color) | `app/tailwind.css` → `:root` / `[data-theme="dark"]` | La paleta, en tokens semánticos |
 | Puente shadcn | `app/tailwind.css` → `@theme inline` | Mapea `--background`/`--primary`/… a `--color-*` |
 
 **Regla base:** los componentes de `ui/` vienen del registry de shadcn (base `radix`) y se
-modifican **lo mínimo**. Todo lo que sea apariencia va al style, no al `.tsx`.
+modifican **lo mínimo**. No se les reescribe la apariencia desde el call site.
+
+### ⚠️ El skin `.cn-*` está cableado pero INERTE
+
+`app/style-rhea.css` son ~1680 líneas que definen ~404 clases `.cn-*` bajo `.style-rhea`, y
+`root.tsx` pone esa clase en `<html>`. **Pero ninguna primitiva de `ui/` usa esas clases**:
+`button.tsx`, `badge.tsx`, `input.tsx`, `sheet.tsx` y compañía se estilizan con utilidades
+Tailwind inline a través de `cva`, ya a densidad Rhea (botones `h-8`, etc.).
+
+Consecuencia práctica: **el look real sale de los tokens de `tailwind.css` + las utilidades
+inline de cada primitiva, no del archivo del skin.** Tocar `style-rhea.css` no cambia nada
+visual, y quitar su `@import` tampoco.
+
+Se mantiene cableado a propósito (decisión del dueño, ago 2026): deja el preset correcto y
+permite regenerar primitivas con `npx shadcn`. **No borrarlo sin preguntar.**
+
+Cuando este documento dice "lo resuelve Rhea", entiéndase *el preset tal como está aplicado en
+las primitivas*, no el archivo `.css`.
 
 ### La excepción: `forwardRef` en los controles de formulario
 
@@ -58,9 +77,9 @@ color — también cambia el `font-weight` (§8).
 Esto además unifica los dos sistemas de tabs del panel: `AnimatedTabs` (el propio, con
 indicador deslizante) ya usaba un pill `bg-primary`, así que ahora los dos hablan igual.
 
-`style-maia.css` se carga con un `@import "./style-maia.css"` desde `tailwind.css`, y la clase
-`.style-maia` la pone `root.tsx` en el `<html>`. **Las dos cosas hacen falta**: sin el import, la
-clase no tiene CSS detrás y el style entero queda sin aplicar (le pasó al `style-rhea` anterior).
+`style-rhea.css` se carga con un `@import "./style-rhea.css"` desde `tailwind.css` (línea 21), y
+la clase `.style-rhea` la pone `root.tsx` en el `<html>`. **Las dos cosas hacen falta** para que
+el skin llegue a aplicarse — aunque hoy, por lo dicho en §1, no cambie nada visual.
 
 ---
 
@@ -155,14 +174,14 @@ Si un caso no encaja, se extiende ese archivo — no se formatea en el call site
 
 ## 4. Geometría y espaciado
 
-La define Maia, no nosotros. Los radios y densidades salen del style; lo propio se limita a
+La define Rhea, no nosotros. Los radios y densidades salen del preset; lo propio se limita a
 `rounded-card` para las tarjetas del admin.
 
 ---
 
 ## 5. Motion
 
-- **Enter/exit de primitivas:** lo resuelve Maia con `data-open` / `data-closed`
+- **Enter/exit de primitivas:** lo resuelve Rhea con `data-open` / `data-closed`
   (`animate-in`, `fade-in-0`, `zoom-in-95`, `slide-in-from-*`), vía `tw-animate-css`.
 - **Movimiento propio** (layout, listas, KPIs): `framer-motion`, con `layoutId` para indicadores
   que se deslizan y `stagger` corto en listas.
@@ -240,7 +259,7 @@ inventar un contrato paralelo.
 - `required` en `FieldLabel` pinta el asterisco (glifo, no solo color — §8) y
   expone `data-required`. Lo accesible lo aporta el control con `aria-required`.
 - `data-invalid` en `Field` tiñe el grupo; `aria-invalid` en el control dispara el
-  anillo destructivo de Maia.
+  anillo destructivo de Rhea.
 - Para switches y checkboxes: `<Field orientation="horizontal">` +
   `FieldContent` + `FieldLabel` + `FieldDescription`.
 - El ritmo vertical lo da `Field`/`FieldGroup`, no `space-y-*` a mano.
@@ -319,7 +338,7 @@ Las primitivas son de shadcn; estas piezas son **nuestras** y siguen vigentes:
 ## 9. Accesibilidad (piso, no opcional)
 
 - Contraste: cuerpo ≥4.5:1, texto grande ≥3:1.
-- Foco visible en todo interactivo (Maia lo trae con `ring-3` + `ring-ring/30`).
+- Foco visible en todo interactivo (Rhea lo trae con `ring-3` + `ring-ring/30`).
 - `prefers-reduced-motion` respetado.
 - Touch targets ≥44px.
 - `alt` significativo en fotos; decorativas `aria-hidden`.

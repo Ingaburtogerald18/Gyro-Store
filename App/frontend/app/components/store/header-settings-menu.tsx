@@ -15,15 +15,17 @@ import { signOut } from "~/lib/supabase.client";
 // no se vea plano ni aburrido. `tone` cambia el color del chip (acento / peligro).
 const ROW =
   "group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-medium transition-colors";
+// El chip lleva superficie propia, no el acento pleno: con `bg-primary` de fondo
+// y `text-primary` de icono el glifo quedaba invisible sobre su mismo color.
 const CHIP = "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors";
 
 /** Interruptor accesible (role="switch") para el tema. Unificado: se usa tanto en
  *  la vista de invitado como en la autenticada (antes había dos botones distintos). */
 function ThemeSwitch({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 hover:bg-primary/50 transition-colors cursor-pointer" onClick={onToggle}>
+    <div className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 hover:bg-muted transition-colors cursor-pointer" onClick={onToggle}>
       <span className="flex items-center gap-3 text-sm font-medium text-foreground cursor-pointer">
-        <span className={cn(CHIP, "bg-primary text-primary")}>
+        <span className={cn(CHIP, "bg-primary/15 text-primary")}>
           {isDark ? <AnimatedIcon icon={Moon02Icon} size={16} strokeWidth={2} /> : <AnimatedIcon icon={Sun01Icon} size={16} strokeWidth={2} />}
         </span>
         Apariencia
@@ -35,14 +37,14 @@ function ThemeSwitch({ isDark, onToggle }: { isDark: boolean; onToggle: () => vo
         aria-label={`Cambiar a tema ${isDark ? "claro" : "oscuro"}`}
         className={cn(
           "relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          isDark ? "border-primary bg-primary" : "border bg-primary",
+          isDark ? "border-primary bg-primary" : "border-border bg-muted",
         )}
       >
         <motion.span
           aria-hidden
           animate={{ x: isDark ? 20 : 0 }}
           transition={{ type: "spring", stiffness: 500, damping: 32 }}
-          className="absolute left-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-white shadow"
+          className="absolute left-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-background shadow"
         >
           {isDark ? (
             <AnimatedIcon icon={Moon02Icon} size={12} strokeWidth={2} className="text-primary" />
@@ -109,7 +111,7 @@ export function HeaderSettingsMenu() {
           "relative grid h-10 w-10 place-items-center rounded-full border shadow-sm backdrop-blur-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           isAuthed
             ? "border-primary/30 bg-primary/10 hover:bg-primary/15"
-            : "border bg-primary text-muted-foreground hover:border-primary/40 hover:text-foreground",
+            : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
         )}
         aria-label="Menú de cuenta y configuración"
         aria-expanded={isOpen}
@@ -162,10 +164,10 @@ export function HeaderSettingsMenu() {
 
                   <button
                     onClick={comingSoon}
-                    className={cn(ROW, "text-muted-foreground hover:bg-primary hover:text-foreground")}
+                    className={cn(ROW, "text-muted-foreground hover:bg-muted hover:text-foreground")}
                     role="menuitem"
                   >
-                    <span className={cn(CHIP, "bg-primary text-muted-foreground group-hover:text-foreground")}>
+                    <span className={cn(CHIP, "bg-muted text-muted-foreground group-hover:text-foreground")}>
                       <AnimatedIcon icon={CustomerSupportIcon} size={16} strokeWidth={2} />
                     </span>
                     Ayuda y FAQs
@@ -197,8 +199,10 @@ export function HeaderSettingsMenu() {
                       {initial}
                     </span>
                     <span className="min-w-0">
+                      {/* El rol ya se dice abajo en `roleLabel`; no hace falta un
+                          emoji para marcarlo (y §8 los prohíbe en UI de marca). */}
                       <span className="block truncate text-sm font-semibold text-foreground">
-                        Hola, {firstName} {isAdmin && "👑"}
+                        Hola, {firstName}
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">{roleLabel}</span>
                     </span>
@@ -207,7 +211,7 @@ export function HeaderSettingsMenu() {
                   <Link
                     to="/admin"
                     onClick={() => setIsOpen(false)}
-                    className={cn(ROW, "text-foreground hover:bg-primary")}
+                    className={cn(ROW, "text-foreground hover:bg-muted")}
                     role="menuitem"
                   >
                     <span className={cn(CHIP, "bg-primary/15 text-primary")}>
@@ -222,13 +226,13 @@ export function HeaderSettingsMenu() {
                         dispatch(toggleEditMode());
                         setIsOpen(false);
                       }}
-                      className={cn(ROW, "hover:bg-primary", editMode ? "text-primary" : "text-foreground")}
+                      className={cn(ROW, "hover:bg-muted", editMode ? "text-primary" : "text-foreground")}
                       role="menuitem"
                     >
                       <span
                         className={cn(
                           CHIP,
-                          editMode ? "bg-primary/15 text-primary" : "bg-primary text-muted-foreground group-hover:text-foreground",
+                          editMode ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground group-hover:text-foreground",
                         )}
                       >
                         <AnimatedIcon icon={Edit02Icon} size={16} strokeWidth={2} />

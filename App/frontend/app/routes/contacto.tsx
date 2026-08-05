@@ -13,10 +13,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 import { toast } from 'sonner';
 import { publicContactInputSchema, type PublicContactInput } from '@shared/schemas';
-import { StoreHeader } from '~/components/store/store-header';
+import { StorefrontShell } from '~/components/layout/storefront-shell';
 import { Button } from '~/components/ui/button';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '~/components/ui/field';
 import { Input } from '~/components/ui/input';
-import { Label } from '~/components/ui/label';
 import { Textarea } from '~/components/ui/textarea';
 import { errMsg } from "~/lib/formatters";
 import { useSendContactMutation } from '~/store/api/storefrontApi';
@@ -43,44 +49,78 @@ export default function Contacto() {
   }
 
   return (
-    <>
-      <StoreHeader />
+    <StorefrontShell>
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
         <h1 className="text-2xl font-bold text-foreground">Contacto</h1>
         <p className="mt-1 text-muted-foreground">¿Tenés una consulta? Escribinos y te respondemos.</p>
 
         <div className="mt-8 grid gap-8 md:grid-cols-2">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Field label="Nombre *" error={errors.name?.message}>
-              <Input placeholder="Tu nombre" {...register('name')} aria-invalid={!!errors.name} />
-            </Field>
-            <Field label="Teléfono *" error={errors.phone?.message}>
-              <Input
-                inputMode="tel"
-                placeholder="8888 8888"
-                {...register('phone')}
-                aria-invalid={!!errors.phone}
-              />
-            </Field>
-            <Field label="Correo (opcional)" error={errors.email?.message}>
-              <Input
-                type="email"
-                placeholder="tu@correo.com"
-                {...register('email')}
-                aria-invalid={!!errors.email}
-              />
-            </Field>
-            <Field label="Mensaje *" error={errors.message?.message}>
-              <Textarea
-                rows={4}
-                placeholder="¿En qué te ayudamos?"
-                {...register('message')}
-                aria-invalid={!!errors.message}
-              />
-            </Field>
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? 'Enviando…' : 'Enviar mensaje'}
-            </Button>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <FieldGroup>
+              <Field data-invalid={!!errors.name}>
+                <FieldLabel htmlFor="contact-name" required>
+                  Nombre
+                </FieldLabel>
+                <Input
+                  id="contact-name"
+                  autoComplete="name"
+                  placeholder="Tu nombre"
+                  aria-required
+                  aria-invalid={!!errors.name}
+                  {...register('name')}
+                />
+                <FieldError errors={[errors.name]} />
+              </Field>
+
+              <Field data-invalid={!!errors.phone}>
+                <FieldLabel htmlFor="contact-phone" required>
+                  Teléfono
+                </FieldLabel>
+                <Input
+                  id="contact-phone"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="8888 8888"
+                  aria-required
+                  aria-invalid={!!errors.phone}
+                  {...register('phone')}
+                />
+                <FieldError errors={[errors.phone]} />
+              </Field>
+
+              <Field data-invalid={!!errors.email}>
+                <FieldLabel htmlFor="contact-email">Correo</FieldLabel>
+                <Input
+                  id="contact-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="tu@correo.com"
+                  aria-invalid={!!errors.email}
+                  {...register('email')}
+                />
+                <FieldDescription>Opcional — te respondemos por WhatsApp.</FieldDescription>
+                <FieldError errors={[errors.email]} />
+              </Field>
+
+              <Field data-invalid={!!errors.message}>
+                <FieldLabel htmlFor="contact-message" required>
+                  Mensaje
+                </FieldLabel>
+                <Textarea
+                  id="contact-message"
+                  rows={4}
+                  placeholder="¿En qué te ayudamos?"
+                  aria-required
+                  aria-invalid={!!errors.message}
+                  {...register('message')}
+                />
+                <FieldError errors={[errors.message]} />
+              </Field>
+
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? 'Enviando…' : 'Enviar mensaje'}
+              </Button>
+            </FieldGroup>
           </form>
 
           <div className="space-y-4">
@@ -98,24 +138,6 @@ export default function Contacto() {
           </div>
         </div>
       </main>
-    </>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
+    </StorefrontShell>
   );
 }

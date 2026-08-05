@@ -34,6 +34,13 @@ export function ProductCard({
   const { data: config } = useGetConfigQuery();
   const reduce = useReducedMotion();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  // El sheet se monta recién en el primer uso: con 40 tarjetas en pantalla, 40
+  // portales vacíos son 40 nodos y 40 suscripciones que nadie pidió.
+  const [quickAddMounted, setQuickAddMounted] = useState(false);
+  // Blur-up: la foto entra desenfocada y se resuelve al cargar, en vez de
+  // aparecer de golpe sobre un hueco. `onLoad` cubre también la imagen que ya
+  // venía del caché del navegador (dispara igual, solo que de inmediato).
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const image = product.images[0];
   // Segunda foto: si existe, hace crossfade al pasar el mouse (patrón del V1).
@@ -56,6 +63,7 @@ export function ProductCard({
     if (soldOut) return;
     // Con más de una combinación hay que elegir variante: sheet, no carrito.
     if (product.variantCount > 1) {
+      setQuickAddMounted(true);
       setQuickAddOpen(true);
       return;
     }
@@ -143,9 +151,17 @@ export function ProductCard({
           alt={product.name}
           loading={index < 4 ? 'eager' : 'lazy'}
           decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          // Si la foto falla, el blur permanente sería peor que mostrarla rota:
+          // se destapa igual y el alt hace su trabajo.
+          onError={() => setImageLoaded(true)}
           className={cn(
             'ease-expo relative h-full w-full object-cover transition duration-[600ms] will-change-transform',
             'group-hover:scale-[1.06]',
+            // El blur-up no se anima con `motion`: es una transición CSS sobre
+            // filter+scale, que el compositor resuelve sin trabajo de JS.
+            !imageLoaded && !reduce && 'scale-[1.04] blur-lg',
+            imageLoaded && 'scale-100 blur-0',
             hoverImage && !soldOut && 'group-hover:opacity-0',
             soldOut && 'opacity-70 grayscale',
           )}
@@ -254,7 +270,7 @@ export function ProductCard({
 
   // El sheet se monta junto a la tarjeta pero renderiza por portal (Radix):
   // el whileTap/whileHover del article no lo afectan.
-  const quickAdd = product.variantCount > 1 && (
+  const quickAdd = quickAddMounted && (
     <QuickAddSheet product={product} open={quickAddOpen} onOpenChange={setQuickAddOpen} />
   );
 

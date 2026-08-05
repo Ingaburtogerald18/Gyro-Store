@@ -9,6 +9,7 @@ import { Add01Icon, Delete02Icon, ImageNotFound01Icon, MinusSignIcon, ShoppingBa
 import { useState } from 'react';
 import { useNavigate } from '@remix-run/react';
 
+import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import {
   Sheet,
@@ -98,7 +99,7 @@ export function CartDrawer() {
                   return (
                     <div
                       key={key}
-                      className="flex gap-3 rounded-xl border bg-background p-3"
+                      className="flex gap-3 rounded-xl border border-border bg-background p-3"
                     >
                       <div className="product-stage h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                         {item.image ? (
@@ -111,9 +112,26 @@ export function CartDrawer() {
                       </div>
 
                       <div className="flex flex-1 flex-col">
-                        <p className="text-sm leading-tight font-medium text-foreground">{item.name}</p>
-                        {item.variantName !== 'Estándar' && (
-                          <p className="text-xs text-muted-foreground">{item.variantName}</p>
+                        <p className="flex items-center gap-1.5 text-sm leading-tight font-medium text-foreground">
+                          {item.comboId && (
+                            <Badge variant="promo" className="shrink-0 text-[10px]">
+                              Combo
+                            </Badge>
+                          )}
+                          {item.name}
+                        </p>
+                        {/* Un combo es una línea atómica: lo que aclara la línea
+                            no es su variante sino QUÉ trae el paquete. */}
+                        {item.comboId ? (
+                          item.comboProducts && item.comboProducts.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {item.comboProducts.map((p) => p.name).join(' + ')}
+                            </p>
+                          )
+                        ) : (
+                          item.variantName !== 'Estándar' && (
+                            <p className="text-xs text-muted-foreground">{item.variantName}</p>
+                          )
                         )}
                         <div className="mt-auto flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -165,7 +183,7 @@ export function CartDrawer() {
                 <Button
                   variant="ghost"
                   onClick={keepShopping}
-                  className="w-full justify-center gap-2 rounded-xl border border-dashed border bg-background/40 py-3 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  className="w-full justify-center gap-2 rounded-xl border border-dashed border-border bg-background/40 py-3 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 >
                   <AnimatedIcon icon={Add01Icon} size={16} strokeWidth={2} aria-hidden />
                   Agregar otro producto
