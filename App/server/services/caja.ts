@@ -1,10 +1,16 @@
+import { randomUUID } from 'crypto';
 import { db } from '../supabase';
 import { BadRequestError } from '../utils/httpError';
-import type { RegisterMovementInput, Account, AccountMovement } from '../../shared/schemas';
+import type {
+  RegisterMovementInput,
+  RegisterTransferInput,
+  Account,
+  AccountMovement,
+} from '../../shared/schemas';
 
 // ── ACCOUNTS ──
 
-const ACCOUNT_COLUMNS = `id, nombre, tipo, moneda, activo, created_at`;
+const ACCOUNT_COLUMNS = `id, nombre, tipo, moneda, saldo_inicial, activo, created_at`;
 
 function parseAccountRow(row: any): Account {
   return {
@@ -12,6 +18,7 @@ function parseAccountRow(row: any): Account {
     nombre: row.nombre,
     tipo: row.tipo,
     moneda: row.moneda,
+    saldo_inicial: Number(row.saldo_inicial ?? 0),
     activo: row.activo,
     created_at: row.created_at,
   };
@@ -27,10 +34,15 @@ export async function listAccounts(): Promise<Account[]> {
   return (data || []).map(parseAccountRow);
 }
 
-export async function createAccount(nombre: string, tipo: 'banco'|'efectivo', moneda: string = 'NIO'): Promise<Account> {
+export async function createAccount(
+  nombre: string,
+  tipo: 'banco' | 'efectivo',
+  moneda: string = 'NIO',
+  saldoInicial: number = 0,
+): Promise<Account> {
   const { data, error } = await db
     .from('accounts')
-    .insert({ nombre, tipo, moneda })
+    .insert({ nombre, tipo, moneda, saldo_inicial: saldoInicial })
     .select(ACCOUNT_COLUMNS)
     .single();
 
@@ -56,7 +68,7 @@ export async function toggleAccountStatus(id: string, activo: boolean): Promise<
 // ponerla en el SELECT haría fallar la query ENTERA con 42703, no solo ese campo.
 const MOVEMENT_COLUMNS = `
   id, account_id, tipo, monto, categoria, descripcion,
-  comprobante_url, ocurrio_at, registrado_por, created_at
+  comprobante_url, transfer_id, ocurrio_at, registrado_por, created_at
 `;
 
 function parseMovementRow(row: any): AccountMovement {
@@ -68,6 +80,7 @@ function parseMovementRow(row: any): AccountMovement {
     categoria: row.categoria,
     descripcion: row.descripcion,
     comprobante_url: row.comprobante_url,
+    transfer_id: row.transfer_id ?? null,
     ocurrio_at: row.ocurrio_at,
     registrado_por: row.registrado_por,
     created_at: row.created_at,
@@ -121,16 +134,24 @@ export interface AccountBalance {
 }
 
 export async function getBalances(): Promise<AccountBalance[]> {
-  // Calculamos saldo por cuenta sumando ingresos y restando egresos
-  const { data, error } = await db
-    .from('account_movements')
-    .select('account_id, tipo, monto');
+  // Saldo por cuenta = saldo_inicial + Σ ingresos − Σ egresos. Se siembra desde
+  // las cuentas (no desde los movimientos) para que una cuenta con saldo inicial
+  // y CERO movimientos igual aparezca con su saldo, en vez de desaparecer.
+  const [accountsRes, movementsRes] = await Promise.all([
+    db.from('accounts').select('id, saldo_inicial'),
+    db.from('account_movements').select('account_id, tipo, monto'),
+  ]);
 
-  if (error) throw error;
+  if (accountsRes.error) throw accountsRes.error;
+  if (movementsRes.error) throw movementsRes.error;
 
   const balances: Record<string, number> = {};
 
-  for (const mov of (data || [])) {
+  for (const acc of accountsRes.data || []) {
+    balances[acc.id] = Number(acc.saldo_inicial ?? 0);
+  }
+
+  for (const mov of movementsRes.data || []) {
     if (!mov.account_id) continue;
     if (balances[mov.account_id] === undefined) balances[mov.account_id] = 0;
     if (mov.tipo === 'ingreso') {
@@ -142,6 +163,59 @@ export async function getBalances(): Promise<AccountBalance[]> {
 
   return Object.entries(balances).map(([accountId, balance]) => ({
     accountId,
-    balance
+    balance,
   }));
+}
+
+/** Saldo actual de UNA cuenta. Lo usa el cierre para calcular el esperado. */
+export async function getAccountBalance(accountId: string): Promise<number> {
+  const balances = await getBalances();
+  return balances.find((b) => b.accountId === accountId)?.balance ?? 0;
+}
+
+// ── TRANSFERS ──
+
+// Traspaso entre dos cuentas: egreso en origen + ingreso en destino, ambos
+// ligados por un mismo transfer_id. Se insertan como un lote; si el insert falla,
+// no queda ninguna pata suelta.
+export async function registerTransfer(
+  input: RegisterTransferInput,
+  userId: string,
+): Promise<AccountMovement[]> {
+  if (input.from_account_id === input.to_account_id) {
+    throw new BadRequestError('El origen y el destino no pueden ser la misma cuenta');
+  }
+
+  const transferId = randomUUID();
+  const ocurrio = input.ocurrio_at ?? new Date().toISOString();
+  const nota = input.descripcion?.trim() || null;
+
+  const { data, error } = await db
+    .from('account_movements')
+    .insert([
+      {
+        account_id: input.from_account_id,
+        tipo: 'egreso',
+        monto: input.monto,
+        categoria: 'Traspaso',
+        descripcion: nota,
+        transfer_id: transferId,
+        ocurrio_at: ocurrio,
+        registrado_por: userId,
+      },
+      {
+        account_id: input.to_account_id,
+        tipo: 'ingreso',
+        monto: input.monto,
+        categoria: 'Traspaso',
+        descripcion: nota,
+        transfer_id: transferId,
+        ocurrio_at: ocurrio,
+        registrado_por: userId,
+      },
+    ])
+    .select(MOVEMENT_COLUMNS);
+
+  if (error) throw error;
+  return (data || []).map(parseMovementRow);
 }

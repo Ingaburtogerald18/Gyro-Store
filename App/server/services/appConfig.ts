@@ -9,12 +9,30 @@ import {
   type StoreCategory,
   businessInfoSchema,
   type BusinessInfo,
+  expenseCategoriesSchema,
+  type ExpenseCategories,
 } from '../../shared/schemas';
 
 const FINANCIAL_CONFIG_KEY = 'financial_config';
 const IMAGE_RESOURCES_KEY = 'image_resources';
 const STORE_CATEGORIES_KEY = 'store_categories';
 const BUSINESS_INFO_KEY = 'business_info';
+const EXPENSE_CATEGORIES_KEY = 'expense_categories';
+
+// Semilla de categorías de gasto: los rubros típicos de la operación diaria.
+// Manda la BD una vez editadas desde el panel.
+const DEFAULT_EXPENSE_CATEGORIES: ExpenseCategories = [
+  'Compra de mercadería',
+  'Delivery / Envíos',
+  'Luz',
+  'Agua',
+  'Internet / Teléfono',
+  'Publicidad',
+  'Sueldos',
+  'Alquiler',
+  'Empaque',
+  'Otros',
+];
 
 // Semilla por defecto de las categorías del storefront (recicladas de la v1).
 // Es el valor inicial mientras nadie las edite desde el panel; una vez guardadas,
@@ -35,6 +53,7 @@ function defaultBusinessInfo(): BusinessInfo {
     whatsapp: config.whatsapp,
     contactEmail: config.contactEmail,
     address: '',
+    bankAccounts: [],
   };
 }
 
@@ -264,4 +283,57 @@ export async function updateBusinessInfo(payload: unknown): Promise<BusinessInfo
 
   if (error) throw error;
   return info;
+}
+
+let cachedExpenseCategories: ExpenseCategories | null = null;
+let expenseCategoriesCachedAt = 0;
+
+export async function getExpenseCategories(): Promise<ExpenseCategories> {
+  if (cachedExpenseCategories && Date.now() - expenseCategoriesCachedAt < 60_000) {
+    return cachedExpenseCategories;
+  }
+
+  const { data, error } = await db
+    .from('app_config')
+    .select('value')
+    .eq('key', EXPENSE_CATEGORIES_KEY)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return DEFAULT_EXPENSE_CATEGORIES;
+
+  const parsed = expenseCategoriesSchema.safeParse(data.value);
+  if (!parsed.success) {
+    console.error('Categorías de gasto inválidas en la BD:', parsed.error);
+    return DEFAULT_EXPENSE_CATEGORIES;
+  }
+
+  cachedExpenseCategories = parsed.data;
+  expenseCategoriesCachedAt = Date.now();
+  return parsed.data;
+}
+
+export async function updateExpenseCategories(payload: unknown): Promise<ExpenseCategories> {
+  expenseCategoriesCachedAt = 0;
+  // Normaliza: recorta, quita vacíos y deduplica sin distinguir mayúsculas, para
+  // que "Luz" y "luz" no convivan como dos rubros distintos.
+  const raw = expenseCategoriesSchema.parse(payload);
+  const seen = new Set<string>();
+  const categories: ExpenseCategories = [];
+  for (const c of raw) {
+    const key = c.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    categories.push(c);
+  }
+
+  const { error } = await db
+    .from('app_config')
+    .upsert({
+      key: EXPENSE_CATEGORIES_KEY,
+      value: categories as any,
+    });
+
+  if (error) throw error;
+  return categories;
 }

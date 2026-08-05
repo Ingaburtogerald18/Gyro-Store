@@ -165,6 +165,14 @@ export const storeCategorySchema = z.object({
 export const storeCategoriesSchema = z.array(storeCategorySchema);
 export type StoreCategory = z.infer<typeof storeCategorySchema>;
 
+export const storeBankAccountSchema = z.object({
+  bank: z.enum(['BAC', 'Lafise', 'Banpro', 'Ficohsa']),
+  currency: z.enum(['NIO', 'USD']),
+  number: z.string().trim().min(4, 'Número demasiado corto.').max(40, 'Número demasiado largo.'),
+  holder: z.string().max(80).optional(),
+});
+export type StoreBankAccount = z.infer<typeof storeBankAccountSchema>;
+
 // Información del negocio editable desde el panel (pestaña "General"). Vive en
 // `app_config` (key 'business_info'); el valor inicial se siembra desde las env
 // vars (BRAND_NAME/WHATSAPP_NUMBER/CONTACT_EMAIL). Sin .default() a propósito
@@ -175,6 +183,7 @@ export const businessInfoSchema = z.object({
   whatsapp: z.string().min(1, 'El WhatsApp es obligatorio.').max(30),
   contactEmail: z.string().email('Correo inválido.').or(z.literal('')),
   address: z.string().max(200),
+  bankAccounts: z.array(storeBankAccountSchema).optional().default([]),
 });
 export type BusinessInfo = z.infer<typeof businessInfoSchema>;
 
@@ -890,10 +899,21 @@ export const accountSchema = z.object({
   nombre: z.string(),
   tipo: cuentaTipoSchema,
   moneda: z.string(),
+  // El dinero con el que arranca la cuenta. Suma al saldo calculado; permite
+  // reflejar la plata que ya había ANTES de registrar el primer movimiento.
+  saldo_inicial: z.number(),
   activo: z.boolean(),
   created_at: z.string(),
 });
 export type Account = z.infer<typeof accountSchema>;
+
+export const createAccountInputSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es obligatorio').max(80),
+  tipo: cuentaTipoSchema,
+  moneda: z.string().min(1).max(8).default('NIO'),
+  saldo_inicial: z.coerce.number().min(0, 'El saldo inicial no puede ser negativo').default(0),
+});
+export type CreateAccountInput = z.infer<typeof createAccountInputSchema>;
 
 export const accountMovementSchema = z.object({
   id: z.string().uuid(),
@@ -903,6 +923,8 @@ export const accountMovementSchema = z.object({
   categoria: z.string(),
   descripcion: z.string().nullable(),
   comprobante_url: z.string().nullable(),
+  // Presente en las dos patas de un traspaso entre cuentas; null en el resto.
+  transfer_id: z.string().uuid().nullable(),
   ocurrio_at: z.string(),
   registrado_por: z.string().uuid().nullable(),
   created_at: z.string(),
@@ -918,4 +940,50 @@ export const registerMovementInputSchema = z.object({
   comprobante_url: z.string().optional().nullable(),
   ocurrio_at: z.string().optional(),
 });
-export type RegisterMovementInput = z.infer<typeof registerMovementInputSchema>;
+export type RegisterMovementInput = z.infer<typeof registerMovementInputSchema>;
+
+// Traspaso entre dos cuentas propias (ej. depositar el efectivo de la caja al
+// banco). Genera dos movimientos ligados por un transfer_id: egreso en `from`,
+// ingreso en `to`. No cambia el patrimonio total, solo lo mueve de lugar.
+export const registerTransferInputSchema = z
+  .object({
+    from_account_id: z.string().uuid('Cuenta de origen inválida'),
+    to_account_id: z.string().uuid('Cuenta de destino inválida'),
+    monto: z.coerce.number().positive('El monto debe ser positivo'),
+    descripcion: z.string().max(300).optional().nullable(),
+    ocurrio_at: z.string().optional(),
+  })
+  .refine((d) => d.from_account_id !== d.to_account_id, {
+    message: 'El origen y el destino no pueden ser la misma cuenta',
+    path: ['to_account_id'],
+  });
+export type RegisterTransferInput = z.infer<typeof registerTransferInputSchema>;
+
+// Catálogo de categorías de gasto, editable desde el panel. Se guarda como JSON
+// en app_config (mismo criterio que las categorías del storefront). Texto simple
+// deduplicado: el objetivo es que "Luz" no conviva con "luz" y "Pago Luz".
+export const expenseCategoriesSchema = z.array(z.string().trim().min(1).max(60)).max(60);
+export type ExpenseCategories = z.infer<typeof expenseCategoriesSchema>;
+
+// ── Cierre de caja (arqueo) ──
+export const cashClosureSchema = z.object({
+  id: z.string().uuid(),
+  account_id: z.string().uuid(),
+  fecha: z.string(),
+  saldo_esperado: z.number(),
+  saldo_contado: z.number(),
+  diferencia: z.number(),
+  notas: z.string().nullable(),
+  cerrado_por: z.string().uuid().nullable(),
+  created_at: z.string(),
+});
+export type CashClosure = z.infer<typeof cashClosureSchema>;
+
+export const createCashClosureInputSchema = z.object({
+  account_id: z.string().uuid('Cuenta inválida'),
+  // Lo que se contó FÍSICAMENTE. El esperado y la diferencia los calcula el
+  // servidor: el cliente no debe poder afirmar cuánto "debería" haber.
+  saldo_contado: z.coerce.number().min(0, 'El monto contado no puede ser negativo'),
+  notas: z.string().max(500).optional().nullable(),
+});
+export type CreateCashClosureInput = z.infer<typeof createCashClosureInputSchema>;

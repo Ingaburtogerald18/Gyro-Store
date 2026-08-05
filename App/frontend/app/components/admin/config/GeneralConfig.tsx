@@ -3,9 +3,9 @@
 // El valor inicial se siembra desde las env vars; una vez guardado, manda la BD.
 // Mismo patrón que ImagesConfig/FinanzasConfig (fetch con el token de Supabase).
 import { AnimatedIcon } from "~/components/ui/animated-icons";
-import { FloppyDiskIcon } from "@hugeicons/core-free-icons";
+import { FloppyDiskIcon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { getSupabaseClient } from "~/lib/supabase.client";
@@ -26,13 +26,19 @@ export function GeneralConfig() {
   const dispatch = useAppDispatch();
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<BusinessInfo>({
-    resolver: zodResolver(businessInfoSchema),
-    defaultValues: { brandName: "", ruc: "", whatsapp: "", contactEmail: "", address: "" },
+    resolver: zodResolver(businessInfoSchema) as any,
+    defaultValues: { brandName: "", ruc: "", whatsapp: "", contactEmail: "", address: "", bankAccounts: [] },
+  });
+
+  const bankAccountsArray = useFieldArray({
+    control,
+    name: "bankAccounts",
   });
 
   useEffect(() => {
@@ -104,7 +110,7 @@ export function GeneralConfig() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
         <Section title="Información del Negocio" description="Datos generales de contacto y operación de la tienda. Se usan en la tienda, tickets y facturas.">
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -136,6 +142,74 @@ export function GeneralConfig() {
                 </Field>
               </div>
             </div>
+          </div>
+        </Section>
+
+        <Section title="Cuentas Bancarias de la Tienda" description="Cuentas donde los clientes pueden depositar o transferir pagos (se muestran en la web y al vendedor).">
+          <div className="space-y-4">
+            <FieldError errors={[errors.bankAccounts]} />
+            {bankAccountsArray.fields.map((field, index) => (
+              <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-end gap-4 p-4 border border-border/50 rounded-xl bg-muted/20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1 w-full">
+                  <Field data-invalid={!!errors.bankAccounts?.[index]?.bank}>
+                    <FieldLabel htmlFor={`bank-${field.id}`} required>Banco</FieldLabel>
+                    <select
+                      id={`bank-${field.id}`}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      {...register(`bankAccounts.${index}.bank`)}
+                    >
+                      <option value="" disabled>Selecciona un banco</option>
+                      <option value="BAC">BAC</option>
+                      <option value="Lafise">Lafise</option>
+                      <option value="Banpro">Banpro</option>
+                      <option value="Ficohsa">Ficohsa</option>
+                    </select>
+                    <FieldError errors={[errors.bankAccounts?.[index]?.bank]} />
+                  </Field>
+
+                  <Field data-invalid={!!errors.bankAccounts?.[index]?.currency}>
+                    <FieldLabel htmlFor={`currency-${field.id}`} required>Moneda</FieldLabel>
+                    <select
+                      id={`currency-${field.id}`}
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      {...register(`bankAccounts.${index}.currency`)}
+                    >
+                      <option value="NIO">Córdobas (NIO)</option>
+                      <option value="USD">Dólares (USD)</option>
+                    </select>
+                    <FieldError errors={[errors.bankAccounts?.[index]?.currency]} />
+                  </Field>
+
+                  <Field data-invalid={!!errors.bankAccounts?.[index]?.number}>
+                    <FieldLabel htmlFor={`number-${field.id}`} required>Número de Cuenta</FieldLabel>
+                    <Input id={`number-${field.id}`} aria-required aria-invalid={!!errors.bankAccounts?.[index]?.number} {...register(`bankAccounts.${index}.number`)} />
+                    <FieldError errors={[errors.bankAccounts?.[index]?.number]} />
+                  </Field>
+
+                  <Field data-invalid={!!errors.bankAccounts?.[index]?.holder}>
+                    <FieldLabel htmlFor={`holder-${field.id}`}>Titular (Opcional)</FieldLabel>
+                    <Input id={`holder-${field.id}`} aria-invalid={!!errors.bankAccounts?.[index]?.holder} {...register(`bankAccounts.${index}.holder`)} />
+                    <FieldError errors={[errors.bankAccounts?.[index]?.holder]} />
+                  </Field>
+                </div>
+                
+                <Button
+                  type="button" variant="outline" size="icon"
+                  aria-label="Eliminar cuenta"
+                  className="text-destructive sm:mb-2 shrink-0 self-end"
+                  onClick={() => bankAccountsArray.remove(index)}
+                >
+                  <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} />
+                </Button>
+              </div>
+            ))}
+            
+            <Button
+              type="button" variant="outline" size="sm" className="mt-2"
+              onClick={() => bankAccountsArray.append({ bank: "", currency: "NIO", number: "", holder: "" })}
+            >
+              Agregar cuenta bancaria
+            </Button>
           </div>
         </Section>
 
