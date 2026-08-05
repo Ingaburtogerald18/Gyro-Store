@@ -1,5 +1,5 @@
-// Header del catálogo público (Amazon-style): logo · búsqueda (próximamente) ·
-// carrito con contador animado · acceso (HeaderSettingsMenu).
+// Header del catálogo público (Amazon-style): logo · búsqueda (filtra la grilla
+// de la home) · carrito con contador animado · acceso (HeaderSettingsMenu).
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Link, useLocation } from '@remix-run/react';
