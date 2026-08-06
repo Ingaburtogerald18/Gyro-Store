@@ -6,6 +6,7 @@ import * as jose from 'jose';
 import { config, VALID_ROLES, type AppRole } from '../config';
 import { db, getUserFromToken } from '../supabase';
 import { logger } from '../utils/logger';
+import { consumePendingGrant } from '../services/pendingRoleGrants';
 
 export interface AuthUser {
   uid: string;
@@ -126,9 +127,36 @@ async function fetchProfile(supaUser: any) {
       .single();
 
     if (insertError) return null;
-    profileCache.set(supaUser.id, { data: newProfile, cachedAt: now });
-    touchLastLogin(supaUser.id, newProfile);
-    return newProfile;
+
+    // Primer login de verdad: si un admin le había reservado un rol desde
+    // Personal ANTES de que esta persona existiera como identidad de Auth
+    // (ver services/pendingRoleGrants.ts), se lo aplica acá y se consume la
+    // reserva. Sin esto, el perfil nace con `roles: []` y nadie entra nunca.
+    const email = (supaUser.email || '').toLowerCase();
+    let profile = newProfile;
+    try {
+      const grantedRoles = await consumePendingGrant(email);
+      if (grantedRoles && grantedRoles.length) {
+        const { data: updated, error: updateError } = await db
+          .from('profiles')
+          .update({ roles: grantedRoles })
+          .eq('id', supaUser.id)
+          .select('roles, status, deleted_at, name, avatar_url, last_login')
+          .single();
+        if (!updateError && updated) profile = updated;
+      }
+    } catch (err) {
+      // Un rol reservado es una comodidad, no algo que deba tumbar el login:
+      // si esto falla, el admin igual puede asignar el rol a mano después.
+      logger.warn('[pending-role-grant] No se pudo aplicar el rol reservado', {
+        email,
+        message: (err as any)?.message,
+      });
+    }
+
+    profileCache.set(supaUser.id, { data: profile, cachedAt: now });
+    touchLastLogin(supaUser.id, profile);
+    return profile;
   } catch {
     return null;
   }
@@ -247,6 +275,10 @@ export function requireRole(...allowed: AppRole[]) {
 export const requireAdmin = requireRole('admin');
 export const requireSeller = requireRole('admin', 'seller');
 export const requireCashier = requireRole('admin', 'cashier');
+// Facturación tiene un puñado de rutas de SOLO LECTURA (lookup por código,
+// ticket) que además del cajero necesita el vendedor: es cómo vincula su
+// venta al número de un ticket que Caja ya emitió a su nombre.
+export const requireCashierOrSeller = requireRole('admin', 'cashier', 'seller');
 export const requireLogisticsAdmin = requireRole('admin', 'logistics_admin');
 export const requireLogisticsAny = requireRole('admin', 'logistics_admin', 'logistics_customer');
 export const requireAnyRole = requireRole(...VALID_ROLES);

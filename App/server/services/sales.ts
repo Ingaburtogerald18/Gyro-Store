@@ -328,7 +328,7 @@ export async function registerSale(
       );
     }
 
-    return { productName: item.productName, quantity: item.quantity, precioUnit: snapshot.precioUnit };
+    return { productName: item.productName, quantity: item.quantity, precioUnit: snapshot.precioUnit, snapshot };
   });
 
   // Si la venta viene de una factura, el total es EL DE LA FACTURA: es lo que el
@@ -405,6 +405,19 @@ export async function registerSale(
         sku: line.productName,
         quantity: line.quantity,
         precio_unit: line.precioUnit,
+        // Snapshot financiero ESTIMADO (costo FIFO estimado sobre el stock
+        // disponible). Deja ver la comisión apenas se registra, sin esperar la
+        // aprobación — es lo que el vendedor/admin necesita para decidir.
+        // `approveSale` lo RE-CONGELA con el costo real de los lotes consumidos
+        // (doc 11, regla de oro): el pago siempre sale de esos valores finales,
+        // nunca de este estimado.
+        coste_final_snap: line.snapshot.costeFinalSnap,
+        utilidad_bruta: line.snapshot.utilidadBruta,
+        salary: line.snapshot.salary,
+        utilidad_neta: line.snapshot.utilidadNeta,
+        comision: line.snapshot.comision,
+        ganancia_tienda: line.snapshot.gananciaTienda,
+        pozos: line.snapshot.pozos,
       })),
     );
     if (itemsError) throw itemsError;
@@ -568,6 +581,12 @@ export interface SaleListItem {
   weekOf: string | null;
   phone: string | null;
   total: number;
+  /** Suma de `order_items.comision` de TODAS las líneas de la venta. */
+  totalComision: number;
+  /** Correlativo de la factura con que se registró la venta (`invoices.sale_id`). Null si no tiene. */
+  invoiceNumber: number | null;
+  /** Código legible de esa factura: `GS-PR-12`. Null si no tiene. */
+  invoiceCode: string | null;
   createdAt: string;
 }
 
@@ -636,6 +655,33 @@ export async function getSaleById(id: string): Promise<SaleWithItems | null> {
     if (profile?.name?.trim()) sellerName = profile.name.trim();
   }
 
+  const itemRows = (items ?? []) as unknown as {
+    sku: string | null;
+    quantity: number;
+    precio_unit: number | null;
+    coste_final_snap: number | null;
+    comision: number | null;
+    ganancia_tienda: number | null;
+  }[];
+
+  // Factura con que se registró la venta (`invoices.sale_id`). Segunda query,
+  // no embed (mismo criterio que el nombre del vendedor arriba). `limit(1)` en
+  // vez de `maybeSingle` para no reventar si por un caso raro hubiera más de
+  // una fila apuntando a la venta.
+  let invoiceNumber: number | null = null;
+  let invoiceCode: string | null = null;
+  const { data: linkedInvoices } = await db
+    .from('invoices')
+    .select('invoice_number, invoice_code')
+    .eq('sale_id', id)
+    .order('invoice_number', { ascending: false })
+    .limit(1);
+  const linkedInvoice = (linkedInvoices ?? [])[0] as { invoice_number: number; invoice_code: string | null } | undefined;
+  if (linkedInvoice) {
+    invoiceNumber = linkedInvoice.invoice_number;
+    invoiceCode = linkedInvoice.invoice_code ?? formatInvoiceCode(linkedInvoice.invoice_number);
+  }
+
   return {
     id: row.id,
     status: row.status,
@@ -646,15 +692,11 @@ export async function getSaleById(id: string): Promise<SaleWithItems | null> {
     weekOf: row.week_of,
     phone: row.phone,
     total: row.total ?? 0,
+    totalComision: itemRows.reduce((sum, it) => sum + (it.comision ?? 0), 0),
+    invoiceNumber,
+    invoiceCode,
     createdAt: row.created_at,
-    items: ((items ?? []) as unknown as {
-      sku: string | null;
-      quantity: number;
-      precio_unit: number | null;
-      coste_final_snap: number | null;
-      comision: number | null;
-      ganancia_tienda: number | null;
-    }[]).map((it) => ({
+    items: itemRows.map((it) => ({
       productName: it.sku ?? '',
       quantity: it.quantity,
       salePrice: it.precio_unit ?? 0,
@@ -704,6 +746,38 @@ export async function listSales(filters: { sellerEmail?: string; status?: string
     }
   }
 
+  // Comisión TOTAL de la venta: una venta puede tener varias líneas, cada una
+  // con su propia comisión (tramos distintos según margen). Se suma con una
+  // TERCERA query en lote (mismo criterio que el nombre del vendedor arriba)
+  // y no con un JOIN/embed: si la venta no tiene líneas todavía, la comisión
+  // es 0 y la venta igual se lista.
+  const orderIds = rows.map((r) => r.id);
+  const comisionByOrderId = new Map<string, number>();
+  if (orderIds.length > 0) {
+    const { data: items } = await db.from('order_items').select('order_id, comision').in('order_id', orderIds);
+    for (const it of (items ?? []) as { order_id: string; comision: number | null }[]) {
+      comisionByOrderId.set(it.order_id, (comisionByOrderId.get(it.order_id) ?? 0) + (it.comision ?? 0));
+    }
+  }
+
+  // Nº de factura con que se registró cada venta (`invoices.sale_id`). CUARTA
+  // query en lote, mismo criterio que las de arriba (nunca embed): si no se
+  // resuelve, la venta igual se lista, solo que sin código de factura.
+  const invoiceBySaleId = new Map<string, { number: number; code: string }>();
+  if (orderIds.length > 0) {
+    const { data: invoices } = await db
+      .from('invoices')
+      .select('sale_id, invoice_number, invoice_code')
+      .in('sale_id', orderIds);
+    for (const inv of (invoices ?? []) as { sale_id: string | null; invoice_number: number; invoice_code: string | null }[]) {
+      if (!inv.sale_id) continue;
+      invoiceBySaleId.set(inv.sale_id, {
+        number: inv.invoice_number,
+        code: inv.invoice_code ?? formatInvoiceCode(inv.invoice_number),
+      });
+    }
+  }
+
   return rows.map((row) => ({
     id: row.id,
     status: row.status,
@@ -714,6 +788,9 @@ export async function listSales(filters: { sellerEmail?: string; status?: string
     weekOf: row.week_of,
     phone: row.phone,
     total: row.total ?? 0,
+    totalComision: comisionByOrderId.get(row.id) ?? 0,
+    invoiceNumber: invoiceBySaleId.get(row.id)?.number ?? null,
+    invoiceCode: invoiceBySaleId.get(row.id)?.code ?? null,
     createdAt: row.created_at,
   }));
 }
@@ -759,7 +836,7 @@ export async function updateSale(
         `El precio de venta para "${item.productName}" está por debajo del margen mínimo. El mínimo aceptable es C$ ${minPrice.toFixed(2)}.`,
       );
     }
-    return { productName: item.productName, quantity: item.quantity, precioUnit: snapshot.precioUnit };
+    return { productName: item.productName, quantity: item.quantity, precioUnit: snapshot.precioUnit, snapshot };
   });
 
   const newTotal = round(
@@ -840,6 +917,16 @@ export async function updateSale(
       sku: line.productName,
       quantity: line.quantity,
       precio_unit: line.precioUnit,
+      // Igual que en registerSale: la edición vuelve la venta a
+      // pending_approval, así que se re-guarda el snapshot estimado para que la
+      // comisión se siga viendo. approveSale lo re-congela con el costo real.
+      coste_final_snap: line.snapshot.costeFinalSnap,
+      utilidad_bruta: line.snapshot.utilidadBruta,
+      salary: line.snapshot.salary,
+      utilidad_neta: line.snapshot.utilidadNeta,
+      comision: line.snapshot.comision,
+      ganancia_tienda: line.snapshot.gananciaTienda,
+      pozos: line.snapshot.pozos,
     })),
   );
   if (itemsError) throw itemsError;

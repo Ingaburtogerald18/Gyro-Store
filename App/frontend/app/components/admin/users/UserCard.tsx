@@ -7,6 +7,7 @@ import {
   PieChartIcon,
   RefreshIcon,
   Shield01Icon,
+  Time02Icon,
   UserRemove01Icon,
   UserSettings01Icon,
 } from "@hugeicons/core-free-icons";
@@ -81,35 +82,85 @@ export function UserCard({
         <Badge variant="outline" className="text-xs">
           {ROLE_LABELS[role as AppRole] || role}
         </Badge>
-        {isDeleted ? (
+        {user.pending ? (
+          <StatusBadge status="pending" label="Pendiente" pulse />
+        ) : isDeleted ? (
           <StatusBadge status="error" label="De Baja" />
         ) : (
           <StatusBadge status="success" label="Activo" pulse />
         )}
       </div>
 
+      {user.pending && (
+        <p className="-mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <AnimatedIcon icon={Time02Icon} size={14} strokeWidth={2} className="shrink-0" aria-hidden />
+          Se activa solo cuando inicie sesión con Microsoft por primera vez.
+        </p>
+      )}
+
       {/* Acciones */}
       {isAdmin && (
         <div className="flex items-center gap-2 border-t border-border pt-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onEdit}
-            className="flex-1 gap-1.5"
-          >
-            <AnimatedIcon icon={UserSettings01Icon} size={16} strokeWidth={2} aria-hidden />
-            Editar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onPerformance}
-            className="flex-1 gap-1.5"
-          >
-            <AnimatedIcon icon={PieChartIcon} size={16} strokeWidth={2} aria-hidden />
-            Rendimiento
-          </Button>
+          {/* Pendiente: no hay cuenta real todavía, así que ni "Editar"
+              (perfil/banco) ni "Rendimiento" (ventas) tienen nada que
+              mostrar. Solo el rol reservado, que se puede corregir o
+              cancelar — dos botones SEPARADOS y visibles, no uno escondiendo
+              al otro adentro de un menú (ahí no se encontraba "Cancelar"). */}
+          {user.pending ? (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex-1 gap-1.5">
+                    <AnimatedIcon icon={UserSettings01Icon} size={16} strokeWidth={2} aria-hidden />
+                    Cambiar rol
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {Object.entries(ROLE_LABELS).map(([roleKey, label]) => (
+                    <DropdownMenuItem
+                      key={roleKey}
+                      onClick={() => onChangeRole(roleKey as AppRole)}
+                      className="cursor-pointer"
+                    >
+                      {label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDelete}
+                className="flex-1 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+              >
+                <AnimatedIcon icon={Delete02Icon} size={16} strokeWidth={2} aria-hidden />
+                Cancelar invitación
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onEdit}
+                className="flex-1 gap-1.5"
+              >
+                <AnimatedIcon icon={UserSettings01Icon} size={16} strokeWidth={2} aria-hidden />
+                Editar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPerformance}
+                className="flex-1 gap-1.5"
+              >
+                <AnimatedIcon icon={PieChartIcon} size={16} strokeWidth={2} aria-hidden />
+                Rendimiento
+              </Button>
+            </>
+          )}
 
+          {!user.pending && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -171,6 +222,7 @@ export function UserCard({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       )}
     </div>

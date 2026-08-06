@@ -273,13 +273,13 @@ export async function payCommissions(
   const payableIds = orders.map((o) => o.id);
   const { data: itemRows, error: itemsError } = await db
     .from('order_items')
-    .select('order_id, comision_vendedor')
+    .select('order_id, comision')
     .in('order_id', payableIds);
   if (itemsError) throw itemsError;
 
   const grossComision = round(
-    ((itemRows ?? []) as unknown as { comision_vendedor: number | null }[]).reduce(
-      (sum, item) => sum + (Number(item.comision_vendedor) || 0),
+    ((itemRows ?? []) as unknown as { comision: number | null }[]).reduce(
+      (sum, item) => sum + (Number(item.comision) || 0),
       0,
     ),
     2,
@@ -396,17 +396,17 @@ export async function getSellerSummary(sellerEmail: string): Promise<SellerSumma
   if (orders.length > 0) {
     const { data: itemRows, error: itemsError } = await db
       .from('order_items')
-      .select('order_id, comision_vendedor')
+      .select('order_id, comision')
       .in('order_id', [...byId.keys()]);
     if (itemsError) throw itemsError;
 
     for (const item of (itemRows ?? []) as unknown as {
       order_id: string;
-      comision_vendedor: number | null;
+      comision: number | null;
     }[]) {
       comisionByOrder.set(
         item.order_id,
-        (comisionByOrder.get(item.order_id) ?? 0) + (Number(item.comision_vendedor) || 0),
+        (comisionByOrder.get(item.order_id) ?? 0) + (Number(item.comision) || 0),
       );
     }
   }

@@ -17,6 +17,7 @@ import { StatusBadge } from '~/components/ui/StatusBadge';
 import { formatCordobas } from '~/lib/formatters';
 import { SALE_STATUS, statusMeta } from '~/lib/status';
 import { useGetSaleQuery, type SaleWithItems } from '~/store/api/salesApi';
+import { InvoiceCodeCell } from '~/components/admin/invoices/InvoiceCodeCell';
 
 export function SaleDetailDrawer({
   saleId,
@@ -37,6 +38,12 @@ export function SaleDetailDrawer({
 
   const meta = sale ? statusMeta(SALE_STATUS, sale.status) : null;
   const pending = sale?.status === 'pending_approval';
+  // El backend ya manda `comision` por línea a CUALQUIER rol (solo poda costo
+  // y ganancia de tienda para no-admin, ver server/routes/sales.ts → GET
+  // /:id) — el vendedor necesita ver cuánto va a ganar ANTES de que un admin
+  // apruebe, no solo después.
+  const hasComision = !!sale?.items.some((it) => it.comision !== undefined);
+  const totalComision = sale?.items.reduce((s, it) => s + (it.comision ?? 0), 0) ?? 0;
 
   return (
     <Dialog open={!!saleId} onOpenChange={(open) => !open && onClose()}>
@@ -74,6 +81,12 @@ export function SaleDetailDrawer({
                   <div>
                     <dt className="text-xs text-muted-foreground">Origen</dt>
                     <dd className="mt-0.5 font-medium capitalize text-foreground">{sale.saleOrigin}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Nº Factura</dt>
+                    <dd className="mt-0.5 font-medium text-foreground">
+                      {sale.invoiceCode ? <InvoiceCodeCell code={sale.invoiceCode} /> : '—'}
+                    </dd>
                   </div>
                 </dl>
 
@@ -117,12 +130,9 @@ export function SaleDetailDrawer({
                           )}
                         </dd>
                       </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Comisión del vendedor</dt>
-                        <dd className="nums">
-                          {formatCordobas(sale.items.reduce((s, it) => s + (it.comision ?? 0), 0), 'C$', 2)}
-                        </dd>
-                      </div>
+                      {/* La comisión ya se ve arriba (pie del diálogo, visible
+                          para cualquier rol) — repetirla acá sería lo mismo
+                          dos veces en la misma pantalla. */}
                       <div className="flex justify-between border-t border-border pt-1.5 font-medium">
                         <dt>Ganancia de la tienda</dt>
                         <dd className="nums">
@@ -138,6 +148,14 @@ export function SaleDetailDrawer({
         </div>
 
         <div className="shrink-0 border-t border-border px-5 py-4">
+          {hasComision && (
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <span className="text-sm text-muted-foreground">Comisión</span>
+              <span className="nums text-sm font-medium text-primary-2">
+                {formatCordobas(totalComision, 'C$', 2)}
+              </span>
+            </div>
+          )}
           <div className="mb-3 flex items-baseline justify-between">
             <span className="text-sm text-muted-foreground">Total</span>
             <span className="nums text-lg font-semibold text-foreground">

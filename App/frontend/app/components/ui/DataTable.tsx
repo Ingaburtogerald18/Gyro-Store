@@ -57,6 +57,15 @@ interface DataTableProps<T> {
   selectedRowIds?: Set<string | number>;
   onSelectAll?: (selectAll: boolean) => void;
   allSelected?: boolean;
+  /**
+   * Click en LA CASILLA (no en la fila): alterna la selección de esa fila sin
+   * disparar `onRowClick`. Sin esto, una tabla que ya usa `onRowClick` para
+   * abrir un detalle no podía además seleccionar — el click de la fila entera
+   * hacía las dos cosas a la vez. Con `onToggleRow`, la casilla intercepta su
+   * propio click (`stopPropagation`) y el resto de la fila sigue abriendo el
+   * detalle como siempre.
+   */
+  onToggleRow?: (row: T) => void;
   hideSearch?: boolean;
   globalFilterValue?: string;
   onGlobalFilterChange?: (value: string) => void;
@@ -112,6 +121,7 @@ export function DataTable<T>({
   selectedRowId,
   selectedRowIds,
   onSelectAll,
+  onToggleRow,
   allSelected,
   hideSearch = false,
   globalFilterValue,
@@ -477,7 +487,20 @@ export function DataTable<T>({
                     className={rowClass}
                   >
                     {selectable && (
-                      <td className="w-10 px-3 py-2.5">
+                      <td
+                        className={cn("w-10 px-3 py-2.5", onToggleRow && "cursor-pointer")}
+                        onClick={
+                          onToggleRow
+                            ? (e) => {
+                                // Sin esto, el click en la casilla también
+                                // dispara `onRowClick` de la fila (abriría el
+                                // detalle Y alternaría la selección a la vez).
+                                e.stopPropagation();
+                                onToggleRow(row.original);
+                              }
+                            : undefined
+                        }
+                      >
                         <div
                           className={`flex h-[18px] w-[18px] items-center justify-center rounded border transition-colors ${
                             isSelected

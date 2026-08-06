@@ -37,6 +37,8 @@ interface ComboboxProps {
    * producto aunque su nombre no contenga esa cadena.
    */
   getSearchText?: (option: string) => string;
+  /** Mensaje cuando no hay ninguna sugerencia. */
+  emptyMessage?: string;
 }
 
 export function Combobox({
@@ -50,11 +52,14 @@ export function Combobox({
   disabled,
   renderOptionMeta,
   getSearchText,
+  emptyMessage = 'No hay sugerencias.',
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
   // Filtrado manual: matchea contra el nombre de la opción Y contra el texto
-  // extra que provea el consumidor (códigos de lote, SKU…).
+  // extra que provea el consumidor (códigos de lote, SKU…). Con el campo
+  // vacío (recién enfocado, sin tipear nada) se listan TODAS las opciones —
+  // es lo que deja "hacer click y ver todo" sin forzar a escribir primero.
   const visibleOptions = React.useMemo(() => {
     if (!value.trim()) return options.slice(0, 40)
     const lower = value.toLowerCase()
@@ -67,8 +72,11 @@ export function Combobox({
       .slice(0, 40)
   }, [options, value, getSearchText])
 
-  const exactMatch = options.some((o) => o.toLowerCase() === value.trim().toLowerCase())
-  const showOptions = visibleOptions.length > 0 && !exactMatch && open;
+  // Sin el filtro de "match exacto" que había antes: bloqueaba reabrir la
+  // lista con un click cuando el valor actual YA es una opción válida (p. ej.
+  // reabrir para cambiar algo que ya se había elegido). Al enfocar/hacer
+  // click se abre igual, coincida o no con una opción existente.
+  const showOptions = visibleOptions.length > 0 && open;
 
   return (
     // `PopoverAnchor` y NO `PopoverTrigger`.
@@ -89,6 +97,10 @@ export function Combobox({
                setOpen(true);
             }}
             onFocus={() => setOpen(true)}
+            // Además de `onFocus`: si el input YA estaba enfocado (por
+            // ejemplo, se acaba de cerrar la lista con Escape) un click ahí
+            // no dispara foco de nuevo, y sin esto el click no hacía nada.
+            onClick={() => setOpen(true)}
             placeholder={placeholder}
             disabled={disabled}
             aria-invalid={ariaInvalid}
@@ -105,7 +117,7 @@ export function Combobox({
       >
         <Command shouldFilter={false}>
           <CommandList id={id ? `${id}-listbox` : undefined}>
-            <CommandEmpty>No hay sugerencias.</CommandEmpty>
+            <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {visibleOptions.map((option) => (
                 <CommandItem

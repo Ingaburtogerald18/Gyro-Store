@@ -5,10 +5,16 @@ import { toast } from 'sonner';
 
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
+import { Combobox } from '~/components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { errMsg, formatCordobas } from '~/lib/formatters';
 import { useGetSellableProductsQuery, type SellableProduct } from '~/store/api/salesApi';
-import { useCreateInvoiceMutation, useUpdateInvoiceMutation, type Invoice } from '~/store/api/invoicesApi';
+import {
+  useCreateInvoiceMutation,
+  useUpdateInvoiceMutation,
+  useGetInvoiceSellersQuery,
+  type Invoice,
+} from '~/store/api/invoicesApi';
 import {
   useValidateDiscountCodeMutation,
   type DiscountCodeValidation,
@@ -42,14 +48,26 @@ export function InvoiceEditor({
   onUpdated?: () => void;
 }) {
   const { data: catalog = [] } = useGetSellableProductsQuery();
+  const { data: sellers = [] } = useGetInvoiceSellersQuery();
   const [createInvoice, { isLoading: creating }] = useCreateInvoiceMutation();
   const [updateInvoice, { isLoading: updating }] = useUpdateInvoiceMutation();
 
   const isEdit = !!invoice;
 
   const [lines, setLines] = useState<InvoiceLine[]>([
-    { uid: crypto.randomUUID(), productName: '', quantity: 1, unitPrice: '' }
+    { uid: crypto.randomUUID(), productName: '', quantity: '', unitPrice: '' }
   ]);
+  // A qué vendedor le pertenece el ticket. Solo se elige al CREAR: una vez
+  // emitida, cambiar el dueño de la factura no está soportado (mismo criterio
+  // que las líneas — si está mal, se anula y se emite otra).
+  //
+  // El campo es de texto libre (Combobox: escribe y matchea contra las
+  // opciones), no un <Select> cerrado. `sellerQuery` es lo que se ve en el
+  // input; `sellerUid` sale de matchear ese texto EXACTO contra un vendedor
+  // real — si no matchea ninguno, no hay id y el submit queda bloqueado
+  // (mismo patrón que el resto del formulario: una razón visible, nunca un
+  // estado a medias).
+  const [sellerQuery, setSellerQuery] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [method, setMethod] = useState<(typeof METHODS)[number]['value']>('efectivo');
@@ -90,6 +108,12 @@ export function InvoiceEditor({
     setIncludeDelivery((invoice.deliveryFee ?? 0) > 0);
   }, [invoice]);
 
+  const sellerNames = useMemo(() => sellers.map((s) => s.name), [sellers]);
+  const sellerUid = useMemo(
+    () => sellers.find((s) => s.name.trim().toLowerCase() === sellerQuery.trim().toLowerCase())?.id ?? '',
+    [sellers, sellerQuery],
+  );
+
   // El catálogo solo trae lo que HOY tiene stock. Un producto de la factura que
   // se agotó desde entonces no estaría en el desplegable y su línea aparecería
   // en blanco — con el precio intacto pero sin nombre. Se le suman los propios
@@ -110,8 +134,9 @@ export function InvoiceEditor({
     }
     return [...byName.values()].sort((a, b) => a.productName.localeCompare(b.productName));
   }, [catalog, invoice]);
+  const productNames = useMemo(() => products.map((p) => p.productName), [products]);
 
-  const addLine = () => setLines([...lines, { uid: crypto.randomUUID(), productName: '', quantity: 1, unitPrice: '' }]);
+  const addLine = () => setLines([...lines, { uid: crypto.randomUUID(), productName: '', quantity: '', unitPrice: '' }]);
   const removeLine = (uid: string) => setLines(lines.filter(l => l.uid !== uid));
 
   const updateLine = (uid: string, field: keyof InvoiceLine, value: any) => {
@@ -160,9 +185,13 @@ export function InvoiceEditor({
       ? 'No hay productos con stock disponible en bodega.'
       : validLines.length === 0
         ? 'Agregá al menos un producto con cantidad y precio.'
-        : includeDiscount && !appliedCode
-          ? 'Aplicá el código de descuento o apagá el switch.'
-          : null;
+        : !isEdit && !sellerUid
+          ? sellerQuery.trim()
+            ? 'Ese vendedor no coincide con ninguno registrado. Elegilo de la lista.'
+            : 'Elegí a qué vendedor pertenece esta factura.'
+          : includeDiscount && !appliedCode
+            ? 'Aplicá el código de descuento o apagá el switch.'
+            : null;
 
   async function handleUpdate() {
     if (disabledReason || !invoice) return;
@@ -220,6 +249,7 @@ export function InvoiceEditor({
         // Ya no hay descuento manual: el único descuento es el del código.
         discount: 0,
         discountCode: includeDiscount ? appliedCode?.code : undefined,
+        sellerUid: sellerUid || undefined,
         items: validLines.map(l => ({
           productName: l.productName,
           quantity: Number(l.quantity),
@@ -277,30 +307,41 @@ export function InvoiceEditor({
         </div>
       </section>
 
+      {/* Solo al crear: quién factura no se reasigna después (mismo criterio
+          que las líneas — si está mal, se anula y se emite otra). */}
+      {!isEdit && (
+        <section className="space-y-1.5 rounded-card border bg-card p-4 shadow-sm">
+          <Label htmlFor="invoice-seller">Vendedor</Label>
+          <Combobox
+            id="invoice-seller"
+            value={sellerQuery}
+            onChange={setSellerQuery}
+            options={sellerNames}
+            placeholder="Escribí para buscar al vendedor..."
+            aria-invalid={!!sellerQuery && !sellerUid}
+          />
+        </section>
+      )}
+
       <div className="space-y-2">
         <Label>Productos</Label>
         <div className="border rounded-md divide-y">
           {lines.map((line, i) => (
             <div key={line.uid} className="flex flex-col sm:flex-row gap-2 p-2 items-start sm:items-center bg-card">
               <div className="flex-1 w-full">
-                <Select value={line.productName} onValueChange={v => updateLine(line.uid, 'productName', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar producto..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.length === 0 ? (
-                      <div className="px-2 py-3 text-center text-sm text-muted-foreground">
-                        Sin productos con stock. Recibí una compra en Inventario.
-                      </div>
-                    ) : (
-                      products.map(p => (
-                        <SelectItem key={p.productName} value={p.productName}>
-                          {p.productName} — {formatCordobas(p.price)}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  value={line.productName}
+                  onChange={(v) => updateLine(line.uid, 'productName', v)}
+                  options={productNames}
+                  placeholder="Escribí para buscar un producto..."
+                  emptyMessage="Sin productos con stock. Recibí una compra en Inventario."
+                  renderOptionMeta={(name) => {
+                    const p = products.find((pp) => pp.productName === name);
+                    return p ? (
+                      <span className="shrink-0 text-xs text-muted-foreground">{formatCordobas(p.price)}</span>
+                    ) : null;
+                  }}
+                />
               </div>
               <div className="w-full sm:w-24">
                 <Input

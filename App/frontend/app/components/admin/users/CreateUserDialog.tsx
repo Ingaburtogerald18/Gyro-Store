@@ -40,8 +40,12 @@ export function CreateUserDialog() {
       return;
     }
     try {
-      await createUser({ email: newEmail, name: newName, roles: [newRole] }).unwrap();
-      toast.success(`Usuario ${newName} pre-creado exitosamente.`);
+      const result = await createUser({ email: newEmail, name: newName, roles: [newRole] }).unwrap();
+      toast.success(
+        result.pending
+          ? `Rol reservado para ${newName}. Se activa solo en cuanto inicie sesión con Microsoft.`
+          : `${newName} ya tenía cuenta — se le asignó el rol directamente.`,
+      );
       setOpen(false);
       setNewName("");
       setNewEmail("");

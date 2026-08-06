@@ -5,6 +5,12 @@ import { requireAdmin } from '../middleware/auth';
 import { db } from '../supabase';
 import { config, VALID_ROLES, type AppRole } from '../config';
 import { getSellerSummary } from '../services/sellerPayments';
+import {
+  upsertPendingGrant,
+  listPendingGrants,
+  getPendingGrant,
+  deletePendingGrant,
+} from '../services/pendingRoleGrants';
 import { updateProfileSchema } from '../../shared/schemas';
 
 const router = Router();
@@ -65,17 +71,51 @@ router.get(
       ...u,
       isProtected:
         !!SUPER_ADMIN_EMAIL && (u.email || '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase(),
+      pending: false,
     }));
 
-    res.json(rows);
+    // Roles reservados para gente que todavía no inició sesión ni una vez: no
+    // tienen fila en `profiles` (no hay id de Auth real todavía), así que se
+    // agregan como entradas SINTÉTICAS con `pending: true` para que Personal
+    // las muestre igual — es la única forma de ver (y poder cancelar) una
+    // invitación antes de que se active sola con el primer login.
+    const pending = await listPendingGrants();
+    const pendingRows = pending.map((g) => ({
+      id: `pending:${g.email}`,
+      email: g.email,
+      name: g.name || g.email,
+      roles: g.roles,
+      status: 'active',
+      deleted_at: null,
+      created_at: g.createdAt,
+      avatar_url: null,
+      isProtected: false,
+      pending: true,
+    }));
+
+    res.json([...pendingRows, ...rows]);
   })
 );
 // POST /api/admin/users
+//
+// YA NO pre-crea una identidad de Supabase Auth. Antes lo hacía (email +
+// contraseña random vía `auth.admin.createUser`), pero el login real SIEMPRE
+// es por Microsoft/Azure (ver middleware/auth.ts), y Azure genera SU PROPIA
+// identidad — con otro `id` — aunque el correo coincida. El perfil nunca
+// llegaba a tener el rol que se le asignó acá: chocaba con el `unique` de
+// `profiles.email` y la persona quedaba sin permisos para siempre. Ver
+// database/migrations/0009_pending_role_grants.sql.
+//
+// Ahora: si YA existe un perfil con ese correo (la persona ya inició sesión
+// al menos una vez, aunque sin rol), se le asigna el rol directo. Si no
+// existe todavía, se RESERVA el rol por correo — se aplica solo en cuanto esa
+// persona entre de verdad con Microsoft por primera vez.
 router.post(
   '/',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const { email, name, roles } = req.body;
+    const { email: rawEmail, name, roles } = req.body;
+    const email = String(rawEmail || '').trim().toLowerCase();
 
     if (!email || !name) {
       res.status(400).json({ error: 'Faltan datos requeridos (email, name).' });
@@ -94,57 +134,58 @@ router.post(
       return;
     }
 
-    // 1. Pre-crear la identidad en Supabase Auth. El login real SIEMPRE es por
-    // Entra ID (ver middleware/auth.ts), así que esta contraseña nunca se usa para
-    // entrar; la generamos aleatoria para no dejar una credencial conocida en el
-    // repo. El usuario solo necesita que su perfil exista con sus roles asignados.
-    const tempPassword = `Gyro-${crypto.randomUUID()}`;
-    const { data: authData, error: authError } = await db.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: true, // Ya viene confirmado para no requerir verificación
-      user_metadata: { name }
-    });
+    const { data: existingProfile, error: findError } = await db
+      .from('profiles')
+      .select('id, email, name, roles, avatar_url, deleted_at, created_at')
+      .eq('email', email)
+      .maybeSingle();
+    if (findError) throw findError;
 
-    if (authError) {
-      // Manejar error amigable si el usuario ya existe
-      if (authError.message.includes('already exists')) {
-        res.status(400).json({ error: 'El usuario ya existe en Supabase Auth. Solo espera a que inicie sesión para ver su perfil.' });
-      } else {
-        throw authError;
-      }
+    if (existingProfile) {
+      // Ya inició sesión una vez (por eso tiene fila real): asignarle el rol
+      // ahora mismo, sin pasar por la reserva.
+      const { data: updated, error: updateError } = await db
+        .from('profiles')
+        .update({ roles: rolesCheck.roles })
+        .eq('id', existingProfile.id)
+        .select('id, email, name, roles, avatar_url, deleted_at, created_at')
+        .single();
+      if (updateError) throw updateError;
+      res.json({ ...updated, pending: false });
       return;
     }
 
-    const newUserId = authData.user.id;
-
-    // 2. Insertar el perfil en Postgres con el ID generado y los roles
-    const { data: profileData, error: profileError } = await db
-      .from('profiles')
-      .insert({
-        id: newUserId,
-        email,
-        name,
-        roles: rolesCheck.roles,
-        avatar_url: ''
-      })
-      .select('id, email, name, roles, avatar_url, deleted_at, created_at')
-      .single();
-
-    if (profileError) {
-      throw profileError;
-    }
-
-    res.json(profileData);
+    const grant = await upsertPendingGrant({
+      email,
+      name,
+      roles: rolesCheck.roles,
+      createdBy: req.user!.uid,
+    });
+    res.status(201).json({
+      id: `pending:${grant.email}`,
+      email: grant.email,
+      name: grant.name,
+      roles: grant.roles,
+      status: 'active',
+      deleted_at: null,
+      created_at: grant.createdAt,
+      avatar_url: null,
+      pending: true,
+    });
   })
 );
 
 // PATCH /api/admin/users/:email/roles
+//
+// Sirve para las dos formas: un perfil real (alguien que ya inició sesión) se
+// actualiza directo; si todavía no existe ninguna fila con ese correo, el
+// cambio de rol se guarda como reserva (mismo mecanismo que POST / cuando la
+// persona es nueva del todo).
 router.patch(
   '/:email/roles',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const email = req.params.email as string;
+    const email = String(req.params.email || '').trim().toLowerCase();
     const { roles } = req.body;
 
     if (!email) {
@@ -152,7 +193,7 @@ router.patch(
       return;
     }
 
-    if (SUPER_ADMIN_EMAIL && email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
+    if (SUPER_ADMIN_EMAIL && email === SUPER_ADMIN_EMAIL.toLowerCase()) {
       res.status(403).json({ error: 'Operación denegada: Este usuario está protegido por el sistema.' });
       return;
     }
@@ -164,17 +205,57 @@ router.patch(
       return;
     }
 
-    const { data, error } = await db
+    const { data: existingProfile, error: findError } = await db
       .from('profiles')
-      .update({ roles: rolesCheck.roles })
+      .select('id, name')
       .eq('email', email)
-      .select();
+      .maybeSingle();
+    if (findError) throw findError;
 
-    if (error) {
-      throw error;
+    if (existingProfile) {
+      const { data, error } = await db
+        .from('profiles')
+        .update({ roles: rolesCheck.roles })
+        .eq('email', email)
+        .select();
+      if (error) throw error;
+      res.json(data);
+      return;
     }
 
-    res.json(data);
+    // Sin perfil todavía: es una invitación pendiente, así que se actualiza
+    // (o se crea) la reserva en vez de un `profiles` que no existe. Se
+    // conserva el nombre que ya tenía la reserva (lo tipeó el admin al
+    // invitar) — acá solo cambia el rol.
+    const existingGrant = await getPendingGrant(email);
+    const grant = await upsertPendingGrant({
+      email,
+      name: existingGrant?.name || email.split('@')[0] || email,
+      roles: rolesCheck.roles,
+      createdBy: req.user!.uid,
+    });
+    res.json([{ email: grant.email, roles: grant.roles, pending: true }]);
+  })
+);
+
+// DELETE /api/admin/users/pending/:email — cancelar una invitación que
+// todavía no se activó. Va ANTES de `DELETE /:id` (que espera un uuid real)
+// por prolijidad, aunque no colisionan: son formas de ruta distintas.
+router.delete(
+  '/pending/:email',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const email = String(req.params.email || '').trim().toLowerCase();
+    if (SUPER_ADMIN_EMAIL && email === SUPER_ADMIN_EMAIL.toLowerCase()) {
+      res.status(403).json({ error: 'Operación denegada: Este usuario está protegido por el sistema.' });
+      return;
+    }
+    const ok = await deletePendingGrant(email);
+    if (!ok) {
+      res.status(404).json({ error: 'No hay ninguna invitación pendiente con ese correo.' });
+      return;
+    }
+    res.json({ message: 'Invitación cancelada' });
   })
 );
 

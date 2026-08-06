@@ -32,11 +32,20 @@ export function DeleteUserDialog({
     <Dialog open={!!user} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Borrar permanentemente</DialogTitle>
+          <DialogTitle>{user?.pending ? 'Cancelar invitación' : 'Borrar permanentemente'}</DialogTitle>
           <DialogDescription>
-            ¿Seguro que deseas eliminar por completo a{" "}
-            <strong>{user?.name}</strong> y todo su acceso? Esta acción borrará su perfil
-            de la base de datos y no se puede deshacer.
+            {user?.pending ? (
+              <>
+                <strong>{user?.name}</strong> todavía no inició sesión — se le va a retirar el rol
+                reservado. Si más adelante entra con Microsoft, va a quedar sin permisos hasta que
+                se lo asignes de nuevo.
+              </>
+            ) : (
+              <>
+                ¿Seguro que deseas eliminar por completo a <strong>{user?.name}</strong> y todo su
+                acceso? Esta acción borrará su perfil de la base de datos y no se puede deshacer.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -44,7 +53,7 @@ export function DeleteUserDialog({
             Cancelar
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
-            Sí, eliminar usuario
+            {user?.pending ? 'Sí, cancelar invitación' : 'Sí, eliminar usuario'}
           </Button>
         </DialogFooter>
       </DialogContent>

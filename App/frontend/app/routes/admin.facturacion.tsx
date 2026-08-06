@@ -1,13 +1,11 @@
 import { AnimatedIcon } from "~/components/ui/animated-icons";
-import { Copy01Icon, Delete02Icon, Edit02Icon, File01Icon, Invoice01Icon, PlusSignIcon, Tick01Icon, Time02Icon, ViewIcon } from "@hugeicons/core-free-icons";
+import { Delete02Icon, Edit02Icon, File01Icon, Invoice01Icon, PlusSignIcon, Time02Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from '@remix-run/react';
 import type { MetaFunction } from '@remix-run/node';
 import { pageTitle } from '~/lib/brand';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
-
-import { cn } from '~/lib/utils';
 
 import { PageHeader } from '~/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
@@ -29,59 +27,13 @@ import {
 } from '~/store/api/invoicesApi';
 import { TicketPrintModal } from '~/components/admin/invoices/TicketPrintModal';
 import { InvoiceEditDialog } from '~/components/admin/invoices/InvoiceEditDialog';
+import { InvoiceCodeCell } from '~/components/admin/invoices/InvoiceCodeCell';
 // 21 KB que se descargaban al abrir Facturación aunque nadie emitiera nada.
 const InvoiceEditor = lazy(() =>
   import('~/components/admin/invoices/InvoiceEditor').then((m) => ({ default: m.InvoiceEditor })),
 );
 
 export const meta: MetaFunction = () => [{ title: pageTitle('Facturación', { admin: true }) }];
-
-/**
- * Número de factura con botón para copiarlo.
- *
- * Es el dato que el vendedor tipea después en Ventas para vincular la venta, y
- * transcribir `GS-PR-137` a mano es justo donde se cuela el error.
- *
- * `stopPropagation` porque la celda vive en una fila que puede ser clickeable:
- * copiar no debería además abrir el detalle.
- */
-function InvoiceCodeCell({ code, bold }: { code: string; bold?: boolean }) {
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy(e: React.MouseEvent) {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      toast.success(`${code} copiado.`);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // `navigator.clipboard` no existe fuera de HTTPS/localhost.
-      toast.error('El navegador no permitió copiar. Seleccionalo a mano.');
-    }
-  }
-
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={cn('font-mono', bold && 'font-medium')}>{code}</span>
-      <button
-        type="button"
-        onClick={handleCopy}
-        title="Copiar número de factura"
-        aria-label={`Copiar ${code}`}
-        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-      >
-        <AnimatedIcon
-          icon={copied ? Tick01Icon : Copy01Icon}
-          gesture="pop"
-          size={14}
-          strokeWidth={2}
-          className={cn(copied && 'text-success')}
-        />
-      </button>
-    </span>
-  );
-}
 
 export default function AdminFacturacion() {
   const { data: unlinkedInvoices = [], isLoading: loadingUnlinked, isError: unlinkedError } = useGetInvoicesQuery({ status: 'unlinked' });
@@ -143,6 +95,7 @@ export default function AdminFacturacion() {
     () => [
       { accessorKey: 'invoiceCode', header: 'Número de Factura', cell: ({ row }) => <InvoiceCodeCell code={row.original.invoiceCode} bold /> },
       { accessorKey: 'customerName', header: 'Cliente', cell: ({ row }) => row.original.customerName || '—' },
+      { accessorKey: 'sellerName', header: 'Vendedor', cell: ({ row }) => row.original.sellerName || '—' },
       { accessorKey: 'method', header: 'Método', cell: ({ row }) => <span className="capitalize">{row.original.method ?? '—'}</span> },
       // Subtotal · Delivery · Total: el modelo ya trae los tres, y con una sola
       // columna "Total" no se podía saber cuánto de esa cifra era envío.
@@ -278,6 +231,13 @@ export default function AdminFacturacion() {
     () => [
       { accessorKey: 'invoiceCode', header: 'Número de Factura', cell: ({ row }) => <InvoiceCodeCell code={row.original.invoiceCode} /> },
       { accessorKey: 'customerName', header: 'Cliente', cell: ({ row }) => row.original.customerName || '—' },
+      // Quién la canjeó — el que cobra la comisión de esta venta. Puede ser
+      // distinto de a quién Caja se la asignó originalmente al emitirla.
+      {
+        accessorKey: 'registeredByName',
+        header: 'Vendedor (registró la venta)',
+        cell: ({ row }) => row.original.registeredByName || '—',
+      },
       { accessorKey: 'method', header: 'Método', cell: ({ row }) => <span className="capitalize">{row.original.method ?? '—'}</span> },
       // Subtotal · Delivery · Total: el modelo ya trae los tres, y con una sola
       // columna "Total" no se podía saber cuánto de esa cifra era envío.

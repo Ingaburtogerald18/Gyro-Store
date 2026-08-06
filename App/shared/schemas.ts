@@ -777,6 +777,10 @@ export const createInvoiceInputSchema = z.object({
   // Código de descuento opcional: el servidor lo canjea y suma su monto al
   // descuento manual (topado al subtotal). Ver server/services/discountCode.ts.
   discountCode: z.string().max(30).optional(),
+  // Vendedor al que Caja le asigna esta factura (opcional: un ticket de
+  // mostrador puede no tener uno). Es lo que después le permite a ESE
+  // vendedor verla en "Mis Facturas" antes de que exista una venta vinculada.
+  sellerUid: z.string().uuid().optional(),
   items: z.array(invoiceItemInputSchema).min(1, 'La factura necesita al menos un producto.'),
 });
 export type CreateInvoiceInput = z.infer<typeof createInvoiceInputSchema>;

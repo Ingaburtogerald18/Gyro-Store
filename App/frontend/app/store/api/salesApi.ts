@@ -117,6 +117,12 @@ export interface SaleListItem {
   customerName: string | null;
   phone: string | null;
   total: number;
+  /** Suma de la comisión de TODAS las líneas de la venta. */
+  totalComision: number;
+  /** Correlativo de la factura con que se registró la venta. Null si no tiene. */
+  invoiceNumber?: number | null;
+  /** Código legible de esa factura: `GS-PR-12`. Null si no tiene. */
+  invoiceCode?: string | null;
   createdAt: string;
 }
 
@@ -237,6 +243,12 @@ export const salesApi = baseApi.injectEndpoints({
       query: () => 'sales/balances',
       providesTags: ['CommissionPayment'],
     }),
+    // Mismo shape que `getMySalesSummary`, pero para un vendedor cualquiera
+    // (admin-only). Alimenta el popup "cuánto le debemos" tras aprobar en lote.
+    getSellerSummaryFor: build.query<SellerSummary, string>({
+      query: (sellerEmail) => ({ url: 'sales/summary', params: { sellerEmail } }),
+      providesTags: ['CommissionPayment', 'Sale'],
+    }),
     payCommissions: build.mutation<
       CommissionPayment,
       PayoutProof & { sellerEmail: string; orderIds: string[] }
@@ -275,6 +287,7 @@ export const {
   useGetSaleQuery,
   useGetCommissionPaymentsQuery,
   useGetSellerBalancesQuery,
+  useGetSellerSummaryForQuery,
   usePayCommissionsMutation,
   useSettleSellerBalanceMutation,
   useGetMySalesSummaryQuery,

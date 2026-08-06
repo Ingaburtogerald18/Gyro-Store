@@ -7,6 +7,7 @@ import {
   useSuspendUserMutation,
   useRestoreUserMutation,
   useDeleteUserMutation,
+  useDeletePendingInviteMutation,
   type AppRole,
   type UserProfile,
 } from "~/store/api/usersApi";
@@ -20,6 +21,7 @@ export function useUserActions() {
   const [suspendUser] = useSuspendUserMutation();
   const [restoreUser] = useRestoreUserMutation();
   const [deleteUser] = useDeleteUserMutation();
+  const [deletePendingInvite] = useDeletePendingInviteMutation();
 
   const changeRole = async (user: UserProfile, newRole: AppRole) => {
     if (isProtectedUser(user)) {
@@ -62,8 +64,15 @@ export function useUserActions() {
       return;
     }
     try {
-      await deleteUser(user.id).unwrap();
-      toast.success(`${user.name} ha sido borrado de la base de datos.`);
+      if (user.pending) {
+        // Sin fila real en `profiles`: es una invitación, no una cuenta —
+        // "eliminar" acá es cancelarla por correo, no borrar un id.
+        await deletePendingInvite(user.email).unwrap();
+        toast.success(`Invitación de ${user.name} cancelada.`);
+      } else {
+        await deleteUser(user.id).unwrap();
+        toast.success(`${user.name} ha sido borrado de la base de datos.`);
+      }
     } catch (error: any) {
       toast.error(error?.data?.error || `Error al borrar a ${user.name}`);
     }

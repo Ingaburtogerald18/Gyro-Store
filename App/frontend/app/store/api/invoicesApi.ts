@@ -19,6 +19,22 @@ export interface Invoice {
   subtotal?: number;
   discount?: number;
   deliveryName?: string | null;
+  /** Vendedor al que Caja le asignó la factura al emitirla (o null). */
+  sellerUid?: string | null;
+  /** Solo lo trae el listado (`GET /invoices`, `/mine`): nombre resuelto del vendedor. */
+  sellerName?: string | null;
+  /**
+   * Vendedor que CANJEÓ la factura (la vinculó a su venta) — quien cobra la
+   * comisión. Puede ser distinto de `sellerName` (a quién se la asignó Caja).
+   * Solo tiene valor en facturas `linked`, y solo lo trae el listado.
+   */
+  registeredByName?: string | null;
+}
+
+/** Vendedor activo, para el selector "Vendedor" de InvoiceEditor. */
+export interface InvoiceSeller {
+  id: string;
+  name: string;
 }
 
 /**
@@ -51,6 +67,8 @@ export interface CreateInvoiceInput {
   discount?: number;
   /** Código de descuento opcional; el servidor lo canjea al crear la factura. */
   discountCode?: string;
+  /** Vendedor al que se le asigna la factura (opcional: ticket de mostrador). */
+  sellerUid?: string;
   items: InvoiceItemInput[];
 }
 
@@ -86,6 +104,19 @@ export const invoicesApi = baseApi.injectEndpoints({
         params: args && args.status ? { status: args.status } : undefined,
       }),
       providesTags: ['Invoice'],
+    }),
+    // "Mis Facturas" del portal de vendedor: solo las que Caja le asignó
+    // (invoices.seller_uid), de solo lectura.
+    getMyInvoices: build.query<Invoice[], { status?: InvoiceStatus } | void>({
+      query: (args) => ({
+        url: 'invoices/mine',
+        params: args && args.status ? { status: args.status } : undefined,
+      }),
+      providesTags: ['Invoice'],
+    }),
+    // Selector "Vendedor" del formulario de emisión (InvoiceEditor).
+    getInvoiceSellers: build.query<InvoiceSeller[], void>({
+      query: () => 'invoices/sellers',
     }),
     getInvoiceTicket: build.query<TicketData, string>({
       query: (id) => `invoices/${encodeURIComponent(id)}/ticket`,
@@ -123,6 +154,8 @@ export const invoicesApi = baseApi.injectEndpoints({
 
 export const {
   useGetInvoicesQuery,
+  useGetMyInvoicesQuery,
+  useGetInvoiceSellersQuery,
   useGetInvoiceTicketQuery,
   useCreateInvoiceMutation,
   useLookupInvoiceQuery,

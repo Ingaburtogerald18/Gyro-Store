@@ -32,6 +32,15 @@ export interface UserProfile {
    * ocultar acciones en el UI; la denegación real vive en `routes/adminUsers.ts`.
    */
   isProtected?: boolean;
+  /**
+   * Entrada SINTÉTICA (no una fila real de `profiles`): un rol reservado por
+   * correo para alguien que un admin agregó desde Personal pero que todavía no
+   * inició sesión con Microsoft ni una vez. `id` es `pending:<email>`, no un
+   * uuid real — no sirve para /suspend, /restore, /profile ni /performance.
+   * Se activa sola (y desaparece de acá) en cuanto esa persona entra de
+   * verdad. Ver database/migrations/0009_pending_role_grants.sql.
+   */
+  pending?: boolean;
 }
 
 export interface UserPerformance {
@@ -69,6 +78,14 @@ export const usersApi = baseApi.injectEndpoints({
     deleteUser: builder.mutation<void, string>({
       query: (id) => ({
         url: `/admin/users/${encodeURIComponent(id)}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Config'],
+    }),
+    // Cancela una invitación (rol reservado) que todavía no se activó.
+    deletePendingInvite: builder.mutation<void, string>({
+      query: (email) => ({
+        url: `/admin/users/pending/${encodeURIComponent(email)}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Config'],
@@ -117,6 +134,7 @@ export const {
   useUpdateUserRolesMutation,
   useCreateUserMutation,
   useDeleteUserMutation,
+  useDeletePendingInviteMutation,
   useSuspendUserMutation,
   useRestoreUserMutation,
   useUpdateUserProfileMutation,

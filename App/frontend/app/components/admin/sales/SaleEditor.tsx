@@ -165,6 +165,13 @@ export function SaleEditor({
   // cotización — que solo suma líneas — no conoce.
   const displayTotal = linkedInvoice?.total ?? result?.total ?? localTotal;
 
+  // Con una factura ya verificada, las líneas vienen COPIADAS del ticket que
+  // ya se imprimió y se le dio al cliente: dejar que el vendedor las toque
+  // después abriría una discrepancia entre lo que dice el papel y lo que
+  // termina registrado (y cobrando de comisión). Se bloquean hasta que se
+  // borre el código (lo que invalida la verificación, ver el campo de arriba).
+  const linesLocked = !isEdit && useInvoice && !!linkedInvoice;
+
   // UNA sola razón visible a la vez, en orden de prioridad: el botón
   // deshabilitado SIEMPRE explica por qué.
   const disabledReason =
@@ -396,7 +403,14 @@ export function SaleEditor({
                     <Input
                       id="invoice-number"
                       value={invoiceNumber}
-                      onChange={(e) => setInvoiceNumber(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        setInvoiceNumber(e.target.value.toUpperCase());
+                        // Tocar el código invalida la verificación anterior:
+                        // sin esto, las líneas quedarían "bloqueadas" mostrando
+                        // los productos de OTRA factura mientras el campo ya
+                        // dice un código distinto.
+                        setLinkedInvoice(null);
+                      }}
                       placeholder="Ej. GS-PR-12"
                       disabled={busy}
                       className="max-w-[200px] uppercase"
@@ -479,13 +493,22 @@ export function SaleEditor({
             </span>
           </div>
 
+          {linesLocked && (
+            <p className="flex items-start gap-1.5 rounded-lg border border-primary-2/30 bg-primary-2/10 px-3 py-2 text-xs text-primary-2">
+              <AnimatedIcon icon={Alert02Icon} size={14} strokeWidth={2} className="mt-px shrink-0" aria-hidden />
+              Estos productos vienen de la factura {linkedInvoice?.invoiceCode} ya verificada — no se
+              pueden editar acá (evita que la venta quede distinta de lo que dice el ticket). Para
+              cambiarlos, corregí la factura en Facturación o borrá el código de arriba.
+            </p>
+          )}
+
           <SaleLinesTable
             lines={lines}
             products={productsForUi}
             duplicateNames={duplicateNames}
             onChange={setLines}
-            onAddLine={() => setLines((ls) => [...ls, newEditorLine()])}
-            disabled={busy}
+            onAddLine={linesLocked ? undefined : () => setLines((ls) => [...ls, newEditorLine()])}
+            disabled={busy || linesLocked}
           />
         </section>
       </div>

@@ -22,6 +22,22 @@ export interface Invoice {
   subtotal?: number;
   discount?: number;
   deliveryName?: string | null;
+  /** Vendedor al que Caja le asignó la factura al emitirla (o null). */
+  sellerUid?: string | null;
+  /**
+   * Nombre del vendedor asignado. Solo lo resuelve `listInvoices` (segunda
+   * query en lote, mismo patrón que `listSales` en sales.ts — nunca un embed
+   * de PostgREST, que rompe el listado ENTERO si la FK no está en caché).
+   */
+  sellerName?: string | null;
+  /**
+   * Vendedor que CANJEÓ la factura — quien la vinculó a una venta registrada
+   * (`orders.seller_uid` vía `sale_id`), no necesariamente el mismo al que
+   * Caja se la había asignado (`sellerName`). Es el que cobra la comisión de
+   * esa venta. Solo tiene valor en facturas `linked`; solo lo resuelve
+   * `listInvoices`.
+   */
+  registeredByName?: string | null;
   /**
    * Líneas de la factura. Solo las trae `findInvoiceByNumber` (el lookup del
    * editor de ventas, que necesita precargarlas). `listInvoices` NO las pide:
@@ -52,6 +68,7 @@ interface InvoiceRow {
   subtotal: number | null;
   discount: number | null;
   delivery_name: string | null;
+  seller_uid: string | null;
 }
 
 function toInvoice(row: InvoiceRow): Invoice {
@@ -72,10 +89,11 @@ function toInvoice(row: InvoiceRow): Invoice {
     subtotal: row.subtotal ?? 0,
     discount: row.discount ?? 0,
     deliveryName: row.delivery_name,
+    sellerUid: row.seller_uid,
   };
 }
 
-const INVOICE_COLUMNS = 'id, sale_id, invoice_number, invoice_code, status, method, delivery_fee, total, created_at, customer_name, phone, subtotal, discount, delivery_name';
+const INVOICE_COLUMNS = 'id, sale_id, invoice_number, invoice_code, status, method, delivery_fee, total, created_at, customer_name, phone, subtotal, discount, delivery_name, seller_uid';
 
 export const INVOICE_CODE_PREFIX = 'GS-PR-';
 
@@ -140,6 +158,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
       discount,
       discount_code: discountCode,
       delivery_name: input.deliveryName || null,
+      seller_uid: input.sellerUid || null,
     })
     .select(INVOICE_COLUMNS)
     .single();
@@ -217,19 +236,106 @@ export async function linkInvoiceToSale(rawCode: string | number, saleId: string
   return toInvoice(updated as unknown as InvoiceRow);
 }
 
-export async function listInvoices(filters: { status?: string } = {}): Promise<Invoice[]> {
+export async function listInvoices(
+  filters: { status?: string; sellerUid?: string } = {},
+): Promise<Invoice[]> {
   let query = db.from('invoices').select(INVOICE_COLUMNS).order('invoice_number', { ascending: false });
   if (filters.status) query = query.eq('status', filters.status);
+  if (filters.sellerUid) query = query.eq('seller_uid', filters.sellerUid);
 
   const { data, error } = await query;
   if (error) throw error;
-  return ((data ?? []) as unknown as InvoiceRow[]).map(toInvoice);
+  const invoices = ((data ?? []) as unknown as InvoiceRow[]).map(toInvoice);
+
+  // Quién CANJEÓ cada factura vinculada: el vendedor de la orden que la usó
+  // para registrar su venta (`orders.seller_uid` vía `invoices.sale_id`), que
+  // puede no ser el mismo al que Caja se la había asignado. Segunda query en
+  // lote, batcheada junto con el nombre del vendedor asignado (ver abajo).
+  const saleIds = [...new Set(invoices.map((inv) => inv.saleId).filter((id): id is string => !!id))];
+  const sellerUidBySaleId = new Map<string, string | null>();
+  if (saleIds.length > 0) {
+    const { data: orders } = await db.from('orders').select('id, seller_uid').in('id', saleIds);
+    for (const o of (orders ?? []) as { id: string; seller_uid: string | null }[]) {
+      sellerUidBySaleId.set(o.id, o.seller_uid);
+    }
+  }
+
+  // El nombre del vendedor se resuelve con una SEGUNDA query y no con un embed
+  // de PostgREST (`profiles!seller_uid(name)`): el embed depende de que
+  // PostgREST tenga la FK en su caché de esquema, y cuando no la tiene falla
+  // con PGRST200 y se lleva puesto el listado ENTERO (mismo criterio que
+  // sales.ts → listSales). El nombre es un dato secundario acá: si no se
+  // puede resolver, la factura igual tiene que listarse.
+  const uids = [
+    ...new Set([
+      ...invoices.map((inv) => inv.sellerUid).filter((id): id is string => !!id),
+      ...[...sellerUidBySaleId.values()].filter((id): id is string => !!id),
+    ]),
+  ];
+  if (uids.length > 0) {
+    const { data: profiles } = await db.from('profiles').select('id, name').in('id', uids);
+    const namesByUid = new Map<string, string>();
+    for (const p of (profiles ?? []) as { id: string; name: string | null }[]) {
+      if (p.name?.trim()) namesByUid.set(p.id, p.name.trim());
+    }
+    for (const inv of invoices) {
+      if (inv.sellerUid) inv.sellerName = namesByUid.get(inv.sellerUid) ?? null;
+      const registeredByUid = inv.saleId ? sellerUidBySaleId.get(inv.saleId) : null;
+      if (registeredByUid) inv.registeredByName = namesByUid.get(registeredByUid) ?? null;
+    }
+  }
+
+  return invoices;
+}
+
+/**
+ * Vendedores activos para el selector "Vendedor" del formulario de Caja
+ * (InvoiceEditor). Incluye admin/global_admin porque `requireSeller` ya los
+ * trata como vendedores en Ventas (ver middleware/auth.ts) — un admin que
+ * factura personalmente también necesita poder asignarse la factura.
+ *
+ * Nota: solo mira `profiles.roles`. Un correo que hoy es vendedor SOLO por la
+ * whitelist de env (`SELLER_EMAILS`) y todavía no tiene fila en `profiles`
+ * con ese rol no va a aparecer acá — mismo límite que ya tiene el selector de
+ * vendedor de SaleEditor.tsx (`useGetUsersQuery`).
+ */
+export async function listActiveSellers(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await db
+    .from('profiles')
+    .select('id, name, roles, status, deleted_at')
+    .overlaps('roles', ['admin', 'seller', 'global_admin'])
+    .is('deleted_at', null)
+    .neq('status', 'disabled')
+    .order('name');
+  if (error) throw error;
+  return ((data ?? []) as { id: string; name: string | null }[])
+    .filter((p) => p.name?.trim())
+    .map((p) => ({ id: p.id, name: p.name!.trim() }));
+}
+
+/**
+ * Quién puede ver una factura fuera del listado general (lookup por código,
+ * ticket individual). Cashier/admin/global_admin ven cualquiera. Un vendedor
+ * común solo la suya (`seller_uid` propio) o una sin dueño asignado (ticket
+ * genérico de mostrador, o factura emitida antes de que este campo
+ * existiera) — nunca la asignada a OTRO vendedor.
+ */
+export interface InvoiceAccess {
+  requesterUid: string;
+  isPrivileged: boolean;
+}
+
+function canAccessInvoice(sellerUid: string | null, access: InvoiceAccess): boolean {
+  return access.isPrivileged || sellerUid === null || sellerUid === access.requesterUid;
 }
 
 // Devuelve la factura CON sus líneas: es lo que el editor de ventas usa para
 // precargarse entero (productos, cantidades, precios y datos del cliente) en vez
 // de obligar al vendedor a volver a tipear lo que ya está en el ticket.
-export async function findInvoiceByNumber(rawCode: string | number): Promise<Invoice | null> {
+export async function findInvoiceByNumber(
+  rawCode: string | number,
+  access: InvoiceAccess,
+): Promise<Invoice | null> {
   const invoiceNumber = parseInvoiceCode(rawCode);
   if (invoiceNumber === null) return null;
 
@@ -242,6 +348,9 @@ export async function findInvoiceByNumber(rawCode: string | number): Promise<Inv
   if (!data) return null;
 
   const invoice = toInvoice(data as unknown as InvoiceRow);
+  // Mismo 404 que "no existe": no le confirmamos a un vendedor que el código
+  // es válido si es de otro vendedor.
+  if (!canAccessInvoice(invoice.sellerUid ?? null, access)) return null;
 
   const { data: itemRows, error: itemsError } = await db
     .from('invoice_items')
@@ -454,14 +563,16 @@ export interface TicketData {
   method: string;
 }
 
-export async function getInvoiceTicket(invoiceId: string): Promise<TicketData | null> {
+export async function getInvoiceTicket(invoiceId: string, access: InvoiceAccess): Promise<TicketData | null> {
   const { data: invoice, error: invoiceError } = await db
     .from('invoices')
-    .select('id, invoice_number, invoice_code, method, delivery_fee, total, created_at, sale_id, customer_name, phone, subtotal, discount, delivery_name')
+    .select('id, invoice_number, invoice_code, method, delivery_fee, total, created_at, sale_id, customer_name, phone, subtotal, discount, delivery_name, seller_uid')
     .eq('id', invoiceId)
     .maybeSingle();
   if (invoiceError) throw invoiceError;
   if (!invoice) return null;
+  // Mismo 404 que "no existe": ver la nota de canAccessInvoice.
+  if (!canAccessInvoice(invoice.seller_uid, access)) return null;
 
   const { data: invoiceItems, error: itemsError } = await db
     .from('invoice_items')
@@ -471,25 +582,24 @@ export async function getInvoiceTicket(invoiceId: string): Promise<TicketData | 
 
   let sellerName = 'Caja'; // Por defecto, porque nace unlinked
 
-  // Si ya está ligada, podemos sacar info adicional (ej. vendedor que la registró)
-  if (invoice.sale_id) {
-    const { data: order, error: orderError } = await db
-      .from('orders')
-      .select('seller_email, seller_uid')
-      .eq('id', invoice.sale_id)
+  // Si ya está ligada, el vendedor "real" es quien registró la venta. Si no,
+  // pero Caja igual le asignó un vendedor al emitirla, mostramos ese.
+  const sellerUidForName = invoice.sale_id
+    ? (
+        await db.from('orders').select('seller_uid').eq('id', invoice.sale_id).maybeSingle()
+      ).data?.seller_uid ?? null
+    : invoice.seller_uid;
+
+  // Solo el NOMBRE registrado en `profiles`. Antes caía al `seller_email`
+  // cuando no había uid, y en el ticket impreso salía un correo completo
+  // (`juan.perez@gyrostorenic.com`) en vez de un nombre.
+  if (sellerUidForName) {
+    const { data: profile } = await db
+      .from('profiles')
+      .select('name')
+      .eq('id', sellerUidForName)
       .maybeSingle();
-    
-    // Solo el NOMBRE registrado en `profiles`. Antes caía al `seller_email`
-    // cuando no había uid, y en el ticket impreso salía un correo completo
-    // (`juan.perez@gyrostorenic.com`) en vez de un nombre.
-    if (!orderError && order?.seller_uid) {
-      const { data: profile } = await db
-        .from('profiles')
-        .select('name')
-        .eq('id', order.seller_uid)
-        .maybeSingle();
-      if (profile?.name?.trim()) sellerName = profile.name.trim();
-    }
+    if (profile?.name?.trim()) sellerName = profile.name.trim();
   }
 
   const items = (invoiceItems || []).map((item) => ({

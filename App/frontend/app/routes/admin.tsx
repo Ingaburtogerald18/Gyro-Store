@@ -44,7 +44,7 @@ import {
 import { cn } from '~/lib/utils';
 import { getSupabaseClient, signOut } from '~/lib/supabase.client';
 import { useAppSelector } from '~/store/hooks';
-import { selectIsAdmin, selectUserPhoto } from '~/store/slices/authSlice';
+import { selectIsAdmin, selectUser, selectUserPhoto } from '~/store/slices/authSlice';
 import { useGetMeQuery, useGetConfigQuery } from '~/store/api/sessionApi';
 import { BrandLoader } from '~/components/ui/module-loader';
 import { getBrandName } from '~/lib/brand';
@@ -74,6 +74,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       // `nudge-y`: el paquete "cae", como stock que se apila.
       { name: 'Inventario', to: '/admin/inventario', icon: PackageIcon, ready: true, gesture: 'nudge-y' },
+      // Solo vendedor (ver el filtro de rol más abajo): sus facturas de solo
+      // lectura, para copiar el número y registrar la venta en Ventas.
+      { name: 'Mis Facturas', to: '/admin/mis-facturas', icon: File01Icon, ready: true, gesture: 'draw' },
       { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart02Icon, ready: true, gesture: 'pop' },
       { name: 'Cuotas', to: '/admin/cuotas', icon: CreditCardIcon, ready: true, gesture: 'nudge-x' },
       { name: 'Caja y banco', to: '/admin/caja', icon: Wallet01Icon, ready: true, gesture: 'pop' },
@@ -136,7 +139,7 @@ async function syncEntraPhoto(accessToken: string, providerToken: string): Promi
   }
 }
 
-function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: string }) {
+function AdminSidebar({ isAdmin, role, pathname }: { isAdmin: boolean; role: string | null; pathname: string }) {
   const { data: config } = useGetConfigQuery();
   const reduceMotion = useReducedMotion();
   const { setOpen } = useSidebar();
@@ -212,10 +215,14 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
         </NavLink>
 
         {NAV_GROUPS.map((group) => {
-          // Quien no es admin solo ve su operación diaria.
-          const allowedItems = group.items.filter((item) =>
-            isAdmin ? true : item.name === 'Ventas' || item.name === 'Personal',
-          );
+          // Quien no es admin solo ve su operación diaria. "Mis Facturas" es
+          // la excepción: es EXCLUSIVA del vendedor (el admin ya tiene el
+          // módulo completo en "Facturación"), así que no entra en el
+          // `isAdmin ? true : …` de abajo.
+          const allowedItems = group.items.filter((item) => {
+            if (item.name === 'Mis Facturas') return role === 'seller';
+            return isAdmin ? true : item.name === 'Ventas' || item.name === 'Personal';
+          });
           if (allowedItems.length === 0) return null;
 
           return (
@@ -242,9 +249,9 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
                         <SidebarMenuButton
                           aria-disabled
                           tooltip={`${item.name} · Próximamente`}
-                          className="cursor-default text-muted-foreground [&_svg]:size-5 group-data-[collapsible=icon]:size-10!"
+                          className="cursor-default text-muted-foreground [&_svg]:size-[18px] group-data-[collapsible=icon]:size-10!"
                         >
-                          <AnimatedIcon icon={item.icon} size={20} strokeWidth={2} />
+                          <AnimatedIcon icon={item.icon} size={18} strokeWidth={2} />
                           <span className="text-[17px]">{item.name}</span>
                           <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide group-data-[collapsible=icon]:hidden">
                             Pronto
@@ -264,10 +271,11 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
                         />
                       )}
                       {/* Dos overrides sobre `sidebarMenuButtonVariants`:
-                          · `[&_svg]:size-5` pisa el `[&_svg]:size-4` que la
+                          · `[&_svg]:size-[18px]` pisa el `[&_svg]:size-4` que la
                             primitiva fuerza sobre TODO svg — por eso el `size`
-                            del icono no se veía. 20 px queda proporcional a la
-                            etiqueta de 17 px y al resto de la app (encabezados).
+                            del icono no se veía. 18 px queda proporcional a la
+                            etiqueta de 17 px y a los 16 px del resto de la app,
+                            sin dominar como los 20 px anteriores.
                           · `size-10!` pisa el `size-8!` del estado colapsado, y
                             centra el icono en el rail de 56 px. */}
                       <SidebarMenuButton
@@ -275,7 +283,7 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
                         isActive={false}
                         tooltip={item.name}
                         className={cn(
-                          "[&_svg]:size-5 group-data-[collapsible=icon]:size-10!",
+                          "[&_svg]:size-[18px] group-data-[collapsible=icon]:size-10!",
                           isActive && "relative z-10 text-primary-foreground font-medium hover:bg-transparent hover:text-primary-foreground",
                         )}
                       >
@@ -284,7 +292,7 @@ function AdminSidebar({ isAdmin, pathname }: { isAdmin: boolean; pathname: strin
                             icon={item.icon}
                             trigger="press"
                             gesture={item.gesture ?? 'draw'}
-                            size={20}
+                            size={18}
                             strokeWidth={2}
                           />
                           <span className="text-[17px]">{item.name}</span>
@@ -327,6 +335,7 @@ export default function AdminLayout() {
   const { isLoading: isConfigLoading } = useGetConfigQuery();
 
   const isAdmin = useAppSelector(selectIsAdmin);
+  const role = useAppSelector(selectUser)?.role ?? null;
   // La foto sale de /auth/me (profiles.avatar_url), no de user_metadata: con
   // Entra ese metadata viene vacío.
   const profilePhoto = useAppSelector(selectUserPhoto);
@@ -419,7 +428,7 @@ export default function AdminLayout() {
     // Arranca colapsado (rail de iconos): el panel es hover-based en escritorio
     // (ver AdminSidebar) y se abre/cierra con el SidebarTrigger en touch.
     <SidebarProvider data-skin="admin" defaultOpen={false}>
-      <AdminSidebar isAdmin={isAdmin} pathname={location.pathname} />
+      <AdminSidebar isAdmin={isAdmin} role={role} pathname={location.pathname} />
 
       {/* La barra de progreso NO se monta acá: `root.tsx` ya tiene una para
           toda la app y dos instancias dibujarían dos barras. */}

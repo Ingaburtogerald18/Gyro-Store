@@ -133,6 +133,22 @@ router.get(
   }),
 );
 
+// Mismo resumen que `/my-summary`, pero para un vendedor CUALQUIERA — por eso
+// es admin-only (a diferencia de `/my-summary`, acá el email SÍ viaja en el
+// query). Lo usa el popup de "cuánto le debemos" tras aprobar en lote.
+router.get(
+  '/summary',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const sellerEmail = typeof req.query.sellerEmail === 'string' ? req.query.sellerEmail : '';
+    if (!sellerEmail) {
+      res.status(400).json({ error: 'Falta sellerEmail.' });
+      return;
+    }
+    res.json(await getSellerSummary(sellerEmail));
+  }),
+);
+
 router.post(
   '/pay',
   requireAdmin,
