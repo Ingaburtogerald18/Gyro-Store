@@ -3,6 +3,7 @@ import multer from 'multer';
 import crypto from 'crypto';
 import { uploadFile, optimizeImageBuffer, sanitizePathSegment, deleteFileByUrl } from '../services/storage.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -59,7 +60,7 @@ router.post('/', requireAdmin, upload.single('file'), async (req, res, next) => 
       res.status(500).json({ error: 'R2 no está configurado en el backend.' });
       return;
     }
-    console.error('Error in /api/upload:', error);
+    logger.error('Error in /api/upload', { message: error?.message });
     res.status(500).json({ error: 'Error al subir el archivo.' });
   }
 });
@@ -77,7 +78,7 @@ router.delete('/', requireAdmin, async (req, res, next) => {
     await deleteFileByUrl(url);
     res.json({ success: true });
   } catch (error) {
-    console.error('Error in DELETE /api/upload:', error);
+    logger.error('Error in DELETE /api/upload', { message: (error as any)?.message });
     res.status(500).json({ error: 'Error al eliminar el archivo.' });
   }
 });

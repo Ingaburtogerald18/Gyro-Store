@@ -1,5 +1,6 @@
 import { db } from '../supabase';
 import { config } from '../config';
+import { logger } from '../utils/logger';
 import {
   financialConfigSchema,
   type FinancialConfig,
@@ -132,7 +133,7 @@ export async function getFinancialConfig(): Promise<FinancialConfig> {
 
   const parsed = financialConfigSchema.safeParse(data.value);
   if (!parsed.success) {
-    console.error('Configuración financiera inválida en la BD:', parsed.error);
+    logger.error('Configuración financiera inválida en la BD', { issues: parsed.error.issues });
     return DEFAULT_FINANCIAL_CONFIG;
   }
 
@@ -216,7 +217,7 @@ export async function getStoreCategories(): Promise<StoreCategory[]> {
 
   const parsed = storeCategoriesSchema.safeParse(data.value);
   if (!parsed.success) {
-    console.error('Categorías del storefront inválidas en la BD:', parsed.error);
+    logger.error('Categorías del storefront inválidas en la BD', { issues: parsed.error.issues });
     return DEFAULT_STORE_CATEGORIES;
   }
 
@@ -261,7 +262,7 @@ export async function getBusinessInfo(): Promise<BusinessInfo> {
   // completa desde env en vez de romper la validación.
   const parsed = businessInfoSchema.safeParse({ ...defaultBusinessInfo(), ...(data.value as object) });
   if (!parsed.success) {
-    console.error('Info del negocio inválida en la BD:', parsed.error);
+    logger.error('Info del negocio inválida en la BD', { issues: parsed.error.issues });
     return defaultBusinessInfo();
   }
 
@@ -304,7 +305,7 @@ export async function getExpenseCategories(): Promise<ExpenseCategories> {
 
   const parsed = expenseCategoriesSchema.safeParse(data.value);
   if (!parsed.success) {
-    console.error('Categorías de gasto inválidas en la BD:', parsed.error);
+    logger.error('Categorías de gasto inválidas en la BD', { issues: parsed.error.issues });
     return DEFAULT_EXPENSE_CATEGORIES;
   }
 

@@ -5,6 +5,7 @@ import type { Request, Response, NextFunction } from 'express';
 import * as jose from 'jose';
 import { config, VALID_ROLES, type AppRole } from '../config';
 import { db, getUserFromToken } from '../supabase';
+import { logger } from '../utils/logger';
 
 export interface AuthUser {
   uid: string;
@@ -70,7 +71,7 @@ function touchLastLogin(uid: string, profile: { last_login?: string | null } | n
     .update({ last_login: nowIso })
     .eq('id', uid)
     .then(({ error }) => {
-      if (error) console.warn('[last_login] No se pudo registrar la última conexión:', error.message);
+      if (error) logger.warn('[last_login] No se pudo registrar la última conexión', { message: error.message });
     });
 }
 

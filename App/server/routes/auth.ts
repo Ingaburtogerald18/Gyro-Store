@@ -4,6 +4,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { invalidateProfileCache, requireAnyRole } from '../middleware/auth.js';
 import { uploadFile, optimizeImageBuffer, deleteFileByUrl } from '../services/storage.js';
 import { db } from '../supabase.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.post(
       });
 
       if (!response.ok) {
-        console.warn(`[SYNC-PHOTO] Graph API error: ${response.status} ${response.statusText}`);
+        logger.warn('[SYNC-PHOTO] Graph API error', { status: response.status, statusText: response.statusText });
         res.status(404).json({ error: 'No se encontró foto en Microsoft' });
         return;
       }
@@ -85,7 +86,7 @@ router.post(
 
       res.json({ avatar_url: url, changed: true });
     } catch (err: any) {
-      console.error('[SYNC-PHOTO] Error sync:', err);
+      logger.error('[SYNC-PHOTO] Error sync', { message: err?.message });
       res.status(500).json({ error: 'Error al sincronizar la foto' });
     }
   })

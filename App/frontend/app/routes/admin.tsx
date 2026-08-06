@@ -72,7 +72,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operación',
     items: [
-      { name: 'Reportería', to: '/admin', icon: DashboardSquare01Icon, end: true, ready: true, gesture: 'draw' },
       // `nudge-y`: el paquete "cae", como stock que se apila.
       { name: 'Inventario', to: '/admin/inventario', icon: PackageIcon, ready: true, gesture: 'nudge-y' },
       { name: 'Ventas', to: '/admin/ventas', icon: ShoppingCart02Icon, ready: true, gesture: 'pop' },
@@ -91,7 +90,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Análisis y sistema',
     items: [
-      // Los dos primeros están apagados (`ready: false`): el gesto queda
+      { name: 'Reportería', to: '/admin', icon: DashboardSquare01Icon, end: true, ready: true, gesture: 'draw' },
+      // Los dos siguientes están apagados (`ready: false`): el gesto queda
       // declarado para el día que se enciendan, pero no se dispara.
       { name: 'Logística', to: '/admin/logistica', icon: TruckIcon, ready: false, gesture: 'nudge-x' },
       { name: 'CRM y clientes', to: '/admin/crm', icon: UserMultiple02Icon, ready: false, gesture: 'pop' },

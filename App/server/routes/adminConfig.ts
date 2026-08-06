@@ -13,6 +13,7 @@ import {
 } from '../services/appConfig';
 import { financialConfigSchema, imageResourcesSchema, storeCategoriesSchema, businessInfoSchema } from '../../shared/schemas';
 import { deleteFileByUrl } from '../services/storage';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -68,7 +69,13 @@ router.put(
     
     const removed = oldImages.filter(url => typeof url === 'string' && !newImages.includes(url));
     if (removed.length > 0) {
-      await Promise.all(removed.map(url => deleteFileByUrl(url).catch(console.error)));
+      await Promise.all(
+        removed.map((url) =>
+          deleteFileByUrl(url).catch((err: any) =>
+            logger.error('No se pudo borrar una imagen huérfana de R2', { url, message: err?.message }),
+          ),
+        ),
+      );
     }
 
     res.json(updated);

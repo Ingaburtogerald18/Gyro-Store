@@ -10,6 +10,7 @@
 //     el pedido/factura, nunca desde el preview del cliente.
 import { db } from '../supabase';
 import { BadRequestError } from '../utils/httpError';
+import { logger } from '../utils/logger';
 import type { DiscountCodeInput } from '../../shared/schemas';
 
 export type DiscountType = 'percent' | 'fixed';
@@ -114,7 +115,7 @@ export async function listDiscountCodes(): Promise<DiscountCode[]> {
 
   // No se relanza: sin canjes la lista sigue siendo útil.
   if (redemptionError) {
-    console.warn('[discount-codes] No se pudieron leer los canjes:', redemptionError.message);
+    logger.warn('[discount-codes] No se pudieron leer los canjes', { message: redemptionError.message });
   }
 
   // Un código es de uso único (max_uses = 1), así que basta el más reciente.

@@ -27,6 +27,9 @@ vez, ya en su forma final.
 | Archivo | Contiene |
 |---|---|
 | `migrations/0004_sales_export_view_security_invoker.sql` | Fija `security_invoker = on` en `sales_export_view` (fix del Advisor de Supabase "Security Definer View"). Idempotente. |
+| `migrations/0005_analytics.sql` | Extiende `analytics_events` (embudo del storefront: page_view · product_view · search · checkout_start · order_created) con `session_id`, `path` y su CHECK de tipos válidos. Idempotente. |
+| `migrations/0006_caja_extended.sql` | Extiende Caja: `accounts.saldo_inicial`, traspasos entre cuentas (`transfer_id`) y `cash_closures` (arqueo persistido). Idempotente. |
+| `migrations/0007_security_definer_search_path.sql` | Fija `search_path = public, pg_temp` en todas las funciones `security definer` de `public` (fix del Advisor de Supabase "Function Search Path Mutable"). Idempotente, por bucle sobre `pg_proc`. |
 
 **El orden importa.** `0002` usa tablas de `0001`; `0003` inserta en tablas de
 `0001`; `0004` altera la vista creada en `0002`.

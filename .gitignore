@@ -25,3 +25,6 @@ npm-debug.log*
 # Son ~5.700 archivos / 55 MB de un monorepo ajeno. Se consulta para copiar
 # componentes y styles, pero no se versiona con el proyecto.
 ui-main/
+
+# ── Scratch temporal de herramientas de edición (Claude Code / Rhea) ──
+.rhea-tmp/

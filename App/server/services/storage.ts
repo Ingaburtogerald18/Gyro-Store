@@ -1,4 +1,5 @@
 import '../loadEnv.js'; // Fuente única de variables de entorno.
+import { logger } from '../utils/logger.js';
 
 // sharp is optional
 let sharp: any = null;
@@ -55,7 +56,7 @@ export async function optimizeImageBuffer(buffer: Buffer, { maxDim = 1200, quali
       .toBuffer();
     return { buffer: out, contentType: 'image/webp', ext: '.webp' };
   } catch (err: any) {
-    console.error('optimizeImageBuffer falló, se sube el original:', err.message);
+    logger.error('optimizeImageBuffer falló, se sube el original', { message: err.message });
     return { buffer, contentType: null, ext: null };
   }
 }
@@ -97,7 +98,7 @@ export async function deleteFileByUrl(publicUrl?: string | null) {
       new awsSdk.DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key })
     );
   } catch (err: any) {
-    console.error('Error al borrar de R2:', err.message);
+    logger.error('Error al borrar de R2', { message: err.message });
   }
 }
 

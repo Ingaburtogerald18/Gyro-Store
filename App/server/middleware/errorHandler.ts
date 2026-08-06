@@ -2,6 +2,7 @@
 // Portado del patrón de v1 (ZodError → 400) + mapeo de errores de Postgres.
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import { logger } from '../utils/logger';
 
 // Códigos de error de Postgres → respuesta legible.
 // https://www.postgresql.org/docs/current/errcodes-appendix.html
@@ -43,7 +44,7 @@ export function errorHandler(err: HttpError, _req: Request, res: Response, _next
   }
 
   // 4. Todo lo demás → 500 genérico (no filtra detalles internos).
-  console.error('[unhandled_error]', err);
+  logger.error('[unhandled_error]', { message: err.message, stack: err.stack });
   return res.status(500).json({ error: 'Ocurrió un error inesperado en el servidor.' });
 }
 

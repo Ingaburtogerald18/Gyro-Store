@@ -29,7 +29,7 @@ import {
   releaseConsumedReservations,
   type InventoryRow,
 } from './inventory';
-import { formatInvoiceCode, linkInvoiceToSale, parseInvoiceCode } from './invoice';
+import { formatInvoiceCode, linkInvoiceToSale, parseInvoiceCode, voidInvoice } from './invoice';
 import { BadRequestError } from '../utils/httpError';
 import { applyWholesaleDiscount, computeLineCommission, computeOrderLineSnapshot } from './commission';
 import type { SaleLineInput, RegisterSaleInput, UpdateSaleInput } from '../../shared/schemas';
@@ -889,11 +889,19 @@ export async function deleteSale(orderId: string, reason: string, user: { uid: s
   if (orderError) throw orderError;
   if (!order) throw new BadRequestError('Venta no encontrada.');
 
-  // La venta puede tener una factura asociada (sale_id en invoices). 
-  // Al anular o borrar la venta, idealmente deberíamos bloquear o dejar 
-  // la factura huérfana. Como la tabla invoices tiene la FK con set null, 
-  // al borrar la orden la factura quedará unlinked de nuevo (o deberíamos anularla).
-  // TODO: Decidir si al borrar la venta se anula también la factura en cadena.
+  // La venta puede tener una factura asociada (sale_id en invoices). La FK es
+  // `on delete set null`, así que si no hacemos nada acá, borrar la orden deja
+  // una factura en estado 'linked' con sale_id en null: un correlativo fiscal
+  // que dice estar ligado a una venta que ya no existe. Se anula en cadena
+  // (nunca se borra: el correlativo no se reutiliza, ver database/README.md).
+  const { data: linkedInvoice } = await db
+    .from('invoices')
+    .select('id, status')
+    .eq('sale_id', orderId)
+    .maybeSingle();
+  if (linkedInvoice && linkedInvoice.status !== 'void') {
+    await voidInvoice(linkedInvoice.id, reason || 'Venta eliminada', user.uid);
+  }
 
   if (order.status === 'pending_approval') {
     await releaseReservations(orderId);

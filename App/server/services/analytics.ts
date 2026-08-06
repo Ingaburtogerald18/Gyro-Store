@@ -12,6 +12,7 @@
 // es más simple que mantener RPCs de SQL (mismo criterio que el resto del backend,
 // que filtra en memoria). Hay un techo de filas para no desbordar la memoria.
 import { db } from '../supabase';
+import { logger } from '../utils/logger';
 
 // Los cinco tipos del embudo. Fuente única compartida con el CHECK de la
 // migración 0005 y con el schema Zod de la ruta.
@@ -63,7 +64,7 @@ export async function ingestEvents(events: IngestEvent[]): Promise<void> {
   const { error } = await db.from('analytics_events').insert(rows);
   if (error) {
     // Un fallo de telemetría no debe escalar; queda el rastro para depurar.
-    console.warn('[analytics] No se pudo insertar el lote de eventos:', error.message);
+    logger.warn('[analytics] No se pudo insertar el lote de eventos', { message: error.message });
   }
 }
 
